@@ -1,6 +1,18 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "paths": {
+      "@budget/types": ["../../packages/types/src/index.ts"],
+      "@budget/schemas": ["../../packages/schemas/src/index.ts"],
+      "@budget/business-logic": ["../../packages/business-logic/src/index.ts"],
+      "@budget/api-client": ["../../packages/api-client/src/index.ts"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
