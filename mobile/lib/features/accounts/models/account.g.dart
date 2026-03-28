@@ -20,6 +20,7 @@ _$AccountImpl _$$AccountImplFromJson(Map<String, dynamic> json) =>
       creditLimit: (json['credit_limit'] as num?)?.toInt(),
       isActive: json['is_active'] as bool,
       color: json['color'] as String?,
+      interestRate: (json['interest_rate'] as num?)?.toDouble(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -38,6 +39,7 @@ Map<String, dynamic> _$$AccountImplToJson(_$AccountImpl instance) =>
       'credit_limit': instance.creditLimit,
       'is_active': instance.isActive,
       'color': instance.color,
+      'interest_rate': instance.interestRate,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
     };

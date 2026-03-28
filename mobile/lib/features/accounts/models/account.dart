@@ -104,6 +104,9 @@ class Account with _$Account {
     required bool isActive,
     /// Optional hex color for the account card (e.g. "#3B82F6").
     String? color,
+    /// Annual interest rate as a decimal (e.g. 0.2499 = 24.99% APR).
+    /// Null means not applicable (e.g. checking, cash).
+    double? interestRate,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _Account;

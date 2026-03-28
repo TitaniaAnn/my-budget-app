@@ -157,6 +157,34 @@ class AccountCard extends StatelessWidget {
                   ],
                 ),
               ],
+              if (account.interestRate != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      isCreditCard
+                          ? Icons.percent_rounded
+                          : Icons.trending_up_rounded,
+                      size: 12,
+                      color: isCreditCard
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF22C55E),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isCreditCard
+                          ? '${(account.interestRate! * 100).toStringAsFixed(2)}% APR'
+                          : '${(account.interestRate! * 100).toStringAsFixed(2)}% APY',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isCreditCard
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF22C55E),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

@@ -8,7 +8,10 @@ import '../providers/accounts_provider.dart';
 import '../repositories/accounts_repository.dart';
 
 class AddAccountSheet extends ConsumerStatefulWidget {
-  const AddAccountSheet({super.key});
+  /// When provided the sheet is in edit mode.
+  final Account? account;
+
+  const AddAccountSheet({super.key, this.account});
 
   @override
   ConsumerState<AddAccountSheet> createState() => _AddAccountSheetState();
@@ -21,9 +24,48 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   final _lastFourController = TextEditingController();
   final _balanceController = TextEditingController();
   final _limitController = TextEditingController();
+  final _rateController = TextEditingController();
 
   AccountType _selectedType = AccountType.checking;
   bool _loading = false;
+
+  bool get _isEditMode => widget.account != null;
+
+  // Account types that can carry an interest rate
+  bool get _hasInterestRate => const {
+        AccountType.creditCard,
+        AccountType.savings,
+        AccountType.checking,
+        AccountType.brokerage,
+        AccountType.iraTraditional,
+        AccountType.iraRoth,
+        AccountType.retirement401k,
+        AccountType.retirement403b,
+        AccountType.hsa,
+        AccountType.college529,
+      }.contains(_selectedType);
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.account;
+    if (a != null) {
+      _selectedType = a.accountType;
+      _nameController.text = a.name;
+      _institutionController.text = a.institution ?? '';
+      _lastFourController.text = a.lastFour ?? '';
+      _balanceController.text =
+          (a.currentBalance.abs() / 100).toStringAsFixed(2);
+      if (a.creditLimit != null) {
+        _limitController.text =
+            (a.creditLimit! / 100).toStringAsFixed(2);
+      }
+      if (a.interestRate != null) {
+        _rateController.text =
+            (a.interestRate! * 100).toStringAsFixed(2);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -32,6 +74,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     _lastFourController.dispose();
     _balanceController.dispose();
     _limitController.dispose();
+    _rateController.dispose();
     super.dispose();
   }
 
@@ -40,35 +83,64 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     setState(() => _loading = true);
 
     try {
-      final householdId = await ref.read(householdIdProvider.future);
-      final user = ref.read(currentUserProvider);
-      if (householdId == null || user == null) throw Exception('Not logged in');
-
-      final balanceText = _balanceController.text.replaceAll(RegExp(r'[^\d.]'), '');
-      final balanceCents = balanceText.isEmpty
-          ? 0
-          : (double.parse(balanceText) * 100).round();
+      final balanceText =
+          _balanceController.text.replaceAll(RegExp(r'[^\d.]'), '');
+      final balanceCents =
+          balanceText.isEmpty ? 0 : (double.parse(balanceText) * 100).round();
 
       int? limitCents;
-      if (_selectedType == AccountType.creditCard && _limitController.text.isNotEmpty) {
-        final limitText = _limitController.text.replaceAll(RegExp(r'[^\d.]'), '');
+      if (_selectedType == AccountType.creditCard &&
+          _limitController.text.isNotEmpty) {
+        final limitText =
+            _limitController.text.replaceAll(RegExp(r'[^\d.]'), '');
         limitCents = (double.parse(limitText) * 100).round();
       }
 
-      await ref.read(accountsRepositoryProvider).createAccount(
-            householdId: householdId,
-            ownerUserId: user.id,
-            name: _nameController.text.trim(),
-            accountType: _selectedType,
-            institution: _institutionController.text.trim().isEmpty
-                ? null
-                : _institutionController.text.trim(),
-            lastFour: _lastFourController.text.trim().isEmpty
-                ? null
-                : _lastFourController.text.trim(),
-            currentBalance: balanceCents,
-            creditLimit: limitCents,
-          );
+      double? interestRate;
+      if (_hasInterestRate && _rateController.text.isNotEmpty) {
+        interestRate = double.parse(
+                _rateController.text.replaceAll(RegExp(r'[^\d.]'), '')) /
+            100;
+      }
+
+      final repo = ref.read(accountsRepositoryProvider);
+
+      if (_isEditMode) {
+        await repo.updateAccount(
+          accountId: widget.account!.id,
+          name: _nameController.text.trim(),
+          institution: _institutionController.text.trim().isEmpty
+              ? null
+              : _institutionController.text.trim(),
+          lastFour: _lastFourController.text.trim().isEmpty
+              ? null
+              : _lastFourController.text.trim(),
+          currentBalance: balanceCents,
+          creditLimit: limitCents,
+          interestRate: interestRate,
+        );
+      } else {
+        final householdId = await ref.read(householdIdProvider.future);
+        final user = ref.read(currentUserProvider);
+        if (householdId == null || user == null) {
+          throw Exception('Not logged in');
+        }
+        await repo.createAccount(
+          householdId: householdId,
+          ownerUserId: user.id,
+          name: _nameController.text.trim(),
+          accountType: _selectedType,
+          institution: _institutionController.text.trim().isEmpty
+              ? null
+              : _institutionController.text.trim(),
+          lastFour: _lastFourController.text.trim().isEmpty
+              ? null
+              : _lastFourController.text.trim(),
+          currentBalance: balanceCents,
+          creditLimit: limitCents,
+          interestRate: interestRate,
+        );
+      }
 
       ref.invalidate(accountsProvider);
       if (mounted) Navigator.of(context).pop();
@@ -100,9 +172,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           children: [
             Row(
               children: [
-                const Text('Add Account',
+                Text(_isEditMode ? 'Edit Account' : 'Add Account',
                     style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -199,6 +271,28 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                         : null,
               ),
             ],
+            if (_hasInterestRate) ...[
+              const SizedBox(height: 14),
+              _label(_selectedType == AccountType.creditCard
+                  ? 'Interest Rate (APR)'
+                  : _selectedType == AccountType.savings ||
+                          _selectedType == AccountType.checking
+                      ? 'Interest Rate (APY)'
+                      : 'Expected Return Rate'),
+              TextFormField(
+                controller: _rateController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                decoration: const InputDecoration(
+                  suffixText: '%',
+                  hintText: '0.00',
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loading ? null : _submit,
@@ -209,7 +303,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Add Account'),
+                  : Text(_isEditMode ? 'Save Changes' : 'Add Account'),
             ),
           ],
         ),

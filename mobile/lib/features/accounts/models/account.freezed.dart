@@ -43,6 +43,10 @@ mixin _$Account {
 
   /// Optional hex color for the account card (e.g. "#3B82F6").
   String? get color => throw _privateConstructorUsedError;
+
+  /// Annual interest rate as a decimal (e.g. 0.2499 = 24.99% APR).
+  /// Null means not applicable (e.g. checking, cash).
+  double? get interestRate => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -73,6 +77,7 @@ abstract class $AccountCopyWith<$Res> {
     int? creditLimit,
     bool isActive,
     String? color,
+    double? interestRate,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -105,6 +110,7 @@ class _$AccountCopyWithImpl<$Res, $Val extends Account>
     Object? creditLimit = freezed,
     Object? isActive = null,
     Object? color = freezed,
+    Object? interestRate = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -158,6 +164,10 @@ class _$AccountCopyWithImpl<$Res, $Val extends Account>
                 ? _value.color
                 : color // ignore: cast_nullable_to_non_nullable
                       as String?,
+            interestRate: freezed == interestRate
+                ? _value.interestRate
+                : interestRate // ignore: cast_nullable_to_non_nullable
+                      as double?,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -193,6 +203,7 @@ abstract class _$$AccountImplCopyWith<$Res> implements $AccountCopyWith<$Res> {
     int? creditLimit,
     bool isActive,
     String? color,
+    double? interestRate,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -224,6 +235,7 @@ class __$$AccountImplCopyWithImpl<$Res>
     Object? creditLimit = freezed,
     Object? isActive = null,
     Object? color = freezed,
+    Object? interestRate = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -277,6 +289,10 @@ class __$$AccountImplCopyWithImpl<$Res>
             ? _value.color
             : color // ignore: cast_nullable_to_non_nullable
                   as String?,
+        interestRate: freezed == interestRate
+            ? _value.interestRate
+            : interestRate // ignore: cast_nullable_to_non_nullable
+                  as double?,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -306,6 +322,7 @@ class _$AccountImpl implements _Account {
     this.creditLimit,
     required this.isActive,
     this.color,
+    this.interestRate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -347,6 +364,11 @@ class _$AccountImpl implements _Account {
   /// Optional hex color for the account card (e.g. "#3B82F6").
   @override
   final String? color;
+
+  /// Annual interest rate as a decimal (e.g. 0.2499 = 24.99% APR).
+  /// Null means not applicable (e.g. checking, cash).
+  @override
+  final double? interestRate;
   @override
   final DateTime createdAt;
   @override
@@ -354,7 +376,7 @@ class _$AccountImpl implements _Account {
 
   @override
   String toString() {
-    return 'Account(id: $id, householdId: $householdId, ownerUserId: $ownerUserId, name: $name, accountType: $accountType, institution: $institution, lastFour: $lastFour, currency: $currency, currentBalance: $currentBalance, creditLimit: $creditLimit, isActive: $isActive, color: $color, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Account(id: $id, householdId: $householdId, ownerUserId: $ownerUserId, name: $name, accountType: $accountType, institution: $institution, lastFour: $lastFour, currency: $currency, currentBalance: $currentBalance, creditLimit: $creditLimit, isActive: $isActive, color: $color, interestRate: $interestRate, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -383,6 +405,8 @@ class _$AccountImpl implements _Account {
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
             (identical(other.color, color) || other.color == color) &&
+            (identical(other.interestRate, interestRate) ||
+                other.interestRate == interestRate) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -405,6 +429,7 @@ class _$AccountImpl implements _Account {
     creditLimit,
     isActive,
     color,
+    interestRate,
     createdAt,
     updatedAt,
   );
@@ -437,6 +462,7 @@ abstract class _Account implements Account {
     final int? creditLimit,
     required final bool isActive,
     final String? color,
+    final double? interestRate,
     required final DateTime createdAt,
     required final DateTime updatedAt,
   }) = _$AccountImpl;
@@ -477,6 +503,11 @@ abstract class _Account implements Account {
   /// Optional hex color for the account card (e.g. "#3B82F6").
   @override
   String? get color;
+
+  /// Annual interest rate as a decimal (e.g. 0.2499 = 24.99% APR).
+  /// Null means not applicable (e.g. checking, cash).
+  @override
+  double? get interestRate;
   @override
   DateTime get createdAt;
   @override

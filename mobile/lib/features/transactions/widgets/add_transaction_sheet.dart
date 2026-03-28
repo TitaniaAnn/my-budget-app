@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
-import '../models/category.dart';
+import '../../../features/accounts/providers/credit_card_rates_provider.dart';
+import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 
@@ -13,7 +15,15 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
   /// Pre-select an account when opened from an account's transaction list.
   final String? preselectedAccountId;
 
-  const AddTransactionSheet({super.key, this.preselectedAccountId});
+  /// When provided the sheet is in edit mode — fields are pre-filled and
+  /// the submit action calls [updateTransaction] instead of [createTransaction].
+  final Transaction? transaction;
+
+  const AddTransactionSheet({
+    super.key,
+    this.preselectedAccountId,
+    this.transaction,
+  });
 
   @override
   ConsumerState<AddTransactionSheet> createState() =>
@@ -31,14 +41,31 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   DateTime _date = DateTime.now();
   String? _selectedAccountId;
   String? _selectedCategoryId;
+  String? _selectedRateId;
   bool _loading = false;
+
+  bool get _isEditMode => widget.transaction != null;
 
   static final _dateFmt = DateFormat('MMM d, yyyy');
 
   @override
   void initState() {
     super.initState();
-    _selectedAccountId = widget.preselectedAccountId;
+    final tx = widget.transaction;
+    if (tx != null) {
+      _isExpense = tx.amount < 0;
+      _amountController.text =
+          (tx.amount.abs() / 100).toStringAsFixed(2);
+      _descriptionController.text = tx.description;
+      _merchantController.text = tx.merchant ?? '';
+      _notesController.text = tx.notes ?? '';
+      _date = tx.transactionDate;
+      _selectedAccountId = tx.accountId;
+      _selectedCategoryId = tx.categoryId;
+      _selectedRateId = tx.rateId;
+    } else {
+      _selectedAccountId = widget.preselectedAccountId;
+    }
   }
 
   @override
@@ -71,38 +98,56 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     setState(() => _loading = true);
 
     try {
-      final householdId = await ref.read(householdIdProvider.future);
-      final user = ref.read(currentUserProvider);
-      if (householdId == null || user == null) throw Exception('Not logged in');
-
       final amountText =
           _amountController.text.replaceAll(RegExp(r'[^\d.]'), '');
       final amountCents = (double.parse(amountText) * 100).round();
       final signedAmount = _isExpense ? -amountCents : amountCents;
+      final repo = ref.read(transactionsRepositoryProvider);
 
-      await ref.read(transactionsRepositoryProvider).createTransaction(
-            householdId: householdId,
-            accountId: _selectedAccountId!,
-            enteredBy: user.id,
-            amount: signedAmount,
-            description: _descriptionController.text.trim(),
-            transactionDate: _date,
-            merchant: _merchantController.text.trim().isEmpty
-                ? null
-                : _merchantController.text.trim(),
-            categoryId: _selectedCategoryId,
-            notes: _notesController.text.trim().isEmpty
-                ? null
-                : _notesController.text.trim(),
-          );
+      if (_isEditMode) {
+        await repo.updateTransaction(
+          id: widget.transaction!.id,
+          amount: signedAmount,
+          description: _descriptionController.text.trim(),
+          transactionDate: _date,
+          merchant: _merchantController.text.trim().isEmpty
+              ? null
+              : _merchantController.text.trim(),
+          categoryId: _selectedCategoryId,
+          rateId: _selectedRateId,
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+      } else {
+        final householdId = await ref.read(householdIdProvider.future);
+        final user = ref.read(currentUserProvider);
+        if (householdId == null || user == null) throw Exception('Not logged in');
+
+        await repo.createTransaction(
+          householdId: householdId,
+          accountId: _selectedAccountId!,
+          enteredBy: user.id,
+          amount: signedAmount,
+          description: _descriptionController.text.trim(),
+          transactionDate: _date,
+          merchant: _merchantController.text.trim().isEmpty
+              ? null
+              : _merchantController.text.trim(),
+          categoryId: _selectedCategoryId,
+          rateId: _selectedRateId,
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+      }
 
       ref.invalidate(transactionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -131,8 +176,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             children: [
               Row(
                 children: [
-                  const Text('Add Transaction',
-                      style: TextStyle(
+                  Text(_isEditMode ? 'Edit Transaction' : 'Add Transaction',
+                      style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   IconButton(
@@ -261,13 +306,86 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               categoriesAsync.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (_, _) => const SizedBox.shrink(),
-                data: (cats) => _CategoryPicker(
-                  categories: cats,
-                  selectedId: _selectedCategoryId,
-                  onChanged: (id) =>
-                      setState(() => _selectedCategoryId = id),
+                data: (cats) => DropdownButtonFormField<String>(
+                  initialValue: _selectedCategoryId,
+                  hint: const Text('None'),
+                  decoration: const InputDecoration(),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('None'),
+                    ),
+                    ...cats.where((c) => c.parentId == null).map((c) =>
+                        DropdownMenuItem(
+                          value: c.id,
+                          child: Row(
+                            children: [
+                              if (c.icon != null)
+                                Text(c.icon!,
+                                    style: const TextStyle(fontSize: 16)),
+                              if (c.icon != null) const SizedBox(width: 8),
+                              Text(c.name),
+                            ],
+                          ),
+                        )),
+                  ],
+                  onChanged: (v) => setState(() => _selectedCategoryId = v),
                 ),
               ),
+              // Rate picker — only for credit card accounts
+              if (_selectedAccountId != null)
+                accountsAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (accounts) {
+                    final acct = accounts
+                        .where((a) => a.id == _selectedAccountId)
+                        .firstOrNull;
+                    if (acct == null ||
+                        acct.accountType != AccountType.creditCard) {
+                      return const SizedBox.shrink();
+                    }
+                    final ratesAsync = ref
+                        .watch(creditCardRatesProvider(_selectedAccountId!));
+                    return ratesAsync.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, _) => const SizedBox.shrink(),
+                      data: (rates) {
+                        final active =
+                            rates.where((r) => r.isActive).toList();
+                        if (active.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 14),
+                            _label('Interest Rate (optional)'),
+                            DropdownButtonFormField<String>(
+                              initialValue: _selectedRateId,
+                              hint: const Text('Default (purchase rate)'),
+                              decoration: const InputDecoration(),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Default (purchase rate)'),
+                                ),
+                                ...active.map((r) => DropdownMenuItem(
+                                      value: r.id,
+                                      child: Text(
+                                        '${r.label ?? r.rateType.displayName}'
+                                        ' — ${(r.rate * 100).toStringAsFixed(2)}%'
+                                        '${r.isIntro ? ' (intro)' : ''}',
+                                      ),
+                                    )),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _selectedRateId = v),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _loading ? null : _submit,
@@ -278,7 +396,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Add Transaction'),
+                    : Text(_isEditMode ? 'Save Changes' : 'Add Transaction'),
               ),
             ],
           ),
@@ -324,69 +442,4 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF94A3B8))),
       );
-}
-
-class _CategoryPicker extends StatelessWidget {
-  final List<Category> categories;
-  final String? selectedId;
-  final ValueChanged<String?> onChanged;
-
-  const _CategoryPicker({
-    required this.categories,
-    required this.selectedId,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final topLevel = categories.where((c) => c.parentId == null).toList();
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        // "None" chip
-        _chip(null, 'None', null),
-        ...topLevel.map((c) => _chip(c.id, c.name, c.color)),
-      ],
-    );
-  }
-
-  Widget _chip(String? id, String name, String? hexColor) {
-    final isSelected = selectedId == id;
-    Color? color;
-    if (hexColor != null) {
-      color = Color(
-          int.parse('FF${hexColor.replaceAll('#', '')}', radix: 16));
-    }
-
-    return GestureDetector(
-      onTap: () => onChanged(id),
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (color ?? const Color(0xFF3B82F6)).withValues(alpha: 0.2)
-              : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? (color ?? const Color(0xFF3B82F6))
-                : const Color(0xFF334155),
-          ),
-        ),
-        child: Text(
-          name,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: isSelected
-                ? (color ?? const Color(0xFF3B82F6))
-                : const Color(0xFF94A3B8),
-          ),
-        ),
-      ),
-    );
-  }
 }

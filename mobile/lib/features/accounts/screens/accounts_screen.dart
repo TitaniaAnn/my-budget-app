@@ -2,6 +2,7 @@
 // and shows a net worth summary card at the top.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/utils/money.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
@@ -123,7 +124,10 @@ class _AccountsList extends StatelessWidget {
           if (grouped.containsKey(group)) ...[
             _GroupHeader(group: group, accounts: grouped[group]!),
             const SizedBox(height: 8),
-            ...grouped[group]!.map((a) => AccountCard(account: a)),
+            ...grouped[group]!.map((a) => AccountCard(
+                  account: a,
+                  onTap: () => context.go('/accounts/${a.id}'),
+                )),
             const SizedBox(height: 16),
           ],
       ],

@@ -11,6 +11,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/accounts/screens/accounts_screen.dart';
+import '../../features/accounts/screens/account_detail_screen.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
 import '../../features/receipts/screens/receipts_screen.dart';
 import '../../features/receipts/screens/receipt_detail_screen.dart';
@@ -50,7 +51,18 @@ GoRouter appRouter(AppRouterRef ref) {
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
           GoRoute(path: '/dashboard', builder: (_, _) => const DashboardScreen()),
-          GoRoute(path: '/accounts', builder: (_, _) => const AccountsScreen()),
+          GoRoute(
+            path: '/accounts',
+            builder: (_, _) => const AccountsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => AccountDetailScreen(
+                  accountId: s.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
           GoRoute(path: '/transactions', builder: (_, _) => const TransactionsScreen()),
           GoRoute(
             path: '/receipts',

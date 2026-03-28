@@ -22,18 +22,26 @@ class TransactionsRepository {
   Future<List<Transaction>> fetchTransactions({
     required String householdId,
     String? accountId,
-    int limit = 100,
+    String? search,
+    DateTime? from,
+    DateTime? to,
+    int limit = 200,
     int offset = 0,
   }) async {
-    // Filters must be applied before .order()/.range() because those return
-    // PostgrestTransformBuilder which no longer exposes .eq().
     var query = supabase
         .from('transactions')
         .select('*, category:categories(*)')
         .eq('household_id', householdId);
 
-    if (accountId != null) {
-      query = query.eq('account_id', accountId);
+    if (accountId != null) query = query.eq('account_id', accountId);
+    if (search != null && search.isNotEmpty) {
+      query = query.ilike('description', '%$search%');
+    }
+    if (from != null) {
+      query = query.gte('transaction_date', from.toIso8601String().substring(0, 10));
+    }
+    if (to != null) {
+      query = query.lte('transaction_date', to.toIso8601String().substring(0, 10));
     }
 
     final data = await query
@@ -66,6 +74,7 @@ class TransactionsRepository {
     required DateTime transactionDate,
     String? merchant,
     String? categoryId,
+    String? rateId,
     String? notes,
   }) async {
     final data = await supabase
@@ -79,7 +88,7 @@ class TransactionsRepository {
           'description': description,
           'merchant': merchant,
           'category_id': categoryId,
-          // Store only the date portion (YYYY-MM-DD) — the column is DATE not TIMESTAMPTZ.
+          'rate_id': rateId,
           'transaction_date':
               transactionDate.toIso8601String().substring(0, 10),
           'source': 'manual',
@@ -106,6 +115,33 @@ class TransactionsRepository {
         .order('transaction_date', ascending: false);
 
     return data.map<Transaction>(Transaction.fromJson).toList();
+  }
+
+  /// Updates a manually-entered transaction.
+  Future<void> updateTransaction({
+    required String id,
+    required int amount,
+    required String description,
+    String? merchant,
+    String? categoryId,
+    String? rateId,
+    required DateTime transactionDate,
+    String? notes,
+  }) async {
+    await supabase.from('transactions').update({
+      'amount': amount,
+      'description': description,
+      'merchant': merchant,
+      'category_id': categoryId,
+      'rate_id': rateId,
+      'transaction_date': transactionDate.toIso8601String().substring(0, 10),
+      'notes': notes,
+    }).eq('id', id);
+  }
+
+  /// Hard-deletes a transaction row.
+  Future<void> deleteTransaction(String id) async {
+    await supabase.from('transactions').delete().eq('id', id);
   }
 
   /// Bulk-inserts imported transactions.

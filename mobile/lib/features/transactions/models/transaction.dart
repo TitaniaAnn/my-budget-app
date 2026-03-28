@@ -37,6 +37,7 @@ class Transaction with _$Transaction {
     required String source,
     String? enteredBy,
     String? receiptId,
+    String? rateId,
     String? notes,
     /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
     String? externalId,

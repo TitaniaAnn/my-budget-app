@@ -47,6 +47,7 @@ mixin _$Transaction {
   String get source => throw _privateConstructorUsedError;
   String? get enteredBy => throw _privateConstructorUsedError;
   String? get receiptId => throw _privateConstructorUsedError;
+  String? get rateId => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
 
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
@@ -89,6 +90,7 @@ abstract class $TransactionCopyWith<$Res> {
     String source,
     String? enteredBy,
     String? receiptId,
+    String? rateId,
     String? notes,
     String? externalId,
     DateTime createdAt,
@@ -128,6 +130,7 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
     Object? source = null,
     Object? enteredBy = freezed,
     Object? receiptId = freezed,
+    Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
     Object? createdAt = null,
@@ -191,6 +194,10 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
             receiptId: freezed == receiptId
                 ? _value.receiptId
                 : receiptId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            rateId: freezed == rateId
+                ? _value.rateId
+                : rateId // ignore: cast_nullable_to_non_nullable
                       as String?,
             notes: freezed == notes
                 ? _value.notes
@@ -256,6 +263,7 @@ abstract class _$$TransactionImplCopyWith<$Res>
     String source,
     String? enteredBy,
     String? receiptId,
+    String? rateId,
     String? notes,
     String? externalId,
     DateTime createdAt,
@@ -295,6 +303,7 @@ class __$$TransactionImplCopyWithImpl<$Res>
     Object? source = null,
     Object? enteredBy = freezed,
     Object? receiptId = freezed,
+    Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
     Object? createdAt = null,
@@ -359,6 +368,10 @@ class __$$TransactionImplCopyWithImpl<$Res>
             ? _value.receiptId
             : receiptId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        rateId: freezed == rateId
+            ? _value.rateId
+            : rateId // ignore: cast_nullable_to_non_nullable
+                  as String?,
         notes: freezed == notes
             ? _value.notes
             : notes // ignore: cast_nullable_to_non_nullable
@@ -402,6 +415,7 @@ class _$TransactionImpl implements _Transaction {
     required this.source,
     this.enteredBy,
     this.receiptId,
+    this.rateId,
     this.notes,
     this.externalId,
     required this.createdAt,
@@ -453,6 +467,8 @@ class _$TransactionImpl implements _Transaction {
   @override
   final String? receiptId;
   @override
+  final String? rateId;
+  @override
   final String? notes;
 
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
@@ -469,7 +485,7 @@ class _$TransactionImpl implements _Transaction {
 
   @override
   String toString() {
-    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, notes: $notes, externalId: $externalId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
+    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, rateId: $rateId, notes: $notes, externalId: $externalId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
   }
 
   @override
@@ -501,6 +517,7 @@ class _$TransactionImpl implements _Transaction {
                 other.enteredBy == enteredBy) &&
             (identical(other.receiptId, receiptId) ||
                 other.receiptId == receiptId) &&
+            (identical(other.rateId, rateId) || other.rateId == rateId) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.externalId, externalId) ||
                 other.externalId == externalId) &&
@@ -530,6 +547,7 @@ class _$TransactionImpl implements _Transaction {
     source,
     enteredBy,
     receiptId,
+    rateId,
     notes,
     externalId,
     createdAt,
@@ -567,6 +585,7 @@ abstract class _Transaction implements Transaction {
     required final String source,
     final String? enteredBy,
     final String? receiptId,
+    final String? rateId,
     final String? notes,
     final String? externalId,
     required final DateTime createdAt,
@@ -617,6 +636,8 @@ abstract class _Transaction implements Transaction {
   String? get enteredBy;
   @override
   String? get receiptId;
+  @override
+  String? get rateId;
   @override
   String? get notes;
 

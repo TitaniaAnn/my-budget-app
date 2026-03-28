@@ -7,22 +7,29 @@ import '../repositories/transactions_repository.dart';
 
 part 'transactions_provider.g.dart';
 
-/// Fetches transactions for the current household, optionally filtered by
-/// [accountId] (null = all accounts).
+/// Fetches transactions for the current household with optional filters.
 ///
-/// The [accountId] parameter makes this a "family" provider — each unique
-/// accountId value gets its own cached AsyncValue, so switching between
-/// the All / per-account filter views doesn't trigger a full rebuild.
+/// All params form the family key — each unique combination gets its own
+/// cached AsyncValue so filter changes don't clear unrelated caches.
 @riverpod
 Future<List<Transaction>> transactions(
   TransactionsRef ref, {
   String? accountId,
+  String? search,
+  DateTime? dateFrom,
+  DateTime? dateTo,
 }) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
 
   final repo = ref.watch(transactionsRepositoryProvider);
-  return repo.fetchTransactions(householdId: householdId, accountId: accountId);
+  return repo.fetchTransactions(
+    householdId: householdId,
+    accountId: accountId,
+    search: search,
+    from: dateFrom,
+    to: dateTo,
+  );
 }
 
 /// Fetches all categories (system + household).

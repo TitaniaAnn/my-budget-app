@@ -40,6 +40,7 @@ class AccountsRepository {
     required int currentBalance,
     int? creditLimit,
     String? color,
+    double? interestRate,
   }) async {
     final data = await supabase
         .from('accounts')
@@ -47,19 +48,46 @@ class AccountsRepository {
           'household_id': householdId,
           'owner_user_id': ownerUserId,
           'name': name,
-          // Use dbValue because @JsonValue handles deserialization but not
-          // manual map construction for INSERT payloads.
           'account_type': accountType.dbValue,
           'institution': institution,
           'last_four': lastFour,
           'current_balance': currentBalance,
           'credit_limit': creditLimit,
           'color': color,
+          'interest_rate': interestRate,
           'currency': 'USD',
         })
         .select()
         .single();
 
+    return Account.fromJson(data);
+  }
+
+  /// Updates account metadata and returns the updated [Account].
+  Future<Account> updateAccount({
+    required String accountId,
+    required String name,
+    String? institution,
+    String? lastFour,
+    required int currentBalance,
+    int? creditLimit,
+    String? color,
+    double? interestRate,
+  }) async {
+    final data = await supabase
+        .from('accounts')
+        .update({
+          'name': name,
+          'institution': institution,
+          'last_four': lastFour,
+          'current_balance': currentBalance,
+          'credit_limit': creditLimit,
+          'color': color,
+          'interest_rate': interestRate,
+        })
+        .eq('id', accountId)
+        .select()
+        .single();
     return Account.fromJson(data);
   }
 
