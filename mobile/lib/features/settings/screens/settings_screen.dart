@@ -124,7 +124,7 @@ class SettingsScreen extends ConsumerWidget {
     final ctrl = TextEditingController(text: current);
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Display Name'),
         content: TextField(
           controller: ctrl,
@@ -134,10 +134,10 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Cancel')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
               child: const Text('Save')),
         ],
       ),
@@ -153,7 +153,7 @@ class SettingsScreen extends ConsumerWidget {
     final ctrl = TextEditingController(text: current);
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Household Name'),
         content: TextField(
           controller: ctrl,
@@ -163,10 +163,10 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Cancel')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
               child: const Text('Save')),
         ],
       ),
@@ -187,16 +187,15 @@ class SettingsScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, String email) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Reset Password'),
-        content: Text(
-            'Send a password reset link to $email?'),
+        content: Text('Send a password reset link to $email?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogCtx, false),
               child: const Text('Cancel')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogCtx, true),
               child: const Text('Send')),
         ],
       ),
@@ -215,7 +214,7 @@ class SettingsScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Delete Account?'),
         content: const Text(
           'This permanently deletes your account and all household data. '
@@ -223,12 +222,12 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogCtx, false),
               child: const Text('Cancel')),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+                backgroundColor: Theme.of(dialogCtx).colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
