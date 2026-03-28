@@ -16,6 +16,7 @@ import '../../features/receipts/screens/receipts_screen.dart';
 import '../../features/receipts/screens/receipt_detail_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/scenarios/screens/scenarios_screen.dart';
+import '../../features/scenarios/screens/scenario_detail_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../shared/widgets/main_scaffold.dart';
 
@@ -64,7 +65,18 @@ GoRouter appRouter(AppRouterRef ref) {
             ],
           ),
           GoRoute(path: '/budget', builder: (_, _) => const BudgetScreen()),
-          GoRoute(path: '/scenarios', builder: (_, _) => const ScenariosScreen()),
+          GoRoute(
+            path: '/scenarios',
+            builder: (_, _) => const ScenariosScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => ScenarioDetailScreen(
+                  scenarioId: s.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
           GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
         ],
       ),
