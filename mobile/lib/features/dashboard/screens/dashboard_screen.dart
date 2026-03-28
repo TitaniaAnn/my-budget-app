@@ -1,13 +1,16 @@
-// Dashboard screen — the home view shown after login.
-// Displays net worth, this month's spending vs income, top spending categories,
-// and the 5 most recent transactions.
+// Dashboard screen — net worth, accounts, monthly summary, spending sparkline,
+// budget health alerts, top categories, and recent transactions.
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/money.dart';
-import '../providers/dashboard_provider.dart';
+import '../../accounts/models/account.dart';
+import '../../budget/providers/budget_provider.dart';
+import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
+import '../providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -20,12 +23,24 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          // Manual refresh in case Realtime hasn't pushed an update yet.
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             onPressed: () => ref.invalidate(dashboardDataProvider),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => const AddTransactionSheet(),
+        ),
+        icon: const Icon(Icons.add),
+        label: const Text('Add Transaction'),
       ),
       body: dataAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -53,23 +68,35 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// The scrollable body shown when data has loaded successfully.
-class _DashboardBody extends StatelessWidget {
+class _DashboardBody extends ConsumerWidget {
   final DashboardData data;
   const _DashboardBody({required this.data});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final monthName = DateFormat('MMMM').format(DateTime.now());
+    final budgetsAsync = ref.watch(budgetDataProvider);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
-        // ── Net Worth ─────────────────────────────────────────────────────
+        // ── Net Worth ──────────────────────────────────────────────────────
         _NetWorthCard(netWorthCents: data.netWorth),
         const SizedBox(height: 16),
 
-        // ── Monthly Summary ───────────────────────────────────────────────
+        // ── Accounts ───────────────────────────────────────────────────────
+        if (data.accounts.isNotEmpty) ...[
+          _SectionHeader(
+            title: 'Accounts',
+            actionLabel: 'Manage',
+            onAction: (ctx) => ctx.go('/accounts'),
+          ),
+          const SizedBox(height: 10),
+          _AccountsRow(accounts: data.accounts),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Monthly Summary ────────────────────────────────────────────────
         _SectionHeader(title: '$monthName Summary'),
         const SizedBox(height: 10),
         Row(
@@ -95,7 +122,39 @@ class _DashboardBody extends StatelessWidget {
         ),
         const SizedBox(height: 24),
 
-        // ── Top Categories ────────────────────────────────────────────────
+        // ── 30-day Spending Sparkline ──────────────────────────────────────
+        _SectionHeader(title: '30-Day Spending'),
+        const SizedBox(height: 10),
+        _SpendingSparkline(spendingByDay: data.spendingByDay),
+        const SizedBox(height: 24),
+
+        // ── Budget Health ──────────────────────────────────────────────────
+        budgetsAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (budgets) {
+            final alerts = budgets
+                .where((b) => b.isOverBudget || b.progress >= 0.8)
+                .toList()
+              ..sort((a, b) => b.progress.compareTo(a.progress));
+            if (alerts.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionHeader(
+                  title: 'Budget Health',
+                  actionLabel: 'See all',
+                  onAction: (ctx) => ctx.go('/budget'),
+                ),
+                const SizedBox(height: 10),
+                ...alerts.take(3).map((b) => _BudgetAlertTile(budget: b)),
+                const SizedBox(height: 24),
+              ],
+            );
+          },
+        ),
+
+        // ── Top Categories ─────────────────────────────────────────────────
         if (data.topCategories.isNotEmpty) ...[
           _SectionHeader(
             title: 'Top Spending',
@@ -110,7 +169,7 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: 24),
         ],
 
-        // ── Recent Transactions ───────────────────────────────────────────
+        // ── Recent Transactions ────────────────────────────────────────────
         if (data.recentTransactions.isNotEmpty) ...[
           _SectionHeader(
             title: 'Recent Transactions',
@@ -120,9 +179,10 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF334155)),
+              border: Border.all(
+                  color: Theme.of(context).dividerColor),
             ),
             clipBehavior: Clip.hardEdge,
             child: Column(
@@ -133,7 +193,7 @@ class _DashboardBody extends StatelessWidget {
           ),
         ],
 
-        // ── Empty state when there are no accounts yet ─────────────────────
+        // ── Empty state ────────────────────────────────────────────────────
         if (data.accounts.isEmpty)
           _EmptyState(
             icon: Icons.account_balance_outlined,
@@ -147,9 +207,8 @@ class _DashboardBody extends StatelessWidget {
   }
 }
 
-// ── Sub-widgets ────────────────────────────────────────────────────────────
+// ── Sub-widgets ────────────────────────────────────────────────────────────────
 
-/// Large gradient card showing total net worth in dollars.
 class _NetWorthCard extends StatelessWidget {
   final int netWorthCents;
   const _NetWorthCard({required this.netWorthCents});
@@ -178,7 +237,6 @@ class _NetWorthCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w800,
-              // Red if the user is net-negative (more debt than assets).
               color: netWorthCents >= 0
                   ? const Color(0xFFF8FAFC)
                   : const Color(0xFFEF4444),
@@ -190,7 +248,104 @@ class _NetWorthCard extends StatelessWidget {
   }
 }
 
-/// Small card showing a single monetary total (spent or income).
+/// Horizontally scrollable row of compact account chips.
+class _AccountsRow extends StatelessWidget {
+  final List<Account> accounts;
+  const _AccountsRow({required this.accounts});
+
+  Color _typeColor(Account a) {
+    if (a.color != null) {
+      return Color(int.parse('FF${a.color!.replaceAll('#', '')}', radix: 16));
+    }
+    return switch (a.accountType.group) {
+      AccountGroup.banking => const Color(0xFF3B82F6),
+      AccountGroup.creditCards => const Color(0xFFEF4444),
+      AccountGroup.investments => const Color(0xFF22C55E),
+    };
+  }
+
+  IconData _typeIcon(AccountType t) => switch (t) {
+        AccountType.checking => Icons.account_balance_outlined,
+        AccountType.savings => Icons.savings_outlined,
+        AccountType.creditCard => Icons.credit_card_outlined,
+        AccountType.brokerage => Icons.trending_up_outlined,
+        AccountType.iraTraditional ||
+        AccountType.iraRoth =>
+          Icons.account_balance_wallet_outlined,
+        AccountType.retirement401k ||
+        AccountType.retirement403b =>
+          Icons.work_outline,
+        AccountType.hsa => Icons.health_and_safety_outlined,
+        AccountType.college529 => Icons.school_outlined,
+        AccountType.cash => Icons.payments_outlined,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: accounts.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final a = accounts[i];
+          final color = _typeColor(a);
+          final isCreditCard = a.accountType == AccountType.creditCard;
+          return Container(
+            width: 148,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(_typeIcon(a.accountType), size: 16, color: color),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        a.name,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  formatCurrency(a.currentBalance),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isCreditCard
+                        ? const Color(0xFFEF4444)
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                if (a.institution != null)
+                  Text(
+                    a.institution!,
+                    style: const TextStyle(
+                        fontSize: 10, color: Color(0xFF64748B)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _SummaryTile extends StatelessWidget {
   final String label;
   final int cents;
@@ -209,9 +364,9 @@ class _SummaryTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,6 +395,163 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+/// Bar chart showing daily spending for the last 30 days.
+/// Each bar is one day; today is on the right. Tapping a bar shows the amount.
+class _SpendingSparkline extends StatelessWidget {
+  final List<int> spendingByDay; // 30 items, index 29 = today
+  const _SpendingSparkline({required this.spendingByDay});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxVal = spendingByDay.fold<int>(0, (m, v) => v > m ? v : m);
+
+    return Container(
+      height: 120,
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: maxVal == 0
+          ? Center(
+              child: Text('No spending in the last 30 days',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.outline,
+                      fontSize: 13)),
+            )
+          : BarChart(
+              BarChartData(
+                maxY: maxVal * 1.2,
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, _) {
+                        final idx = value.toInt();
+                        // Show label every 7 days + today
+                        if (idx == 29) {
+                          return const Text('Today',
+                              style: TextStyle(
+                                  fontSize: 9, color: Color(0xFF64748B)));
+                        }
+                        if ((29 - idx) % 7 == 0 && idx != 29) {
+                          return Text('${29 - idx}d',
+                              style: const TextStyle(
+                                  fontSize: 9, color: Color(0xFF64748B)));
+                        }
+                        return const SizedBox.shrink();
+                      },
+                      reservedSize: 18,
+                    ),
+                  ),
+                ),
+                barGroups: List.generate(30, (i) {
+                  final isToday = i == 29;
+                  return BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: spendingByDay[i].toDouble(),
+                        color: isToday
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                        width: 6,
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(3)),
+                      ),
+                    ],
+                  );
+                }),
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
+                      formatCurrency(rod.toY.round()),
+                      const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+/// Alert row for a budget that is over or nearing its limit.
+class _BudgetAlertTile extends StatelessWidget {
+  final BudgetWithSpending budget;
+  const _BudgetAlertTile({required this.budget});
+
+  @override
+  Widget build(BuildContext context) {
+    final isOver = budget.isOverBudget;
+    final color = isOver ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+    final pct = (budget.progress * 100).round();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isOver ? Icons.warning_rounded : Icons.info_outline_rounded,
+            color: color,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  budget.categoryName,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  isOver
+                      ? '${formatCurrency(budget.spentCents - budget.budget.amount)} over budget'
+                      : '${formatCurrency(budget.budget.amount - budget.spentCents)} remaining ($pct% used)',
+                  style: TextStyle(fontSize: 11, color: color),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(formatCurrency(budget.spentCents),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+              Text('of ${formatCurrency(budget.budget.amount)}',
+                  style: const TextStyle(
+                      fontSize: 11, color: Color(0xFF64748B))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Horizontal bar chart of top spending categories for the month.
 class _TopCategoriesCard extends StatelessWidget {
   final List<({String name, String? color, int totalCents})> categories;
@@ -255,23 +567,20 @@ class _TopCategoriesCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: categories.map((cat) {
-          // Fraction of total spending this category represents.
           final fraction =
               totalSpending > 0 ? cat.totalCents / totalSpending : 0.0;
-
           Color barColor = const Color(0xFF3B82F6);
           if (cat.color != null) {
             barColor = Color(int.parse(
                 'FF${cat.color!.replaceAll('#', '')}',
                 radix: 16));
           }
-
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
@@ -289,7 +598,6 @@ class _TopCategoriesCard extends StatelessWidget {
                           fontSize: 13, color: Color(0xFF94A3B8)),
                     ),
                     const SizedBox(width: 6),
-                    // Percentage of total spending this month
                     Text(
                       '${(fraction * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
@@ -316,12 +624,9 @@ class _TopCategoriesCard extends StatelessWidget {
   }
 }
 
-/// Section header with an optional right-side action link.
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String? actionLabel;
-  // Receives BuildContext so the callback can call context.go() without
-  // needing a BuildContext closure in the parent's build method.
   final void Function(BuildContext)? onAction;
 
   const _SectionHeader({required this.title, this.actionLabel, this.onAction});
@@ -332,10 +637,10 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(
           title.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF64748B),
+            color: Theme.of(context).colorScheme.outline,
             letterSpacing: 1,
           ),
         ),
@@ -356,7 +661,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Placeholder shown when the household has no accounts yet.
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;

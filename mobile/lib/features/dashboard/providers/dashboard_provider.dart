@@ -1,8 +1,9 @@
 // Dashboard data provider.
 //
-// Rather than issuing many small Supabase queries, a single provider assembles
-// all the data the dashboard needs so the screen has one loading state and one
-// error boundary.
+// Loads all data the dashboard needs in parallel. Transaction history covers
+// the last 30 days so both the monthly summary and the spending sparkline are
+// served from a single query; the monthly figures are derived by filtering in
+// Dart to >= the 1st of the current month.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../accounts/models/account.dart';
@@ -17,19 +18,29 @@ class DashboardData {
   /// All active household accounts.
   final List<Account> accounts;
 
-  /// Transactions from the current calendar month.
-  final List<Transaction> monthTransactions;
+  /// Transactions from the last 30 days (used for sparkline + monthly summary).
+  final List<Transaction> recentTransactions30d;
 
   /// The 5 most recent transactions across all accounts.
   final List<Transaction> recentTransactions;
 
   const DashboardData({
     required this.accounts,
-    required this.monthTransactions,
+    required this.recentTransactions30d,
     required this.recentTransactions,
   });
 
-  /// Net worth = sum of all balances, minus credit card balances (they're debt).
+  // ── Monthly summary (current calendar month) ──────────────────────────────
+
+  DateTime get _monthStart {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
+
+  List<Transaction> get _monthTransactions =>
+      recentTransactions30d.where((t) => !t.transactionDate.isBefore(_monthStart)).toList();
+
+  /// Net worth = assets minus credit card debt.
   int get netWorth => accounts.fold<int>(0, (sum, a) {
         if (a.accountType == AccountType.creditCard) {
           return sum - a.currentBalance.abs();
@@ -37,51 +48,62 @@ class DashboardData {
         return sum + a.currentBalance;
       });
 
-  /// Total money that left accounts this month (expenses only, as positive cents).
-  int get monthlySpending => monthTransactions
+  /// Total spending this month (expenses only, as positive cents).
+  int get monthlySpending => _monthTransactions
       .where((t) => t.amount < 0)
       .fold<int>(0, (sum, t) => sum + t.amount.abs());
 
-  /// Total money that entered accounts this month.
-  int get monthlyIncome => monthTransactions
+  /// Total income this month.
+  int get monthlyIncome => _monthTransactions
       .where((t) => t.amount > 0)
       .fold<int>(0, (sum, t) => sum + t.amount);
 
-  /// Top spending categories this month, sorted by total descending.
-  /// Uncategorized transactions are grouped under a single "Uncategorized" entry.
+  /// Top 5 spending categories this month, sorted by total descending.
   List<({String name, String? color, int totalCents})> get topCategories {
     final totals = <String, ({String name, String? color, int totalCents})>{};
-
-    for (final tx in monthTransactions.where((t) => t.amount < 0)) {
+    for (final tx in _monthTransactions.where((t) => t.amount < 0)) {
       final key = tx.categoryId ?? '__none__';
-      final name = tx.category?.name ?? 'Uncategorized';
-      final color = tx.category?.color;
       final existing = totals[key];
       totals[key] = (
-        name: name,
-        color: color,
+        name: tx.category?.name ?? 'Uncategorized',
+        color: tx.category?.color,
         totalCents: (existing?.totalCents ?? 0) + tx.amount.abs(),
       );
     }
-
     final sorted = totals.values.toList()
       ..sort((a, b) => b.totalCents.compareTo(a.totalCents));
-
-    // Show at most 5 categories to keep the dashboard scannable.
     return sorted.take(5).toList();
+  }
+
+  // ── 30-day spending sparkline ──────────────────────────────────────────────
+
+  /// Daily spending totals for the last 30 days.
+  /// Index 0 = 29 days ago, index 29 = today. Missing days default to 0.
+  List<int> get spendingByDay {
+    final today = DateTime.now();
+    final result = List<int>.filled(30, 0);
+    for (final tx in recentTransactions30d.where((t) => t.amount < 0)) {
+      final daysAgo = today
+          .difference(DateTime(tx.transactionDate.year,
+              tx.transactionDate.month, tx.transactionDate.day))
+          .inDays;
+      if (daysAgo >= 0 && daysAgo < 30) {
+        result[29 - daysAgo] += tx.amount.abs();
+      }
+    }
+    return result;
   }
 }
 
-/// Fetches all dashboard data in parallel using [Future.wait] to minimise
-/// total round-trip time. Watches [householdIdProvider] so it refreshes
-/// automatically if the user somehow switches household.
+/// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
+/// it refreshes automatically when the household changes.
 @riverpod
 Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) {
     return const DashboardData(
       accounts: [],
-      monthTransactions: [],
+      recentTransactions30d: [],
       recentTransactions: [],
     );
   }
@@ -89,25 +111,24 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);
 
-  // Current month boundaries for the spending/income summary.
   final now = DateTime.now();
-  final monthStart = DateTime(now.year, now.month, 1);
-  final monthEnd = DateTime(now.year, now.month + 1, 0); // last day of month
+  final thirtyDaysAgo = DateTime(now.year, now.month, now.day)
+      .subtract(const Duration(days: 29));
+  final today = DateTime(now.year, now.month, now.day);
 
-  // Fire all three queries in parallel.
-  final results = await Future.wait([
+  final (accounts, recent30d, recent5) = await (
     accountsRepo.fetchAccounts(householdId),
     txRepo.fetchTransactionsForDashboard(
       householdId: householdId,
-      from: monthStart,
-      to: monthEnd,
+      from: thirtyDaysAgo,
+      to: today,
     ),
     txRepo.fetchTransactions(householdId: householdId, limit: 5),
-  ]);
+  ).wait;
 
   return DashboardData(
-    accounts: results[0] as List<Account>,
-    monthTransactions: results[1] as List<Transaction>,
-    recentTransactions: results[2] as List<Transaction>,
+    accounts: accounts,
+    recentTransactions30d: recent30d,
+    recentTransactions: recent5,
   );
 }
