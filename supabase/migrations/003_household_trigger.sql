@@ -18,17 +18,17 @@ BEGIN
   v_household_name := COALESCE(NEW.raw_user_meta_data->>'household_name', v_display_name || '''s Household');
 
   -- Create the household
-  INSERT INTO households (name, created_by)
+  INSERT INTO public.households (name, created_by)
   VALUES (v_household_name, NEW.id)
   RETURNING id INTO v_household_id;
 
   -- Add the user as owner
-  INSERT INTO household_members (household_id, user_id, role, display_name)
+  INSERT INTO public.household_members (household_id, user_id, role, display_name)
   VALUES (v_household_id, NEW.id, 'owner', v_display_name);
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Fire after every new user in auth.users
 CREATE OR REPLACE TRIGGER on_auth_user_created

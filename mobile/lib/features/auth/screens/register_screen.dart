@@ -1,0 +1,193 @@
+// Registration screen. Collects name + household name so the DB trigger
+// (handle_new_user) can auto-create the household on signup without a
+// second API call.
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/supabase/supabase_client.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _householdController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _householdController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  /// Signs up the user, passing [display_name] and [household_name] as
+  /// raw_user_meta_data so the Postgres trigger can read them to create
+  /// the household row and initial owner membership automatically.
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        data: {
+          'display_name': _nameController.text.trim(),
+          'household_name': _householdController.text.trim(),
+        },
+      );
+      if (mounted) context.go('/dashboard');
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
+                Text(
+                  'Create Account',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Set up your family budget',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: const Color(0xFF94A3B8)),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                _label('Your name'),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Alex Smith',
+                    prefixIcon: Icon(Icons.person_outlined),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter your name' : null,
+                ),
+                const SizedBox(height: 12),
+                _label('Household name'),
+                TextFormField(
+                  controller: _householdController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. The Smith Family',
+                    prefixIcon: Icon(Icons.home_outlined),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'Enter a household name'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                _label('Email'),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    hintText: 'you@example.com',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  validator: (v) =>
+                      v == null || !v.contains('@') ? 'Enter a valid email' : null,
+                ),
+                const SizedBox(height: 12),
+                _label('Password'),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'At least 8 characters',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  validator: (v) => v == null || v.length < 8
+                      ? 'Password must be at least 8 characters'
+                      : null,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _loading ? null : _register,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Create Account'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Already have an account? ',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/login'),
+                      child: const Text('Sign in'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Small muted label rendered above each form field.
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF94A3B8),
+          ),
+        ),
+      );
+}
