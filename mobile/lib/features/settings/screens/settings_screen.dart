@@ -68,6 +68,24 @@ class SettingsScreen extends ConsumerWidget {
                           ? const Chip(label: Text('You'))
                           : null,
                     )),
+                if (info.isOwner) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.person_add_outlined),
+                    title: const Text('Invite Member'),
+                    subtitle: const Text('Share a code to add family'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _inviteMember(context, ref, info.householdId),
+                  ),
+                ],
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.vpn_key_outlined),
+                  title: const Text('Join with Code'),
+                  subtitle: const Text('Enter an invite code to join a household'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _joinWithCode(context, ref),
+                ),
               ],
             ),
           ),
@@ -207,6 +225,155 @@ class SettingsScreen extends ConsumerWidget {
           const SnackBar(content: Text('Password reset email sent.')),
         );
       }
+    }
+  }
+
+  Future<void> _inviteMember(
+      BuildContext context, WidgetRef ref, String householdId) async {
+    final emailCtrl = TextEditingController();
+    String selectedRole = 'partner';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setState) => AlertDialog(
+          title: const Text('Invite Member'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email address'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedRole,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: const [
+                  DropdownMenuItem(value: 'partner', child: Text('Partner')),
+                  DropdownMenuItem(value: 'child', child: Text('Child')),
+                ],
+                onChanged: (v) => setState(() => selectedRole = v!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                child: const Text('Generate Code')),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || emailCtrl.text.trim().isEmpty) return;
+
+    try {
+      final code = await ref.read(settingsRepositoryProvider).createInvite(
+            householdId: householdId,
+            email: emailCtrl.text.trim(),
+            role: selectedRole,
+          );
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Text('Invite Code'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Share this code with ${emailCtrl.text.trim()}:'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(dialogCtx).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    code,
+                    style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Expires in 7 days',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(dialogCtx).colorScheme.outline),
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Done')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create invite: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinWithCode(BuildContext context, WidgetRef ref) async {
+    final codeCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Join Household'),
+        content: TextField(
+          controller: codeCtrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            labelText: 'Invite code',
+            hintText: 'e.g. AB12CD34',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Join')),
+        ],
+      ),
+    );
+
+    if (confirmed != true || codeCtrl.text.trim().isEmpty) return;
+
+    final error = await ref
+        .read(settingsRepositoryProvider)
+        .acceptInvite(codeCtrl.text.trim());
+
+    if (!context.mounted) return;
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    } else {
+      ref.invalidate(householdInfoProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Welcome to your new household!')),
+      );
     }
   }
 
