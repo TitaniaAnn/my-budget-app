@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/category_icon.dart';
+import '../../../features/transactions/widgets/manage_categories_sheet.dart';
 import '../models/budget.dart';
 import '../providers/budget_provider.dart';
 import '../repositories/budget_repository.dart';
@@ -18,7 +20,23 @@ class BudgetScreen extends ConsumerWidget {
     final budgetsAsync = ref.watch(budgetDataProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Budget')),
+      appBar: AppBar(
+        title: const Text('Budget'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.label_outlined),
+            tooltip: 'Manage Categories',
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              builder: (_) => const ManageCategoriesSheet(),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openSheet(context),
         tooltip: 'Add Budget',
@@ -62,18 +80,18 @@ class BudgetScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, Budget budget) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Delete Budget?'),
         content: const Text('This will remove the budget limit for this category.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: Theme.of(dialogCtx).colorScheme.error,
             ),
             child: const Text('Delete'),
           ),
@@ -135,11 +153,11 @@ class _BudgetCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
-                      child: item.categoryIcon != null
-                          ? Text(item.categoryIcon!,
-                              style: const TextStyle(fontSize: 18))
-                          : Icon(Icons.category_outlined,
-                              size: 18, color: barColor),
+                      child: Icon(
+                        categoryIconData(item.categoryIcon),
+                        size: 18,
+                        color: barColor,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),

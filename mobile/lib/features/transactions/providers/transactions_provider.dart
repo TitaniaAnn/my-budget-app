@@ -15,6 +15,7 @@ part 'transactions_provider.g.dart';
 Future<List<Transaction>> transactions(
   TransactionsRef ref, {
   String? accountId,
+  String? categoryId,
   String? search,
   DateTime? dateFrom,
   DateTime? dateTo,
@@ -26,6 +27,7 @@ Future<List<Transaction>> transactions(
   return repo.fetchTransactions(
     householdId: householdId,
     accountId: accountId,
+    categoryId: categoryId,
     search: search,
     from: dateFrom,
     to: dateTo,

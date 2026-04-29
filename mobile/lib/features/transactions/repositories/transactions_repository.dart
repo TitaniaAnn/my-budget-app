@@ -22,10 +22,11 @@ class TransactionsRepository {
   Future<List<Transaction>> fetchTransactions({
     required String householdId,
     String? accountId,
+    String? categoryId,
     String? search,
     DateTime? from,
     DateTime? to,
-    int limit = 200,
+    int limit = 1000,
     int offset = 0,
   }) async {
     var query = supabase
@@ -34,6 +35,7 @@ class TransactionsRepository {
         .eq('household_id', householdId);
 
     if (accountId != null) query = query.eq('account_id', accountId);
+    if (categoryId != null) query = query.eq('category_id', categoryId);
     if (search != null && search.isNotEmpty) {
       query = query.ilike('description', '%$search%');
     }
@@ -50,6 +52,37 @@ class TransactionsRepository {
         .range(offset, offset + limit - 1);
 
     return data.map<Transaction>(Transaction.fromJson).toList();
+  }
+
+  /// Creates a household-specific category and returns it.
+  Future<Category> createCategory({
+    required String householdId,
+    required String name,
+    required bool isIncome,
+    String? parentId,
+    String? icon,
+    String? color,
+  }) async {
+    final data = await supabase
+        .from('categories')
+        .insert({
+          'household_id': householdId,
+          'name': name,
+          'is_income': isIncome,
+          'parent_id': parentId,
+          'icon': icon,
+          'color': color,
+          'sort_order': 500,
+        })
+        .select()
+        .single();
+    return Category.fromJson(data);
+  }
+
+  /// Deletes a household category. System categories (householdId=null) are
+  /// protected by RLS and will reject this call server-side.
+  Future<void> deleteCategory(String categoryId) async {
+    await supabase.from('categories').delete().eq('id', categoryId);
   }
 
   /// Fetches all categories (system + household-specific).
@@ -142,6 +175,46 @@ class TransactionsRepository {
   /// Hard-deletes a transaction row.
   Future<void> deleteTransaction(String id) async {
     await supabase.from('transactions').delete().eq('id', id);
+  }
+
+  /// Re-runs the category matcher on all uncategorized transactions for
+  /// [householdId] (optionally scoped to [accountId]) and bulk-updates their
+  /// category_id. Returns the number of transactions updated.
+  Future<int> bulkRecategorize({
+    required String householdId,
+    String? accountId,
+    required String? Function(String description, {required bool isIncome}) matcher,
+  }) async {
+    var query = supabase
+        .from('transactions')
+        .select('id, description, amount')
+        .eq('household_id', householdId)
+        .isFilter('category_id', null);
+
+    if (accountId != null) query = query.eq('account_id', accountId);
+
+    final rows = await query;
+    if (rows.isEmpty) return 0;
+
+    final updates = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final categoryId = matcher(
+        row['description'] as String,
+        isIncome: (row['amount'] as int) > 0,
+      );
+      if (categoryId != null) {
+        updates.add({'id': row['id'] as String, 'category_id': categoryId});
+      }
+    }
+
+    for (final update in updates) {
+      await supabase
+          .from('transactions')
+          .update({'category_id': update['category_id']})
+          .eq('id', update['id'] as String);
+    }
+
+    return updates.length;
   }
 
   /// Bulk-inserts imported transactions.

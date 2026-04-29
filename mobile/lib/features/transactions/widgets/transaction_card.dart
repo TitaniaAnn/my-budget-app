@@ -1,6 +1,7 @@
 // Single transaction row widget used in the grouped list on TransactionsScreen.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/money.dart';
 import '../models/transaction.dart';
 
@@ -45,12 +46,10 @@ class TransactionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
-                child: Text(
-                  category?.icon ?? (isExpense ? '↑' : '↓'),
-                  style: TextStyle(
-                    fontSize: category?.icon != null ? 18 : 14,
-                    color: categoryColor ?? const Color(0xFF64748B),
-                  ),
+                child: Icon(
+                  categoryIconData(category?.icon),
+                  size: 18,
+                  color: categoryColor ?? const Color(0xFF64748B),
                 ),
               ),
             ),

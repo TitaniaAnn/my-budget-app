@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/utils/category_icon.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
+import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../features/accounts/providers/credit_card_rates_provider.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
@@ -87,6 +89,49 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (picked != null) setState(() => _date = picked);
   }
 
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        title: const Text('Delete Transaction?'),
+        content: const Text('This transaction will be permanently removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dlgCtx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dlgCtx).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(transactionsRepositoryProvider);
+      final accountsRepo = ref.read(accountsRepositoryProvider);
+      await repo.deleteTransaction(widget.transaction!.id);
+      await accountsRepo.recalculateBalance(widget.transaction!.accountId);
+      ref.invalidate(accountsProvider);
+      ref.invalidate(transactionsProvider);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedAccountId == null) {
@@ -104,6 +149,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       final signedAmount = _isExpense ? -amountCents : amountCents;
       final repo = ref.read(transactionsRepositoryProvider);
 
+      final accountsRepo = ref.read(accountsRepositoryProvider);
+      final String affectedAccountId;
+
       if (_isEditMode) {
         await repo.updateTransaction(
           id: widget.transaction!.id,
@@ -119,6 +167,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ? null
               : _notesController.text.trim(),
         );
+        affectedAccountId = widget.transaction!.accountId;
       } else {
         final householdId = await ref.read(householdIdProvider.future);
         final user = ref.read(currentUserProvider);
@@ -140,8 +189,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ? null
               : _notesController.text.trim(),
         );
+        affectedAccountId = _selectedAccountId!;
       }
 
+      await accountsRepo.recalculateBalance(affectedAccountId);
+      ref.invalidate(accountsProvider);
       ref.invalidate(transactionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -180,6 +232,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w700)),
                   const Spacer(),
+                  if (_isEditMode)
+                    IconButton(
+                      icon: Icon(Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error),
+                      tooltip: 'Delete transaction',
+                      onPressed: _loading ? null : _delete,
+                    ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
@@ -320,10 +379,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           value: c.id,
                           child: Row(
                             children: [
-                              if (c.icon != null)
-                                Text(c.icon!,
-                                    style: const TextStyle(fontSize: 16)),
-                              if (c.icon != null) const SizedBox(width: 8),
+                              Icon(categoryIconData(c.icon), size: 16),
+                              const SizedBox(width: 8),
                               Text(c.name),
                             ],
                           ),

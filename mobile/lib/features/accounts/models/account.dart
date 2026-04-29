@@ -22,7 +22,8 @@ enum AccountType {
   @JsonValue('retirement_403b') retirement403b,
   @JsonValue('hsa') hsa,
   @JsonValue('college_529') college529,
-  @JsonValue('cash') cash;
+  @JsonValue('cash') cash,
+  @JsonValue('mortgage') mortgage;
 
   /// Human-readable label shown in the UI.
   String get displayName => switch (this) {
@@ -37,6 +38,7 @@ enum AccountType {
         AccountType.hsa => 'HSA',
         AccountType.college529 => '529 Plan',
         AccountType.cash => 'Cash',
+        AccountType.mortgage => 'Mortgage',
       };
 
   /// The exact string value stored in the Postgres `account_type` enum column.
@@ -54,6 +56,7 @@ enum AccountType {
         AccountType.hsa => 'hsa',
         AccountType.college529 => 'college_529',
         AccountType.cash => 'cash',
+        AccountType.mortgage => 'mortgage',
       };
 
   /// Groups this account type into one of three UI sections.
@@ -63,6 +66,7 @@ enum AccountType {
         AccountType.cash =>
           AccountGroup.banking,
         AccountType.creditCard => AccountGroup.creditCards,
+        AccountType.mortgage => AccountGroup.loans,
         _ => AccountGroup.investments,
       };
 }
@@ -71,11 +75,13 @@ enum AccountType {
 enum AccountGroup {
   banking,
   creditCards,
+  loans,
   investments;
 
   String get displayName => switch (this) {
         AccountGroup.banking => 'Banking',
         AccountGroup.creditCards => 'Credit Cards',
+        AccountGroup.loans => 'Loans',
         AccountGroup.investments => 'Investments & Retirement',
       };
 }
@@ -97,6 +103,9 @@ class Account with _$Account {
     /// Last 4 digits of the account/card number for display purposes.
     String? lastFour,
     required String currency,
+    /// Balance in cents before any tracked transactions.
+    /// current_balance = starting_balance + sum(transactions).
+    @Default(0) int startingBalance,
     /// Current balance in cents. Negative values indicate debt (credit cards).
     required int currentBalance,
     /// Credit limit in cents. Only set for [AccountType.creditCard].

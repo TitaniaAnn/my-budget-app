@@ -6,9 +6,13 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
+import '../../../features/accounts/repositories/accounts_repository.dart';
+import '../../../core/providers/household_provider.dart';
+import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
+import '../services/category_matcher.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
@@ -52,7 +56,11 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   /// the account detail screen).
   final String? lockedAccountId;
 
-  const TransactionsScreen({super.key, this.lockedAccountId});
+  /// Starting balance in cents for the locked account. When provided,
+  /// a running balance is shown on each day header.
+  final int? startingBalance;
+
+  const TransactionsScreen({super.key, this.lockedAccountId, this.startingBalance});
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -60,9 +68,11 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String? _selectedAccountId;
+  String? _selectedCategoryId;
   _DateFilter _dateFilter = _DateFilter.thisMonth;
   String _search = '';
   bool _showSearch = false;
+  bool _recategorizing = false;
   late final TextEditingController _searchCtrl;
 
   @override
@@ -86,6 +96,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final (from, to) = _dateRange;
     final txAsync = ref.watch(transactionsProvider(
       accountId: _selectedAccountId,
+      categoryId: _selectedCategoryId,
       search: _search.isEmpty ? null : _search,
       dateFrom: from,
       dateTo: to,
@@ -117,6 +128,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             }),
           ),
           IconButton(
+            icon: _recategorizing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_fix_high_outlined),
+            tooltip: 'Auto-categorize uncategorized',
+            onPressed: _recategorizing ? null : () => _recategorize(),
+          ),
+          IconButton(
             icon: const Icon(Icons.upload_outlined),
             tooltip: 'Import statement',
             onPressed: () => _showImportSheet(context),
@@ -145,6 +167,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             selected: _dateFilter,
             onSelected: (f) => setState(() => _dateFilter = f),
           ),
+          // Category filter chips
+          ref.watch(categoriesProvider).whenOrNull(
+                data: (cats) => _CategoryFilterBar(
+                  categories: cats.where((c) => c.parentId == null).toList(),
+                  selectedId: _selectedCategoryId,
+                  onSelected: (id) =>
+                      setState(() => _selectedCategoryId = id),
+                ),
+              ) ??
+              const SizedBox.shrink(),
           // Transaction list
           Expanded(
             child: txAsync.when(
@@ -169,6 +201,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               data: (transactions) => _TransactionList(
                 transactions: transactions,
+                startingBalance: widget.startingBalance,
                 onEdit: (tx) => _showEditSheet(context, tx),
                 onDelete: (tx) => _deleteTransaction(tx),
               ),
@@ -202,6 +235,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
       builder: (_) => AddTransactionSheet(transaction: tx),
     );
+  }
+
+  Future<void> _recategorize() async {
+    setState(() => _recategorizing = true);
+    try {
+      final householdId = await ref.read(householdIdProvider.future);
+      if (householdId == null) return;
+      final categories = await ref.read(categoriesProvider.future);
+      final matcher = CategoryMatcher(categories);
+      final count = await ref.read(transactionsRepositoryProvider).bulkRecategorize(
+        householdId: householdId,
+        accountId: widget.lockedAccountId,
+        matcher: (desc, {required isIncome}) => matcher.match(desc, isIncome: isIncome),
+      );
+      ref.invalidate(transactionsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Categorized $count transaction${count == 1 ? '' : 's'}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _recategorizing = false);
+    }
   }
 
   void _showImportSheet(BuildContext context) {
@@ -238,6 +300,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
     if (confirmed == true) {
       await ref.read(transactionsRepositoryProvider).deleteTransaction(tx.id);
+      await ref.read(accountsRepositoryProvider).recalculateBalance(tx.accountId);
+      ref.invalidate(accountsProvider);
       ref.invalidate(transactionsProvider);
     }
   }
@@ -308,6 +372,73 @@ class _AccountFilterBar extends StatelessWidget {
   }
 }
 
+class _CategoryFilterBar extends StatelessWidget {
+  final List<Category> categories;
+  final String? selectedId;
+  final ValueChanged<String?> onSelected;
+
+  const _CategoryFilterBar({
+    required this.categories,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (categories.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _chip(context, null, 'All categories'),
+          ...categories.map((c) => _chip(context, c.id, c.name)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context, String? id, String label) {
+    final selected = selectedId == id;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8, bottom: 4),
+      child: GestureDetector(
+        onTap: () => onSelected(id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).dividerColor,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: selected
+                    ? Colors.white
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DateFilterBar extends StatelessWidget {
   final _DateFilter selected;
   final ValueChanged<_DateFilter> onSelected;
@@ -342,11 +473,13 @@ class _DateFilterBar extends StatelessWidget {
 
 class _TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
+  final int? startingBalance;
   final ValueChanged<Transaction> onEdit;
   final ValueChanged<Transaction> onDelete;
 
   const _TransactionList({
     required this.transactions,
+    this.startingBalance,
     required this.onEdit,
     required this.onDelete,
   });
@@ -383,6 +516,19 @@ class _TransactionList extends StatelessWidget {
     }
     final sortedDays = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    // Compute running balance after each day (oldest → newest), then look up
+    // per day when rendering newest-first.
+    Map<DateTime, int>? runningBalanceByDay;
+    if (startingBalance != null) {
+      int running = startingBalance!;
+      final ascDays = [...sortedDays]..sort((a, b) => a.compareTo(b));
+      runningBalanceByDay = {};
+      for (final day in ascDays) {
+        running += groups[day]!.fold<int>(0, (s, t) => s + t.amount);
+        runningBalanceByDay[day] = running;
+      }
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 100),
       itemCount: sortedDays.length,
@@ -394,7 +540,11 @@ class _TransactionList extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _DateHeader(date: day, totalCents: dayTotal),
+            _DateHeader(
+              date: day,
+              totalCents: dayTotal,
+              runningBalanceCents: runningBalanceByDay?[day],
+            ),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -438,8 +588,13 @@ class _TransactionList extends StatelessWidget {
 class _DateHeader extends StatelessWidget {
   final DateTime date;
   final int totalCents;
+  final int? runningBalanceCents;
 
-  const _DateHeader({required this.date, required this.totalCents});
+  const _DateHeader({
+    required this.date,
+    required this.totalCents,
+    this.runningBalanceCents,
+  });
 
   static final _fmt = DateFormat('EEEE, MMMM d');
   static final _thisYear = DateTime.now().year;
@@ -469,18 +624,42 @@ class _DateHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Text(
-            totalCents < 0
-                ? '-${formatCurrency(totalCents.abs())}'
-                : '+${formatCurrency(totalCents)}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: totalCents < 0
-                  ? const Color(0xFFEF4444)
-                  : const Color(0xFF22C55E),
+          if (runningBalanceCents != null) ...[
+            Text(
+              formatCurrency(runningBalanceCents!),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: runningBalanceCents! < 0
+                    ? const Color(0xFFEF4444)
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
             ),
-          ),
+            const SizedBox(width: 6),
+            Text(
+              totalCents < 0
+                  ? '(${formatCurrency(totalCents)})'
+                  : '(+${formatCurrency(totalCents)})',
+              style: TextStyle(
+                fontSize: 12,
+                color: totalCents < 0
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFF22C55E),
+              ),
+            ),
+          ] else
+            Text(
+              totalCents < 0
+                  ? '-${formatCurrency(totalCents.abs())}'
+                  : '+${formatCurrency(totalCents)}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: totalCents < 0
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFF22C55E),
+              ),
+            ),
         ],
       ),
     );

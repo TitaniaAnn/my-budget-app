@@ -6,7 +6,7 @@ part of 'transactions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transactionsHash() => r'e729d2b4892b314812d1c9d44b61e572a19027ac';
+String _$transactionsHash() => r'a05e212324bbec5abc674627eb9d31841ae27a44';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -61,12 +61,14 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
   /// Copied from [transactions].
   TransactionsProvider call({
     String? accountId,
+    String? categoryId,
     String? search,
     DateTime? dateFrom,
     DateTime? dateTo,
   }) {
     return TransactionsProvider(
       accountId: accountId,
+      categoryId: categoryId,
       search: search,
       dateFrom: dateFrom,
       dateTo: dateTo,
@@ -79,6 +81,7 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
   ) {
     return call(
       accountId: provider.accountId,
+      categoryId: provider.categoryId,
       search: provider.search,
       dateFrom: provider.dateFrom,
       dateTo: provider.dateTo,
@@ -116,6 +119,7 @@ class TransactionsProvider
   /// Copied from [transactions].
   TransactionsProvider({
     String? accountId,
+    String? categoryId,
     String? search,
     DateTime? dateFrom,
     DateTime? dateTo,
@@ -123,6 +127,7 @@ class TransactionsProvider
          (ref) => transactions(
            ref as TransactionsRef,
            accountId: accountId,
+           categoryId: categoryId,
            search: search,
            dateFrom: dateFrom,
            dateTo: dateTo,
@@ -136,6 +141,7 @@ class TransactionsProvider
          allTransitiveDependencies:
              TransactionsFamily._allTransitiveDependencies,
          accountId: accountId,
+         categoryId: categoryId,
          search: search,
          dateFrom: dateFrom,
          dateTo: dateTo,
@@ -149,12 +155,14 @@ class TransactionsProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.accountId,
+    required this.categoryId,
     required this.search,
     required this.dateFrom,
     required this.dateTo,
   }) : super.internal();
 
   final String? accountId;
+  final String? categoryId;
   final String? search;
   final DateTime? dateFrom;
   final DateTime? dateTo;
@@ -173,6 +181,7 @@ class TransactionsProvider
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         accountId: accountId,
+        categoryId: categoryId,
         search: search,
         dateFrom: dateFrom,
         dateTo: dateTo,
@@ -189,6 +198,7 @@ class TransactionsProvider
   bool operator ==(Object other) {
     return other is TransactionsProvider &&
         other.accountId == accountId &&
+        other.categoryId == categoryId &&
         other.search == search &&
         other.dateFrom == dateFrom &&
         other.dateTo == dateTo;
@@ -198,6 +208,7 @@ class TransactionsProvider
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, accountId.hashCode);
+    hash = _SystemHash.combine(hash, categoryId.hashCode);
     hash = _SystemHash.combine(hash, search.hashCode);
     hash = _SystemHash.combine(hash, dateFrom.hashCode);
     hash = _SystemHash.combine(hash, dateTo.hashCode);
@@ -211,6 +222,9 @@ class TransactionsProvider
 mixin TransactionsRef on AutoDisposeFutureProviderRef<List<Transaction>> {
   /// The parameter `accountId` of this provider.
   String? get accountId;
+
+  /// The parameter `categoryId` of this provider.
+  String? get categoryId;
 
   /// The parameter `search` of this provider.
   String? get search;
@@ -229,6 +243,8 @@ class _TransactionsProviderElement
 
   @override
   String? get accountId => (origin as TransactionsProvider).accountId;
+  @override
+  String? get categoryId => (origin as TransactionsProvider).categoryId;
   @override
   String? get search => (origin as TransactionsProvider).search;
   @override

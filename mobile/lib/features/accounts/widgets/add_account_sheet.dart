@@ -55,7 +55,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       _institutionController.text = a.institution ?? '';
       _lastFourController.text = a.lastFour ?? '';
       _balanceController.text =
-          (a.currentBalance.abs() / 100).toStringAsFixed(2);
+          (a.startingBalance.abs() / 100).toStringAsFixed(2);
       if (a.creditLimit != null) {
         _limitController.text =
             (a.creditLimit! / 100).toStringAsFixed(2);
@@ -115,10 +115,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           lastFour: _lastFourController.text.trim().isEmpty
               ? null
               : _lastFourController.text.trim(),
-          currentBalance: balanceCents,
+          startingBalance: balanceCents,
           creditLimit: limitCents,
           interestRate: interestRate,
         );
+        await repo.recalculateBalance(widget.account!.id);
       } else {
         final householdId = await ref.read(householdIdProvider.future);
         final user = ref.read(currentUserProvider);
@@ -136,7 +137,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           lastFour: _lastFourController.text.trim().isEmpty
               ? null
               : _lastFourController.text.trim(),
-          currentBalance: balanceCents,
+          startingBalance: balanceCents,
           creditLimit: limitCents,
           interestRate: interestRate,
         );
@@ -211,7 +212,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label('Current Balance'),
+                      _label('Starting Balance'),
                       TextFormField(
                         controller: _balanceController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -336,6 +337,9 @@ class _AccountTypeSelector extends StatelessWidget {
     ]),
     (label: 'Credit', types: [
       AccountType.creditCard,
+    ]),
+    (label: 'Loans', types: [
+      AccountType.mortgage,
     ]),
     (label: 'Investment & Retirement', types: [
       AccountType.brokerage,

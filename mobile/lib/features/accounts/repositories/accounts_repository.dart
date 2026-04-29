@@ -37,7 +37,7 @@ class AccountsRepository {
     required AccountType accountType,
     String? institution,
     String? lastFour,
-    required int currentBalance,
+    required int startingBalance,
     int? creditLimit,
     String? color,
     double? interestRate,
@@ -51,7 +51,8 @@ class AccountsRepository {
           'account_type': accountType.dbValue,
           'institution': institution,
           'last_four': lastFour,
-          'current_balance': currentBalance,
+          'starting_balance': startingBalance,
+          'current_balance': startingBalance,
           'credit_limit': creditLimit,
           'color': color,
           'interest_rate': interestRate,
@@ -69,7 +70,7 @@ class AccountsRepository {
     required String name,
     String? institution,
     String? lastFour,
-    required int currentBalance,
+    required int startingBalance,
     int? creditLimit,
     String? color,
     double? interestRate,
@@ -80,7 +81,7 @@ class AccountsRepository {
           'name': name,
           'institution': institution,
           'last_four': lastFour,
-          'current_balance': currentBalance,
+          'starting_balance': startingBalance,
           'credit_limit': creditLimit,
           'color': color,
           'interest_rate': interestRate,
@@ -98,6 +99,27 @@ class AccountsRepository {
         .from('accounts')
         .update({'current_balance': cents})
         .eq('id', accountId);
+  }
+
+  /// Recalculates [accountId]'s balance by summing all transaction amounts
+  /// and writes the result back to `current_balance`.
+  /// Call this after any bulk transaction import.
+  Future<void> recalculateBalance(String accountId) async {
+    final accountRow = await supabase
+        .from('accounts')
+        .select('starting_balance')
+        .eq('id', accountId)
+        .single();
+    final startingBalance = (accountRow['starting_balance'] as int?) ?? 0;
+
+    final rows = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('account_id', accountId);
+
+    final total = rows.fold<int>(startingBalance, (sum, r) => sum + (r['amount'] as int));
+
+    await updateBalance(accountId, total);
   }
 
   /// Soft-deletes an account by marking it inactive rather than destroying

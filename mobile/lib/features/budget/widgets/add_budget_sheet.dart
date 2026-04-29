@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../core/utils/category_icon.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
+import '../../../features/transactions/widgets/add_category_sheet.dart';
 import '../models/budget.dart';
 import '../providers/budget_provider.dart';
 import '../repositories/budget_repository.dart';
@@ -150,23 +152,45 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
-                items: expense
-                    .map((c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Row(
-                            children: [
-                              if (c.icon != null) ...[
-                                Text(c.icon!),
-                                const SizedBox(width: 8),
-                              ],
-                              Text(c.name),
-                            ],
-                          ),
-                        ))
-                    .toList(),
+                items: [
+                  ...expense.map((c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Row(
+                          children: [
+                            Icon(categoryIconData(c.icon), size: 16),
+                            const SizedBox(width: 8),
+                            Text(c.name),
+                          ],
+                        ),
+                      )),
+                  DropdownMenuItem(
+                    value: '__new__',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.add, size: 16),
+                        SizedBox(width: 8),
+                        Text('New category…'),
+                      ],
+                    ),
+                  ),
+                ],
                 onChanged: _isEditing
                     ? null
-                    : (v) => setState(() => _selectedCategoryId = v),
+                    : (v) {
+                        if (v == '__new__') {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24)),
+                            ),
+                            builder: (_) => const AddCategorySheet(),
+                          );
+                        } else {
+                          setState(() => _selectedCategoryId = v);
+                        }
+                      },
               );
             },
           ),

@@ -16,6 +16,7 @@ _$AccountImpl _$$AccountImplFromJson(Map<String, dynamic> json) =>
       institution: json['institution'] as String?,
       lastFour: json['last_four'] as String?,
       currency: json['currency'] as String,
+      startingBalance: (json['starting_balance'] as num?)?.toInt() ?? 0,
       currentBalance: (json['current_balance'] as num).toInt(),
       creditLimit: (json['credit_limit'] as num?)?.toInt(),
       isActive: json['is_active'] as bool,
@@ -35,6 +36,7 @@ Map<String, dynamic> _$$AccountImplToJson(_$AccountImpl instance) =>
       'institution': instance.institution,
       'last_four': instance.lastFour,
       'currency': instance.currency,
+      'starting_balance': instance.startingBalance,
       'current_balance': instance.currentBalance,
       'credit_limit': instance.creditLimit,
       'is_active': instance.isActive,
@@ -56,4 +58,5 @@ const _$AccountTypeEnumMap = {
   AccountType.hsa: 'hsa',
   AccountType.college529: 'college_529',
   AccountType.cash: 'cash',
+  AccountType.mortgage: 'mortgage',
 };

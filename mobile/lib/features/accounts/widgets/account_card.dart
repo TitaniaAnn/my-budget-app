@@ -22,6 +22,7 @@ class AccountCard extends StatelessWidget {
     return switch (account.accountType.group) {
       AccountGroup.banking => const Color(0xFF3B82F6),
       AccountGroup.creditCards => const Color(0xFFEF4444),
+      AccountGroup.loans => const Color(0xFFF59E0B),
       AccountGroup.investments => const Color(0xFF22C55E),
     };
   }
@@ -40,6 +41,7 @@ class AccountCard extends StatelessWidget {
         AccountType.hsa => Icons.health_and_safety_outlined,
         AccountType.college529 => Icons.school_outlined,
         AccountType.cash => Icons.payments_outlined,
+        AccountType.mortgage => Icons.home_outlined,
       };
 
   @override

@@ -34,6 +34,10 @@ mixin _$Account {
   String? get lastFour => throw _privateConstructorUsedError;
   String get currency => throw _privateConstructorUsedError;
 
+  /// Balance in cents before any tracked transactions.
+  /// current_balance = starting_balance + sum(transactions).
+  int get startingBalance => throw _privateConstructorUsedError;
+
   /// Current balance in cents. Negative values indicate debt (credit cards).
   int get currentBalance => throw _privateConstructorUsedError;
 
@@ -73,6 +77,7 @@ abstract class $AccountCopyWith<$Res> {
     String? institution,
     String? lastFour,
     String currency,
+    int startingBalance,
     int currentBalance,
     int? creditLimit,
     bool isActive,
@@ -106,6 +111,7 @@ class _$AccountCopyWithImpl<$Res, $Val extends Account>
     Object? institution = freezed,
     Object? lastFour = freezed,
     Object? currency = null,
+    Object? startingBalance = null,
     Object? currentBalance = null,
     Object? creditLimit = freezed,
     Object? isActive = null,
@@ -148,6 +154,10 @@ class _$AccountCopyWithImpl<$Res, $Val extends Account>
                 ? _value.currency
                 : currency // ignore: cast_nullable_to_non_nullable
                       as String,
+            startingBalance: null == startingBalance
+                ? _value.startingBalance
+                : startingBalance // ignore: cast_nullable_to_non_nullable
+                      as int,
             currentBalance: null == currentBalance
                 ? _value.currentBalance
                 : currentBalance // ignore: cast_nullable_to_non_nullable
@@ -199,6 +209,7 @@ abstract class _$$AccountImplCopyWith<$Res> implements $AccountCopyWith<$Res> {
     String? institution,
     String? lastFour,
     String currency,
+    int startingBalance,
     int currentBalance,
     int? creditLimit,
     bool isActive,
@@ -231,6 +242,7 @@ class __$$AccountImplCopyWithImpl<$Res>
     Object? institution = freezed,
     Object? lastFour = freezed,
     Object? currency = null,
+    Object? startingBalance = null,
     Object? currentBalance = null,
     Object? creditLimit = freezed,
     Object? isActive = null,
@@ -273,6 +285,10 @@ class __$$AccountImplCopyWithImpl<$Res>
             ? _value.currency
             : currency // ignore: cast_nullable_to_non_nullable
                   as String,
+        startingBalance: null == startingBalance
+            ? _value.startingBalance
+            : startingBalance // ignore: cast_nullable_to_non_nullable
+                  as int,
         currentBalance: null == currentBalance
             ? _value.currentBalance
             : currentBalance // ignore: cast_nullable_to_non_nullable
@@ -318,6 +334,7 @@ class _$AccountImpl implements _Account {
     this.institution,
     this.lastFour,
     required this.currency,
+    this.startingBalance = 0,
     required this.currentBalance,
     this.creditLimit,
     required this.isActive,
@@ -351,6 +368,12 @@ class _$AccountImpl implements _Account {
   @override
   final String currency;
 
+  /// Balance in cents before any tracked transactions.
+  /// current_balance = starting_balance + sum(transactions).
+  @override
+  @JsonKey()
+  final int startingBalance;
+
   /// Current balance in cents. Negative values indicate debt (credit cards).
   @override
   final int currentBalance;
@@ -376,7 +399,7 @@ class _$AccountImpl implements _Account {
 
   @override
   String toString() {
-    return 'Account(id: $id, householdId: $householdId, ownerUserId: $ownerUserId, name: $name, accountType: $accountType, institution: $institution, lastFour: $lastFour, currency: $currency, currentBalance: $currentBalance, creditLimit: $creditLimit, isActive: $isActive, color: $color, interestRate: $interestRate, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Account(id: $id, householdId: $householdId, ownerUserId: $ownerUserId, name: $name, accountType: $accountType, institution: $institution, lastFour: $lastFour, currency: $currency, startingBalance: $startingBalance, currentBalance: $currentBalance, creditLimit: $creditLimit, isActive: $isActive, color: $color, interestRate: $interestRate, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -398,6 +421,8 @@ class _$AccountImpl implements _Account {
                 other.lastFour == lastFour) &&
             (identical(other.currency, currency) ||
                 other.currency == currency) &&
+            (identical(other.startingBalance, startingBalance) ||
+                other.startingBalance == startingBalance) &&
             (identical(other.currentBalance, currentBalance) ||
                 other.currentBalance == currentBalance) &&
             (identical(other.creditLimit, creditLimit) ||
@@ -425,6 +450,7 @@ class _$AccountImpl implements _Account {
     institution,
     lastFour,
     currency,
+    startingBalance,
     currentBalance,
     creditLimit,
     isActive,
@@ -458,6 +484,7 @@ abstract class _Account implements Account {
     final String? institution,
     final String? lastFour,
     required final String currency,
+    final int startingBalance,
     required final int currentBalance,
     final int? creditLimit,
     required final bool isActive,
@@ -489,6 +516,11 @@ abstract class _Account implements Account {
   String? get lastFour;
   @override
   String get currency;
+
+  /// Balance in cents before any tracked transactions.
+  /// current_balance = starting_balance + sum(transactions).
+  @override
+  int get startingBalance;
 
   /// Current balance in cents. Negative values indicate debt (credit cards).
   @override
