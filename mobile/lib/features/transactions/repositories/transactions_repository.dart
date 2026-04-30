@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction.dart';
 import '../models/category.dart';
+import '../services/categorizer.dart';
 
 part 'transactions_repository.g.dart';
 
@@ -203,17 +204,18 @@ class TransactionsRepository {
     await supabase.from('transactions').delete().eq('id', id);
   }
 
-  /// Re-runs the category matcher on all uncategorized transactions for
-  /// [householdId] (optionally scoped to [accountId]) and bulk-updates their
-  /// category_id. Returns the number of transactions updated.
+  /// Re-runs the [categorizer] on all uncategorized transactions for
+  /// [householdId] (optionally scoped to [accountId]) and bulk-updates
+  /// their category_id, recording which engine produced each label.
+  /// Returns the number of transactions updated.
   Future<int> bulkRecategorize({
     required String householdId,
     String? accountId,
-    required String? Function(String description, {required bool isIncome}) matcher,
+    required Categorizer categorizer,
   }) async {
     var query = supabase
         .from('transactions')
-        .select('id, description, amount')
+        .select('id, description, merchant, amount')
         .eq('household_id', householdId)
         .isFilter('category_id', null);
 
@@ -222,28 +224,30 @@ class TransactionsRepository {
     final rows = await query;
     if (rows.isEmpty) return 0;
 
-    // Group transactions by their matched category so we can update each
-    // category's rows in a single UPDATE…WHERE id IN (…) call rather than
-    // one round-trip per row.
-    final byCategory = <String, List<String>>{};
+    // Group transactions by (categoryId, source) so we can update each
+    // group with a single UPDATE…WHERE id IN (…) call rather than one
+    // round-trip per row. The source is part of the key so an ML hit
+    // and a keyword-matcher hit on the same category don't blur their
+    // provenance for downstream training.
+    final groups = <(String, CategorizerSource), List<String>>{};
     for (final row in rows) {
-      final categoryId = matcher(
-        row['description'] as String,
-        isIncome: (row['amount'] as int) > 0,
+      final r = categorizer.categorize(
+        description: row['description'] as String,
+        merchant: row['merchant'] as String?,
+        amountCents: (row['amount'] as int),
       );
-      if (categoryId == null) continue;
-      byCategory.putIfAbsent(categoryId, () => []).add(row['id'] as String);
+      if (r == null) continue;
+      groups.putIfAbsent((r.categoryId, r.source), () => []).add(row['id'] as String);
     }
-    if (byCategory.isEmpty) return 0;
+    if (groups.isEmpty) return 0;
 
     final now = DateTime.now().toIso8601String();
     var updated = 0;
-    await Future.wait(byCategory.entries.map((entry) async {
+    await Future.wait(groups.entries.map((entry) async {
+      final (categoryId, source) = entry.key;
       await supabase.from('transactions').update({
-        'category_id': entry.key,
-        // Phase 3 will let the Categorizer façade report which engine
-        // matched per-row. For now only the keyword matcher feeds in.
-        'category_assigned_by': 'keyword_matcher',
+        'category_id': categoryId,
+        'category_assigned_by': source.dbValue,
         'category_assigned_at': now,
       }).inFilter('id', entry.value);
       updated += entry.value.length;
@@ -258,10 +262,9 @@ class TransactionsRepository {
   /// re-importing the same CSV is safe — duplicates are silently ignored.
   /// Returns the number of rows submitted (including any that were skipped).
   ///
-  /// If a row arrives with `category_id` already populated, the caller
-  /// pre-categorised it (currently always the keyword matcher in the import
-  /// sheet). Mark the assignment source accordingly so it does not pollute
-  /// the ML training set.
+  /// Caller is responsible for setting `category_assigned_by` /
+  /// `category_assigned_at` on any row where they also set `category_id`
+  /// (the import sheet routes through the Categorizer façade for this).
   Future<int> bulkImport({
     required String householdId,
     required String accountId,
@@ -270,9 +273,7 @@ class TransactionsRepository {
   }) async {
     if (rows.isEmpty) return 0;
 
-    final now = DateTime.now().toIso8601String();
     final enriched = rows.map((r) {
-      final hasCategory = r['category_id'] != null;
       return {
         ...r,
         'household_id': householdId,
@@ -280,8 +281,6 @@ class TransactionsRepository {
         'entered_by': enteredBy,
         'currency': 'USD',
         'source': 'import',
-        if (hasCategory) 'category_assigned_by': 'keyword_matcher',
-        if (hasCategory) 'category_assigned_at': now,
       };
     }).toList();
 

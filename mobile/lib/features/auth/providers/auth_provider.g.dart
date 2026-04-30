@@ -6,10 +6,15 @@ part of 'auth_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$authStateHash() => r'e5b723783d4f2bf9b3adf45827a5c85c3732b4ab';
+String _$authStateHash() => r'f0677f3c98f70ade260a12aa9fcdc96005efd474';
 
 /// Streams [AuthState] changes from Supabase (login, logout, token refresh).
 /// The router watches this to redirect unauthenticated users to /login.
+///
+/// On cold start the stream's first event can take a moment to arrive, so
+/// we yield a synthetic event from the persisted session immediately.
+/// Without this seed the router briefly sees `loading` (treated as logged-out)
+/// and redirects already-authenticated users to /login before bouncing back.
 ///
 /// Copied from [authState].
 @ProviderFor(authState)
@@ -26,10 +31,12 @@ final authStateProvider = AutoDisposeStreamProvider<AuthState>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AuthStateRef = AutoDisposeStreamProviderRef<AuthState>;
-String _$currentUserHash() => r'50c90b983f3ee4163f4c166b291c39c8a706a03c';
+String _$currentUserHash() => r'e6425e68907078f22f8f7b5d76884c81293abd61';
 
 /// Derives the current [User] from the latest [AuthState].
-/// Returns null when no session is active (user is logged out).
+///
+/// Falls back to [supabase.auth.currentUser] before any auth event has fired
+/// so a persisted session is recognised on cold start.
 ///
 /// Copied from [currentUser].
 @ProviderFor(currentUser)

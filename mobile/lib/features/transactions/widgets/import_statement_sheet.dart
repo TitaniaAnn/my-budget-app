@@ -22,7 +22,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
-import '../services/category_matcher.dart';
+import '../services/categorizer.dart';
 
 class ImportStatementSheet extends ConsumerStatefulWidget {
   const ImportStatementSheet({super.key});
@@ -218,23 +218,27 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       final user = ref.read(currentUserProvider);
       if (householdId == null || user == null) throw Exception('Not logged in');
 
-      final categories = await ref.read(categoriesProvider.future);
-      final matcher = CategoryMatcher(categories);
+      final categorizer = await ref.read(categorizerProvider.future);
+      final now = DateTime.now().toIso8601String();
 
-      final rows = _preview
-          .map((r) => {
-                'description': r.description,
-                'amount': r.amountCents,
-                'transaction_date':
-                    r.date.toIso8601String().substring(0, 10),
-                'external_id': r.externalId,
-                'pending': false,
-                'category_id': matcher.match(
-                  r.description,
-                  isIncome: r.amountCents > 0,
-                ),
-              })
-          .toList();
+      final rows = _preview.map((r) {
+        final result = categorizer.categorize(
+          description: r.description,
+          amountCents: r.amountCents,
+        );
+        return {
+          'description': r.description,
+          'amount': r.amountCents,
+          'transaction_date': r.date.toIso8601String().substring(0, 10),
+          'external_id': r.externalId,
+          'pending': false,
+          if (result != null) ...{
+            'category_id': result.categoryId,
+            'category_assigned_by': result.source.dbValue,
+            'category_assigned_at': now,
+          },
+        };
+      }).toList();
 
       final accountsRepo = ref.read(accountsRepositoryProvider);
       final count = await ref.read(transactionsRepositoryProvider).bulkImport(

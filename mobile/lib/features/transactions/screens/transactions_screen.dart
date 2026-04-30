@@ -16,7 +16,7 @@ import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
-import '../services/category_matcher.dart';
+import '../services/categorizer.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
@@ -226,13 +226,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     try {
       final householdId = await ref.read(householdIdProvider.future);
       if (householdId == null) return;
-      final categories = await ref.read(categoriesProvider.future);
-      final matcher = CategoryMatcher(categories);
-      final count = await ref.read(transactionsRepositoryProvider).bulkRecategorize(
-        householdId: householdId,
-        accountId: widget.lockedAccountId,
-        matcher: (desc, {required isIncome}) => matcher.match(desc, isIncome: isIncome),
-      );
+      final categorizer = await ref.read(categorizerProvider.future);
+      final count = await ref
+          .read(transactionsRepositoryProvider)
+          .bulkRecategorize(
+            householdId: householdId,
+            accountId: widget.lockedAccountId,
+            categorizer: categorizer,
+          );
       ref.invalidate(transactionsProvider);
       if (mounted) {
         context.showSnackBar(
