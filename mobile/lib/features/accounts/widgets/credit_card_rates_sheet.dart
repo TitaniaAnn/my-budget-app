@@ -4,11 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
+import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/credit_card_rate.dart';
 import '../providers/credit_card_rates_provider.dart';
 import '../repositories/credit_card_rates_repository.dart';
-
-import '../../../shared/widgets/field_label.dart';
 class CreditCardRatesSheet extends ConsumerWidget {
   final String accountId;
   const CreditCardRatesSheet({super.key, required this.accountId});
@@ -17,33 +20,18 @@ class CreditCardRatesSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ratesAsync = ref.watch(creditCardRatesProvider(accountId));
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppSheetScaffold(
+      title: 'Interest Rates',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: () => _showAddEdit(context, ref, null),
+        ),
+      ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Text('Interest Rates',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => _showAddEdit(context, ref, null),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           ratesAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
@@ -78,14 +66,9 @@ class CreditCardRatesSheet extends ConsumerWidget {
   }
 
   void _showAddEdit(BuildContext context, WidgetRef ref, CreditCardRate? rate) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _AddEditRateSheet(
+    showAppSheet<void>(
+      context,
+      child: _AddEditRateSheet(
         accountId: accountId,
         rate: rate,
         onSaved: () => ref.invalidate(creditCardRatesProvider(accountId)),
@@ -95,25 +78,12 @@ class CreditCardRatesSheet extends ConsumerWidget {
 
   Future<void> _delete(
       BuildContext context, WidgetRef ref, CreditCardRate rate) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete Rate?'),
-        content: Text('Remove "${rate.label ?? rate.rateType.displayName}"?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Rate?',
+      message: 'Remove "${rate.label ?? rate.rateType.displayName}"?',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await ref
           .read(creditCardRatesRepositoryProvider)
           .deleteRate(rate.id);
@@ -314,9 +284,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_isIntro && _introEndsOn == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please set an intro end date')),
-      );
+      context.showSnackBar('Please set an intro end date');
       return;
     }
     setState(() => _loading = true);
@@ -352,11 +320,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
       widget.onSaved();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -364,35 +328,16 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Text(_isEditMode ? 'Edit Rate' : 'Add Rate',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              // Rate type (locked on edit)
-              const FieldLabel('Rate Type'),
+    return AppSheetScaffold(
+      title: _isEditMode ? 'Edit Rate' : 'Add Rate',
+      formKey: _formKey,
+      scrollable: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Rate type (locked on edit)
+          const FieldLabel('Rate Type'),
               DropdownButtonFormField<CreditRateType>(
                 initialValue: _rateType,
                 decoration: const InputDecoration(),
@@ -486,21 +431,13 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
                   value: _isActive,
                   onChanged: (v) => setState(() => _isActive = v),
                 ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : Text(_isEditMode ? 'Save Changes' : 'Add Rate'),
-              ),
-            ],
+          const SizedBox(height: 24),
+          LoadingButton(
+            loading: _loading,
+            onPressed: _submit,
+            child: Text(_isEditMode ? 'Save Changes' : 'Add Rate'),
           ),
-        ),
+        ],
       ),
     );
   }

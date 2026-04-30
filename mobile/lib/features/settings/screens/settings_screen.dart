@@ -7,6 +7,8 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -222,9 +224,7 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed == true) {
       await supabase.auth.resetPasswordForEmail(email);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent.')),
-        );
+        context.showSnackBar('Password reset email sent.');
       }
     }
   }
@@ -324,9 +324,7 @@ class SettingsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create invite: $e')),
-        );
+        context.showSnackBar('Failed to create invite: $e');
       }
     }
   }
@@ -367,41 +365,23 @@ class SettingsScreen extends ConsumerWidget {
     if (!context.mounted) return;
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      context.showSnackBar(error);
     } else {
       ref.invalidate(householdInfoProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Welcome to your new household!')),
-      );
+      context.showSnackBar('Welcome to your new household!');
     }
   }
 
   Future<void> _confirmDeleteAccount(
       BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete Account?'),
-        content: const Text(
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Account?',
+      message:
           'This permanently deletes your account and all household data. '
           'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(dialogCtx).colorScheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
-    if (confirmed == true) {
+    if (confirmed) {
       // Supabase doesn't expose a delete-user endpoint from the client SDK —
       // sign out and show guidance to contact support.
       await supabase.auth.signOut();

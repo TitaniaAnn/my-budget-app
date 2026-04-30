@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
@@ -32,36 +34,16 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (_) => const AddTransactionSheet(),
-        ),
+        onPressed: () =>
+            showAppSheet<void>(context, child: const AddTransactionSheet()),
         icon: const Icon(Icons.add),
         label: const Text('Add Transaction'),
       ),
       body: dataAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: context.cs.error, size: 48),
-              const SizedBox(height: 12),
-              Text(e.toString(),
-                  style: TextStyle(color: context.appColors.textMuted),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(dashboardDataProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(dashboardDataProvider),
         ),
         data: (data) => _DashboardBody(data: data),
       ),
@@ -196,12 +178,15 @@ class _DashboardBody extends ConsumerWidget {
 
         // ── Empty state ────────────────────────────────────────────────────
         if (data.accounts.isEmpty)
-          _EmptyState(
-            icon: Icons.account_balance_outlined,
-            title: 'No accounts yet',
-            subtitle: 'Add accounts to start tracking your finances',
-            buttonLabel: 'Add Account',
-            onTap: (ctx) => ctx.go('/accounts'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            child: EmptyView(
+              icon: Icons.account_balance_outlined,
+              title: 'No accounts yet',
+              subtitle: 'Add accounts to start tracking your finances',
+              actionLabel: 'Add Account',
+              onAction: () => context.go('/accounts'),
+            ),
           ),
       ],
     );
@@ -637,46 +622,3 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String buttonLabel;
-  final void Function(BuildContext) onTap;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.buttonLabel,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Theme.of(context).dividerColor),
-          const SizedBox(height: 16),
-          Text(title,
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: context.appColors.textMuted)),
-          const SizedBox(height: 8),
-          Text(subtitle,
-              style: TextStyle(color: context.appColors.textSubtle),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => onTap(context),
-            child: Text(buttonLabel),
-          ),
-        ],
-      ),
-    );
-  }
-}

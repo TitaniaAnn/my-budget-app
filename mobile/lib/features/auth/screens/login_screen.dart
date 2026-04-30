@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/loading_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,8 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Validates the form, calls Supabase signIn, then navigates to /dashboard.
-  /// On failure shows an error SnackBar with the Supabase error message.
+  /// Validates the form and calls Supabase signIn. Navigation to /dashboard
+  /// is handled by the router's auth-aware redirect when the auth stream fires;
+  /// no manual push is needed here.
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -39,15 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      // The router's redirect handles navigation automatically once the
-      // auth stream fires, but we push explicitly as a fallback.
-      if (mounted) context.go('/dashboard');
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -116,16 +112,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         v == null || v.isEmpty ? 'Enter your password' : null,
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _signIn,
-                    child: _loading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Sign In'),
+                  LoadingButton(
+                    loading: _loading,
+                    onPressed: _signIn,
+                    child: const Text('Sign In'),
                   ),
                   const SizedBox(height: 16),
                   Row(

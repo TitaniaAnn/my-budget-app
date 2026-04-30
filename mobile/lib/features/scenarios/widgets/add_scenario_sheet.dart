@@ -1,12 +1,17 @@
 // Bottom sheet for creating or editing a scenario / goal.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/utils/color.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/scenario.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
+
+final _isoDateFmt = DateFormat('yyyy-MM-dd');
 
 /// Preset accent colors the user can pick for a scenario card / chart line.
 const _palette = [
@@ -148,35 +153,12 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppSheetScaffold(
+      title: _isEditing ? 'Edit Scenario' : 'New Scenario',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Text(
-            _isEditing ? 'Edit Scenario' : 'New Scenario',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-
           // Name
           TextField(
             controller: _nameCtrl,
@@ -227,9 +209,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
               label: Text(
                 _targetDate == null
                     ? 'Pick Target Date'
-                    : 'Target: ${_targetDate!.year}-'
-                        '${_targetDate!.month.toString().padLeft(2, '0')}-'
-                        '${_targetDate!.day.toString().padLeft(2, '0')}',
+                    : 'Target: ${_isoDateFmt.format(_targetDate!)}',
               ),
             ),
           ],
@@ -271,14 +251,10 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
           ],
 
           const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(_isEditing ? 'Save Changes' : 'Create'),
+          LoadingButton.filled(
+            loading: _saving,
+            onPressed: _save,
+            child: Text(_isEditing ? 'Save Changes' : 'Create'),
           ),
         ],
       ),

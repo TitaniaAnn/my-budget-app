@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../models/receipt.dart';
 import '../providers/receipts_provider.dart';
 import '../widgets/capture_receipt_sheet.dart';
@@ -21,23 +22,23 @@ class ReceiptsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Receipts')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => const CaptureReceiptSheet(),
-        ),
+        onPressed: () =>
+            showAppSheet<void>(context, child: const CaptureReceiptSheet()),
         tooltip: 'Add Receipt',
         child: const Icon(Icons.add_a_photo_outlined),
       ),
       body: receiptsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) =>
+            ErrorView(error: e, onRetry: () => ref.invalidate(receiptsProvider)),
         data: (receipts) {
           if (receipts.isEmpty) {
-            return const _EmptyState();
+            return const EmptyView(
+              icon: Icons.receipt_long_outlined,
+              title: 'No Receipts Yet',
+              subtitle:
+                  'Tap the camera button to capture\nyour first receipt.',
+            );
           }
           return RefreshIndicator(
             onRefresh: () => ref.refresh(receiptsProvider.future),
@@ -164,39 +165,3 @@ class _ReceiptCard extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 64,
-            color: theme.colorScheme.outline,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Receipts Yet',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the camera button to capture\nyour first receipt.',
-            style: TextStyle(color: context.appColors.textSubtle),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -1,9 +1,14 @@
 // Bottom sheet for adding or editing a scenario event.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/scenario_event.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
+
+final _isoDateFmt = DateFormat('yyyy-MM-dd');
 
 class AddEventSheet extends ConsumerStatefulWidget {
   const AddEventSheet({
@@ -139,37 +144,14 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Text(
-              _isEditing ? 'Edit Event' : 'Add Event',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-
-            // Event type chips
+    return AppSheetScaffold(
+      title: _isEditing ? 'Edit Event' : 'Add Event',
+      scrollable: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Event type chips
             Wrap(
               spacing: 8,
               children: EventType.values.map((t) {
@@ -210,11 +192,7 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
             OutlinedButton.icon(
               onPressed: _pickDate,
               icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(
-                '${_eventDate.year}-'
-                '${_eventDate.month.toString().padLeft(2, '0')}-'
-                '${_eventDate.day.toString().padLeft(2, '0')}',
-              ),
+              label: Text(_isoDateFmt.format(_eventDate)),
             ),
             const SizedBox(height: 12),
 
@@ -261,18 +239,13 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
                   textAlign: TextAlign.center),
             ],
 
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : Text(_isEditing ? 'Save Changes' : 'Add Event'),
-            ),
-          ],
-        ),
+          const SizedBox(height: 20),
+          LoadingButton.filled(
+            loading: _saving,
+            onPressed: _save,
+            child: Text(_isEditing ? 'Save Changes' : 'Add Event'),
+          ),
+        ],
       ),
     );
   }

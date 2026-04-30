@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/color.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../models/category.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
@@ -34,14 +36,9 @@ class ManageCategoriesSheet extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.add),
                   tooltip: 'New category',
-                  onPressed: () => showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(24)),
-                    ),
-                    builder: (_) => const AddCategorySheet(),
+                  onPressed: () => showAppSheet<void>(
+                    context,
+                    child: const AddCategorySheet(),
                   ),
                 ),
                 IconButton(
@@ -109,29 +106,14 @@ class ManageCategoriesSheet extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, Category category) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Category?'),
-        content: Text(
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Category?',
+      message:
           '"${category.name}" will be removed. Transactions assigned to it '
           'will become uncategorized.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref
         .read(transactionsRepositoryProvider)
         .deleteCategory(category.id);

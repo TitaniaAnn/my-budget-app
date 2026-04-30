@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,6 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Signs up the user, passing [display_name] and [household_name] as
   /// raw_user_meta_data so the Postgres trigger can read them to create
   /// the household row and initial owner membership automatically.
+  /// Navigation to /dashboard is handled by the router's auth-aware redirect.
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -49,13 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'household_name': _householdController.text.trim(),
         },
       );
-      if (mounted) context.go('/dashboard');
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -147,16 +145,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : null,
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _loading ? null : _register,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Create Account'),
+                LoadingButton(
+                  loading: _loading,
+                  onPressed: _register,
+                  child: const Text('Create Account'),
                 ),
                 const SizedBox(height: 16),
                 Row(

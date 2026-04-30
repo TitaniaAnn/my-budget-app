@@ -5,14 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../../transactions/screens/transactions_screen.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
+import '../repositories/accounts_repository.dart';
 import '../widgets/add_account_sheet.dart';
 import '../widgets/credit_card_rates_sheet.dart';
-import '../repositories/accounts_repository.dart';
-
-import '../../../shared/widgets/app_sheet.dart';
 class AccountDetailScreen extends ConsumerWidget {
   final String accountId;
   const AccountDetailScreen({super.key, required this.accountId});
@@ -70,16 +70,9 @@ class _AccountDetailBody extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.percent_rounded),
               tooltip: 'Manage rates',
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                shape: const RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                builder: (_) =>
-                    CreditCardRatesSheet(accountId: account.id),
+              onPressed: () => showAppSheet<void>(
+                context,
+                child: CreditCardRatesSheet(accountId: account.id),
               ),
             ),
           IconButton(
@@ -269,31 +262,15 @@ class _AccountDetailBody extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Archive Account?'),
-        content: Text(
-          'This will hide "${account.name}" and its transactions. '
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Archive Account?',
+      message: 'This will hide "${account.name}" and its transactions. '
           'Your transaction history is preserved.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Archive'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Archive',
     );
-    if (confirmed == true && context.mounted) {
-      await ref
-          .read(accountsRepositoryProvider)
-          .deleteAccount(account.id);
+    if (confirmed && context.mounted) {
+      await ref.read(accountsRepositoryProvider).deleteAccount(account.id);
       ref.invalidate(accountsProvider);
       if (context.mounted) Navigator.of(context).pop();
     }

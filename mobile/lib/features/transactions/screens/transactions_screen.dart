@@ -3,12 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
-import '../../../core/providers/household_provider.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
@@ -17,8 +20,6 @@ import '../services/category_matcher.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
-
-import '../../../shared/widgets/app_sheet.dart';
 // ── Date-range quick filter ────────────────────────────────────────────────────
 
 enum _DateFilter {
@@ -196,23 +197,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         Expanded(
           child: txAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline,
-                      color: context.cs.error, size: 48),
-                  const SizedBox(height: 12),
-                  Text(e.toString(),
-                      style: TextStyle(color: context.appColors.textMuted),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(transactionsProvider),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+            error: (e, _) => ErrorView(
+              error: e,
+              onRetry: () => ref.invalidate(transactionsProvider),
             ),
             data: (transactions) => _TransactionList(
               transactions: transactions,
@@ -248,16 +235,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       );
       ref.invalidate(transactionsProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Categorized $count transaction${count == 1 ? '' : 's'}')),
-        );
+        context.showSnackBar(
+            'Categorized $count transaction${count == 1 ? '' : 's'}');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _recategorizing = false);
     }
@@ -268,26 +250,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _deleteTransaction(Transaction tx) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete Transaction?'),
-        content: Text(
-            'Delete "${tx.merchant ?? tx.description}" for ${formatCurrency(tx.amount.abs())}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Transaction?',
+      message:
+          'Delete "${tx.merchant ?? tx.description}" for ${formatCurrency(tx.amount.abs())}?',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(transactionsRepositoryProvider).deleteTransaction(tx.id);
       await ref.read(accountsRepositoryProvider).recalculateBalance(tx.accountId);
       ref.invalidate(accountsProvider);
@@ -476,23 +445,10 @@ class _TransactionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64, color: Theme.of(context).dividerColor),
-            const SizedBox(height: 16),
-            Text('No transactions',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: context.appColors.textMuted)),
-            const SizedBox(height: 8),
-            Text('Tap + to add one or import a statement',
-                style: TextStyle(color: context.appColors.textSubtle)),
-          ],
-        ),
+      return const EmptyView(
+        icon: Icons.receipt_long_outlined,
+        title: 'No transactions',
+        subtitle: 'Tap + to add one or import a statement',
       );
     }
 

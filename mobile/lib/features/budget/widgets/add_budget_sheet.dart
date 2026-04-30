@@ -8,6 +8,11 @@ import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
 import '../../../features/transactions/widgets/add_category_sheet.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/money_text_field.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/budget.dart';
 import '../providers/budget_provider.dart';
 import '../repositories/budget_repository.dart';
@@ -105,50 +110,23 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
     final theme = Theme.of(context);
     final categoriesAsync = ref.watch(categoriesProvider);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppSheetScaffold(
+      title: _isEditing ? 'Edit Budget' : 'New Budget',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-
-          Text(
-            _isEditing ? 'Edit Budget' : 'New Budget',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-
           // Category picker — disabled when editing (can't change category)
+          const FieldLabel('Category'),
           categoriesAsync.when(
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Error: $e'),
             data: (cats) {
               // Show only expense categories (isIncome == false).
-              final expense =
-                  cats.where((c) => !c.isIncome).toList();
+              final expense = cats.where((c) => !c.isIncome).toList();
               return DropdownButtonFormField<String>(
                 initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(
-                  labelText: 'Category',
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
                 items: [
@@ -177,15 +155,8 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
                     ? null
                     : (v) {
                         if (v == '__new__') {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(24)),
-                            ),
-                            builder: (_) => const AddCategorySheet(),
-                          );
+                          showAppSheet<void>(context,
+                              child: const AddCategorySheet());
                         } else {
                           setState(() => _selectedCategoryId = v);
                         }
@@ -193,25 +164,18 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Amount field
-          TextField(
-            controller: _amountCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Amount (\$)',
-              prefixIcon: Icon(Icons.attach_money),
-            ),
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 16),
+          const FieldLabel('Amount'),
+          MoneyTextField(controller: _amountCtrl),
+          const SizedBox(height: 14),
 
           // Period selector — dropdown so all 4 options fit comfortably.
+          const FieldLabel('Period'),
           DropdownButtonFormField<BudgetPeriod>(
             initialValue: _period,
             decoration: const InputDecoration(
-              labelText: 'Period',
               prefixIcon: Icon(Icons.calendar_today_outlined),
             ),
             items: BudgetPeriod.values
@@ -236,16 +200,10 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
           ],
 
           const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(_isEditing ? 'Save Changes' : 'Create Budget'),
+          LoadingButton.filled(
+            loading: _saving,
+            onPressed: _save,
+            child: Text(_isEditing ? 'Save Changes' : 'Create Budget'),
           ),
         ],
       ),

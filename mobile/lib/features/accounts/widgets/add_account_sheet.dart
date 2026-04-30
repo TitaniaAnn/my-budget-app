@@ -5,11 +5,15 @@ import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/money_text_field.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../repositories/accounts_repository.dart';
 
-import '../../../shared/widgets/field_label.dart';
 class AddAccountSheet extends ConsumerStatefulWidget {
   /// When provided the sheet is in edit mode.
   final Account? account;
@@ -154,11 +158,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       ref.invalidate(accountsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -166,156 +166,107 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Text(_isEditMode ? 'Edit Account' : 'Add Account',
-                    style:
-                        const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+    return AppSheetScaffold(
+      title: _isEditMode ? 'Edit Account' : 'Add Account',
+      formKey: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FieldLabel('Account Type'),
+          _AccountTypeSelector(
+            selected: _selectedType,
+            onChanged: (t) => setState(() => _selectedType = t),
+          ),
+          const SizedBox(height: 14),
+          const FieldLabel('Account Name'),
+          TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              hintText: '${_selectedType.displayName} account name',
+            ),
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Required' : null,
+          ),
+          const SizedBox(height: 14),
+          const FieldLabel('Institution (optional)'),
+          TextFormField(
+            controller: _institutionController,
+            decoration: const InputDecoration(hintText: 'e.g. Chase, Fidelity'),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('Starting Balance'),
+                    MoneyTextField(controller: _balanceController),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const FieldLabel('Account Type'),
-            _AccountTypeSelector(
-              selected: _selectedType,
-              onChanged: (t) => setState(() => _selectedType = t),
-            ),
-            const SizedBox(height: 14),
-            const FieldLabel('Account Name'),
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                hintText: '${_selectedType.displayName} account name',
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('Last 4 (optional)'),
+                    TextFormField(
+                      controller: _lastFourController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
+                      decoration: const InputDecoration(hintText: '1234'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_selectedType == AccountType.creditCard) ...[
+            const SizedBox(height: 14),
+            const FieldLabel('Credit Limit'),
+            MoneyTextField(
+              controller: _limitController,
               validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 14),
-            const FieldLabel('Institution (optional)'),
-            TextFormField(
-              controller: _institutionController,
-              decoration: const InputDecoration(hintText: 'e.g. Chase, Fidelity'),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const FieldLabel('Starting Balance'),
-                      TextFormField(
-                        controller: _balanceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}')),
-                        ],
-                        decoration: const InputDecoration(
-                          prefixText: '\$',
-                          hintText: '0.00',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const FieldLabel('Last 4 (optional)'),
-                      TextFormField(
-                        controller: _lastFourController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                        decoration:
-                            const InputDecoration(hintText: '1234'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (_selectedType == AccountType.creditCard) ...[
-              const SizedBox(height: 14),
-              const FieldLabel('Credit Limit'),
-              TextFormField(
-                controller: _limitController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                decoration: const InputDecoration(
-                  prefixText: '\$',
-                  hintText: '0.00',
-                ),
-                validator: (v) =>
-                    _selectedType == AccountType.creditCard &&
-                            (v == null || v.isEmpty)
-                        ? 'Enter credit limit'
-                        : null,
-              ),
-            ],
-            if (_hasInterestRate) ...[
-              const SizedBox(height: 14),
-              FieldLabel(_selectedType == AccountType.creditCard
-                  ? 'Interest Rate (APR)'
-                  : _selectedType == AccountType.savings ||
-                          _selectedType == AccountType.checking
-                      ? 'Interest Rate (APY)'
-                      : 'Expected Return Rate'),
-              TextFormField(
-                controller: _rateController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                decoration: const InputDecoration(
-                  suffixText: '%',
-                  hintText: '0.00',
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(_isEditMode ? 'Save Changes' : 'Add Account'),
+                  _selectedType == AccountType.creditCard &&
+                          (v == null || v.isEmpty)
+                      ? 'Enter credit limit'
+                      : null,
             ),
           ],
-        ),
+          if (_hasInterestRate) ...[
+            const SizedBox(height: 14),
+            FieldLabel(_selectedType == AccountType.creditCard
+                ? 'Interest Rate (APR)'
+                : _selectedType == AccountType.savings ||
+                        _selectedType == AccountType.checking
+                    ? 'Interest Rate (APY)'
+                    : 'Expected Return Rate'),
+            TextFormField(
+              controller: _rateController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              decoration: const InputDecoration(
+                suffixText: '%',
+                hintText: '0.00',
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          LoadingButton(
+            loading: _loading,
+            onPressed: _submit,
+            child: Text(_isEditMode ? 'Save Changes' : 'Add Account'),
+          ),
+        ],
       ),
     );
   }

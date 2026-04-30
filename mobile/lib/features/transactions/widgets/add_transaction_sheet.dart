@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/money.dart';
-import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
-import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../features/accounts/providers/credit_card_rates_provider.dart';
+import '../../../features/accounts/repositories/accounts_repository.dart';
+import '../../../features/auth/providers/auth_provider.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
+import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/money_text_field.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
-
-import '../../../shared/widgets/field_label.dart';
 class AddTransactionSheet extends ConsumerStatefulWidget {
   /// Pre-select an account when opened from an account's transaction list.
   final String? preselectedAccountId;
@@ -93,27 +96,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dlgCtx) => AlertDialog(
-        title: const Text('Delete Transaction?'),
-        content: const Text('This transaction will be permanently removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgCtx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dlgCtx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dlgCtx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Transaction?',
+      message: 'This transaction will be permanently removed.',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _loading = true);
     try {
@@ -125,11 +113,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       ref.invalidate(transactionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -198,11 +182,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       ref.invalidate(transactionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -213,69 +193,44 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final accountsAsync = ref.watch(accountsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Text(_isEditMode ? 'Edit Transaction' : 'Add Transaction',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  if (_isEditMode)
-                    IconButton(
-                      icon: Icon(Icons.delete_outline,
-                          color: Theme.of(context).colorScheme.error),
-                      tooltip: 'Delete transaction',
-                      onPressed: _loading ? null : _delete,
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Expense / Income toggle
-              Container(
-                decoration: BoxDecoration(
-                  color: context.appColors.surfaceDeep,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    _toggleBtn('Expense', true),
-                    _toggleBtn('Income', false),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Amount
-              const FieldLabel('Amount'),
-              TextFormField(
-                controller: _amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                decoration: const InputDecoration(
-                    prefixText: '\$', hintText: '0.00'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-              ),
+    return AppSheetScaffold(
+      title: _isEditMode ? 'Edit Transaction' : 'Add Transaction',
+      formKey: _formKey,
+      scrollable: true,
+      actions: [
+        if (_isEditMode)
+          IconButton(
+            icon: Icon(Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error),
+            tooltip: 'Delete transaction',
+            onPressed: _loading ? null : _delete,
+          ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Expense / Income toggle
+          Container(
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceDeep,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                _toggleBtn('Expense', true),
+                _toggleBtn('Income', false),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Amount
+          const FieldLabel('Amount'),
+          MoneyTextField(
+            controller: _amountController,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+          ),
               const SizedBox(height: 14),
               // Account selector
               const FieldLabel('Account'),
@@ -445,21 +400,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     );
                   },
                 ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : Text(_isEditMode ? 'Save Changes' : 'Add Transaction'),
-              ),
-            ],
+          const SizedBox(height: 24),
+          LoadingButton(
+            loading: _loading,
+            onPressed: _submit,
+            child: Text(_isEditMode ? 'Save Changes' : 'Add Transaction'),
           ),
-        ),
+        ],
       ),
     );
   }

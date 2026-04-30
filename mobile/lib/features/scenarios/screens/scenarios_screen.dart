@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../models/scenario.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
@@ -50,14 +52,8 @@ class _ScenariosScreenState extends ConsumerState<ScenariosScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => const AddScenarioSheet(),
-        ),
+        onPressed: () =>
+            showAppSheet<void>(context, child: const AddScenarioSheet()),
         tooltip: 'New Scenario',
         child: const Icon(Icons.add),
       ),
@@ -188,41 +184,17 @@ class _ScenarioCard extends ConsumerWidget {
                       PopupMenuButton<String>(
                         onSelected: (v) async {
                           if (v == 'edit') {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(24)),
-                              ),
-                              builder: (_) =>
-                                  AddScenarioSheet(existing: scenario),
+                            showAppSheet<void>(
+                              context,
+                              child: AddScenarioSheet(existing: scenario),
                             );
                           } else if (v == 'delete') {
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text('Delete Scenario?'),
-                                content: const Text(
-                                    'This will remove all events too.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: cs.error,
-                                    ),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
+                            final ok = await confirmDestructive(
+                              context,
+                              title: 'Delete Scenario?',
+                              message: 'This will remove all events too.',
                             );
-                            if (ok == true) {
+                            if (ok) {
                               await ref
                                   .read(scenariosRepositoryProvider)
                                   .deleteScenario(scenario.id);

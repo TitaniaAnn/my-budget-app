@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
+import '../../../shared/widgets/app_sheet.dart';
 import '../models/scenario_event.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
@@ -58,26 +59,17 @@ class _DetailBody extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              shape: const RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              builder: (_) => AddScenarioSheet(existing: scenario),
+            onPressed: () => showAppSheet<void>(
+              context,
+              child: AddScenarioSheet(existing: scenario),
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => AddEventSheet(scenarioId: scenarioId),
+        onPressed: () => showAppSheet<void>(
+          context,
+          child: AddEventSheet(scenarioId: scenarioId),
         ),
         tooltip: 'Add Event',
         child: const Icon(Icons.add),
@@ -551,14 +543,9 @@ class _EventTile extends ConsumerWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 if (v == 'edit') {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(24)),
-                    ),
-                    builder: (_) => AddEventSheet(
+                  showAppSheet<void>(
+                    context,
+                    child: AddEventSheet(
                       scenarioId: scenarioId,
                       existing: event,
                     ),

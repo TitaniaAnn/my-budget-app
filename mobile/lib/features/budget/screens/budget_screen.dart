@@ -9,6 +9,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/color.dart';
 import '../../../features/transactions/widgets/manage_categories_sheet.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../models/budget.dart';
 import '../providers/budget_provider.dart';
 import '../repositories/budget_repository.dart';
@@ -28,13 +30,9 @@ class BudgetScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.label_outlined),
             tooltip: 'Manage Categories',
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              builder: (_) => const ManageCategoriesSheet(),
+            onPressed: () => showAppSheet<void>(
+              context,
+              child: const ManageCategoriesSheet(),
             ),
           ),
         ],
@@ -68,39 +66,17 @@ class BudgetScreen extends ConsumerWidget {
   }
 
   void _openSheet(BuildContext context, {Budget? existing}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => AddBudgetSheet(existing: existing),
-    );
+    showAppSheet<void>(context, child: AddBudgetSheet(existing: existing));
   }
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, Budget budget) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete Budget?'),
-        content: const Text('This will remove the budget limit for this category.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogCtx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Budget?',
+      message: 'This will remove the budget limit for this category.',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(budgetRepositoryProvider).deleteBudget(budget.id);
     ref.invalidate(budgetDataProvider);
   }

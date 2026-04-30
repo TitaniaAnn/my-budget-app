@@ -13,10 +13,13 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
-import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
+import '../../../features/auth/providers/auth_provider.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/category_matcher.dart';
@@ -246,17 +249,10 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       ref.invalidate(accountsProvider);
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Imported $count transactions')),
-        );
+        context.showSnackBar('Imported $count transactions');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _importing = false);
     }
@@ -266,30 +262,12 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppSheetScaffold(
+      title: 'Import Statement',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Text('Import Statement',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
           Text(
             'CSV files from most banks are supported',
             style: TextStyle(
@@ -406,16 +384,10 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                 ),
               ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _importing ? null : _import,
-              child: _importing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text('Import ${_preview.length} Transactions'),
+            LoadingButton(
+              loading: _importing,
+              onPressed: _import,
+              child: Text('Import ${_preview.length} Transactions'),
             ),
           ],
           const SizedBox(height: 8),

@@ -4,10 +4,12 @@ import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/color.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
-
-import '../../../shared/widgets/field_label.dart';
 class AddCategorySheet extends ConsumerStatefulWidget {
   const AddCategorySheet({super.key});
 
@@ -52,11 +54,7 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
       ref.invalidate(categoriesProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,28 +64,12 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
   Widget build(BuildContext context) {
     final color = colorFromHex(_selectedColor);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppSheetScaffold(
+      title: 'New Category',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Text('New Category',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
           // Name
           const FieldLabel('Category Name'),
           TextField(
@@ -182,16 +164,10 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           ),
           const SizedBox(height: 24),
 
-          ElevatedButton(
-            onPressed: _loading ? null : _submit,
-            child: _loading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Create Category'),
+          LoadingButton(
+            loading: _loading,
+            onPressed: _submit,
+            child: const Text('Create Category'),
           ),
         ],
       ),

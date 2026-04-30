@@ -5,12 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
+import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../widgets/account_card.dart';
 import '../widgets/add_account_sheet.dart';
-
-import '../../../shared/widgets/app_sheet.dart';
 /// Displays accounts grouped into Banking / Credit Cards / Investments sections
 /// with a net-worth header. The + FAB opens [AddAccountSheet].
 class AccountsScreen extends ConsumerWidget {
@@ -36,23 +36,8 @@ class AccountsScreen extends ConsumerWidget {
       ),
       body: accountsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: context.cs.error, size: 48),
-              const SizedBox(height: 12),
-              Text(e.toString(),
-                  style: TextStyle(color: context.appColors.textMuted),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(accountsProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+        error: (e, _) =>
+            ErrorView(error: e, onRetry: () => ref.invalidate(accountsProvider)),
         data: (accounts) => _AccountsList(accounts: accounts),
       ),
     );
@@ -76,23 +61,10 @@ class _AccountsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (accounts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.account_balance_outlined,
-                size: 64, color: Theme.of(context).dividerColor),
-            const SizedBox(height: 16),
-            Text('No accounts yet',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: context.appColors.textMuted)),
-            const SizedBox(height: 8),
-            Text('Tap + to add your first account',
-                style: TextStyle(color: context.appColors.textSubtle)),
-          ],
-        ),
+      return const EmptyView(
+        icon: Icons.account_balance_outlined,
+        title: 'No accounts yet',
+        subtitle: 'Tap + to add your first account',
       );
     }
 
