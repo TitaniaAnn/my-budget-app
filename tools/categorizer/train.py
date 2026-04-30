@@ -29,15 +29,15 @@ import json
 import sys
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
 from skl2onnx import convert_sklearn
-from skl2onnx.common.data_types import StringTensorType
+from skl2onnx.common.data_types import FloatTensorType
 
 
 # ── Feature shaping ─────────────────────────────────────────────────────────
@@ -48,26 +48,40 @@ def render(description: str, merchant: str, amount: int) -> str:
     return f"{description or ''}|{merchant or ''}|{sign}"
 
 
-# ── Pipeline factory ────────────────────────────────────────────────────────
+# Vocab cap. Char-n-gram dictionaries fan out fast; this keeps the asset
+# small enough to ship and the per-inference dense vector affordable
+# (10_000 floats ≈ 40 KB per call, fine even on bulk-import paths).
+MAX_FEATURES = 10_000
 
-def build_pipeline() -> Pipeline:
-    return Pipeline([
-        ("tfidf", TfidfVectorizer(
-            analyzer="char_wb",
-            ngram_range=(3, 5),
-            lowercase=True,
-            sublinear_tf=False,
-            # Hard cap so the vocab JSON doesn't bloat the app asset.
-            max_features=40_000,
-            min_df=1,
-        )),
-        ("clf", LogisticRegression(
-            C=4.0,
-            max_iter=1000,
-            class_weight="balanced",
-            solver="liblinear",
-        )),
-    ])
+
+# ── Vectoriser + classifier (NOT a Pipeline) ────────────────────────────────
+# We deliberately do NOT export the TfidfVectorizer to ONNX. Reasons:
+#   • char_wb tokenisation is a known-fragile area of skl2onnx — converters
+#     vary by version and platform.
+#   • The Dart side already has to load vocab.json to be able to reason
+#     about predictions; once it has that, doing the tokenisation locally
+#     is a small extra step with strict, testable semantics.
+# So the ONNX model is the LogisticRegression alone, taking a dense
+# Float32 vector of length len(vocab) as input.
+
+def build_vectoriser() -> TfidfVectorizer:
+    return TfidfVectorizer(
+        analyzer="char_wb",
+        ngram_range=(3, 5),
+        lowercase=True,
+        sublinear_tf=False,
+        max_features=MAX_FEATURES,
+        min_df=1,
+    )
+
+
+def build_classifier() -> LogisticRegression:
+    return LogisticRegression(
+        C=4.0,
+        max_iter=1000,
+        class_weight="balanced",
+        solver="liblinear",
+    )
 
 
 # ── Artefact writers ────────────────────────────────────────────────────────
@@ -119,9 +133,9 @@ def write_test_vectors_json(
     path.write_text(json.dumps(out, indent=2), encoding="utf-8")
 
 
-def write_onnx(pipeline: Pipeline, path: Path) -> None:
-    initial_types = [("input", StringTensorType([None, 1]))]
-    onx = convert_sklearn(pipeline, initial_types=initial_types,
+def write_onnx(clf: LogisticRegression, n_features: int, path: Path) -> None:
+    initial_types = [("input", FloatTensorType([None, n_features]))]
+    onx = convert_sklearn(clf, initial_types=initial_types,
                           target_opset=15)
     path.write_bytes(onx.SerializeToString())
 
@@ -187,27 +201,35 @@ def main() -> int:
         X, y, test_size=args.test_size, random_state=args.seed, stratify=y,
     )
 
-    pipeline = build_pipeline()
-    pipeline.fit(X_train, y_train)
+    vec = build_vectoriser()
+    clf = build_classifier()
+    X_train_tfidf = vec.fit_transform(X_train).toarray().astype(np.float32)
+    X_test_tfidf = vec.transform(X_test).toarray().astype(np.float32)
+    clf.fit(X_train_tfidf, y_train)
 
-    y_pred = pipeline.predict(X_test)
+    y_pred = clf.predict(X_test_tfidf)
     acc = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True,
                                    zero_division=0)
-    print(f"Holdout accuracy: {acc:.3f}  ({len(X_test)} rows)")
+    print(f"Holdout accuracy: {acc:.3f}  ({len(X_test)} rows, "
+          f"{X_train_tfidf.shape[1]} features)")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    write_onnx(pipeline, args.out_dir / "category_model.onnx")
-    write_vocab_json(pipeline.named_steps["tfidf"],
-                     args.out_dir / "vocab.json")
-    write_labels_json(pipeline.named_steps["clf"].classes_,
-                      args.out_dir / "labels.json")
-    write_test_vectors_json(pipeline.named_steps["tfidf"], GOLDEN_INPUTS,
+    write_onnx(clf, X_train_tfidf.shape[1],
+               args.out_dir / "category_model.onnx")
+    write_vocab_json(vec, args.out_dir / "vocab.json")
+    # Pickled vectoriser is for eval.py only (lets it apply the same
+    # transform to a labelled CSV without rewriting char_wb in two
+    # languages). Not shipped in the app.
+    joblib.dump(vec, args.out_dir / "vectoriser.pkl")
+    write_labels_json(clf.classes_, args.out_dir / "labels.json")
+    write_test_vectors_json(vec, GOLDEN_INPUTS,
                             args.out_dir / "test_vectors.json")
     (args.out_dir / "metrics.json").write_text(json.dumps({
         "holdout_accuracy": acc,
         "n_train": len(X_train),
         "n_test": len(X_test),
+        "n_features": int(X_train_tfidf.shape[1]),
         "n_classes": int(len(set(y_train))),
         "per_class": report,
     }, indent=2), encoding="utf-8")

@@ -37,6 +37,9 @@ dependencies:
   # CSV parsing
   csv: ^6.0.0
 
+  # On-device ML categorizer (consumes tools/categorizer/ outputs)
+  onnxruntime: ^1.4.1
+
   # Serialization
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
@@ -62,3 +65,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    # ML category model — produced by tools/categorizer/train.py.
+    # Empty until first training run; the classifier loads gracefully
+    # when assets are missing and the keyword matcher takes over.
+    - assets/ml/

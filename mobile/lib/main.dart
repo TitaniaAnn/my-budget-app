@@ -2,6 +2,7 @@
 // and theming to MaterialApp.router via Riverpod providers.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:onnxruntime/onnxruntime.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/providers/theme_provider.dart';
@@ -26,6 +27,11 @@ void main() async {
     url: _supabaseUrl,
     anonKey: _supabaseAnonKey,
   );
+
+  // ONNX Runtime is a singleton — must be initialised before any
+  // OrtSession is constructed. Safe to call even when the ML model
+  // assets are absent; MlCategoryClassifier.load() handles that.
+  OrtEnv.instance.init();
 
   // ProviderScope is required at the root so all Riverpod providers are
   // accessible anywhere in the widget tree.

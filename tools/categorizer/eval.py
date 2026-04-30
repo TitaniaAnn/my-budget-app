@@ -1,16 +1,18 @@
 """
 Evaluate a trained ONNX category model against a labelled CSV.
 
-Exits non-zero when holdout accuracy falls below --min-accuracy. Use as a
-CI gate before promoting a model into mobile/assets/ml/.
+Loads the pickled TfidfVectorizer alongside the ONNX classifier, applies
+the same transform train.py used, then runs ONNX inference. Exits
+non-zero when accuracy falls below --min-accuracy. Use as a CI gate
+before promoting a model into mobile/assets/ml/.
 """
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
+import joblib
 import numpy as np
 import onnxruntime as ort
 import pandas as pd
@@ -24,7 +26,8 @@ def main() -> int:
     parser.add_argument("--in", dest="csv", required=True, type=Path)
     parser.add_argument("--model", default=Path("build/category_model.onnx"),
                         type=Path)
-    parser.add_argument("--labels", default=Path("build/labels.json"),
+    parser.add_argument("--vectoriser",
+                        default=Path("build/vectoriser.pkl"),
                         type=Path)
     parser.add_argument("--min-accuracy", type=float, default=0.70)
     args = parser.parse_args()
@@ -37,13 +40,14 @@ def main() -> int:
         axis=1,
     )
 
+    vec = joblib.load(args.vectoriser)
+    X = vec.transform(df["text"].tolist()).toarray().astype(np.float32)
+
     sess = ort.InferenceSession(str(args.model),
                                 providers=["CPUExecutionProvider"])
     input_name = sess.get_inputs()[0].name
-
-    inputs = np.array(df["text"].tolist(), dtype=object).reshape(-1, 1)
-    raw = sess.run(None, {input_name: inputs})
-    # skl2onnx convention: outputs[0] = predicted label, outputs[1] = proba dict
+    raw = sess.run(None, {input_name: X})
+    # skl2onnx convention: outputs[0] = predicted label, outputs[1] = proba.
     y_pred = [str(p) for p in raw[0]]
     y_true = df["category_name"].tolist()
 
