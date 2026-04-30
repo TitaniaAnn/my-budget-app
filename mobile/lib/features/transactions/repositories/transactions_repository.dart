@@ -110,6 +110,9 @@ class TransactionsRepository {
 
   /// Inserts a single manually-entered transaction and returns it with
   /// the category row joined.
+  ///
+  /// When [categoryId] is non-null the row is recorded as user-assigned
+  /// ground truth — the upcoming ML categorizer trains on these.
   Future<Transaction> createTransaction({
     required String householdId,
     required String accountId,
@@ -137,6 +140,9 @@ class TransactionsRepository {
           'transaction_date':
               transactionDate.toIso8601String().substring(0, 10),
           'source': 'manual',
+          if (categoryId != null) 'category_assigned_by': 'user',
+          if (categoryId != null)
+            'category_assigned_at': DateTime.now().toIso8601String(),
         })
         .select('*, category:categories(*)')
         .single();
@@ -163,6 +169,11 @@ class TransactionsRepository {
   }
 
   /// Updates a manually-entered transaction.
+  ///
+  /// Any change here is treated as a user decision, including category
+  /// changes — so [category_assigned_by] flips to 'user' and the timestamp
+  /// is refreshed. Predictions made by the ML model that the user didn't
+  /// override stay flagged as 'ml_model'.
   Future<void> updateTransaction({
     required String id,
     required int amount,
@@ -181,6 +192,9 @@ class TransactionsRepository {
       'rate_id': rateId,
       'transaction_date': transactionDate.toIso8601String().substring(0, 10),
       'notes': notes,
+      if (categoryId != null) 'category_assigned_by': 'user',
+      if (categoryId != null)
+        'category_assigned_at': DateTime.now().toIso8601String(),
     }).eq('id', id);
   }
 
@@ -222,12 +236,16 @@ class TransactionsRepository {
     }
     if (byCategory.isEmpty) return 0;
 
+    final now = DateTime.now().toIso8601String();
     var updated = 0;
     await Future.wait(byCategory.entries.map((entry) async {
-      await supabase
-          .from('transactions')
-          .update({'category_id': entry.key})
-          .inFilter('id', entry.value);
+      await supabase.from('transactions').update({
+        'category_id': entry.key,
+        // Phase 3 will let the Categorizer façade report which engine
+        // matched per-row. For now only the keyword matcher feeds in.
+        'category_assigned_by': 'keyword_matcher',
+        'category_assigned_at': now,
+      }).inFilter('id', entry.value);
       updated += entry.value.length;
     }));
 
@@ -239,6 +257,11 @@ class TransactionsRepository {
   /// Uses upsert with conflict resolution on (account_id, external_id) so
   /// re-importing the same CSV is safe — duplicates are silently ignored.
   /// Returns the number of rows submitted (including any that were skipped).
+  ///
+  /// If a row arrives with `category_id` already populated, the caller
+  /// pre-categorised it (currently always the keyword matcher in the import
+  /// sheet). Mark the assignment source accordingly so it does not pollute
+  /// the ML training set.
   Future<int> bulkImport({
     required String householdId,
     required String accountId,
@@ -247,16 +270,20 @@ class TransactionsRepository {
   }) async {
     if (rows.isEmpty) return 0;
 
-    final enriched = rows
-        .map((r) => {
-              ...r,
-              'household_id': householdId,
-              'account_id': accountId,
-              'entered_by': enteredBy,
-              'currency': 'USD',
-              'source': 'import',
-            })
-        .toList();
+    final now = DateTime.now().toIso8601String();
+    final enriched = rows.map((r) {
+      final hasCategory = r['category_id'] != null;
+      return {
+        ...r,
+        'household_id': householdId,
+        'account_id': accountId,
+        'entered_by': enteredBy,
+        'currency': 'USD',
+        'source': 'import',
+        if (hasCategory) 'category_assigned_by': 'keyword_matcher',
+        if (hasCategory) 'category_assigned_at': now,
+      };
+    }).toList();
 
     await supabase
         .from('transactions')
