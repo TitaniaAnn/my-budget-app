@@ -92,17 +92,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   (DateTime? from, DateTime? to) get _dateRange => _dateFilter.range;
 
+  bool get _embedded => widget.lockedAccountId != null;
+
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountsProvider);
-    final (from, to) = _dateRange;
-    final txAsync = ref.watch(transactionsProvider(
-      accountId: _selectedAccountId,
-      categoryId: _selectedCategoryId,
-      search: _search.isEmpty ? null : _search,
-      dateFrom: from,
-      dateTo: to,
-    ));
+    final body = _buildBody();
+    // When embedded inside another screen (e.g. account detail) the parent
+    // owns the Scaffold/AppBar/FAB. Returning a second Scaffold here would
+    // render a duplicate toolbar and FAB inside the parent's body.
+    if (_embedded) return body;
 
     return Scaffold(
       appBar: AppBar(
@@ -151,66 +149,80 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         onPressed: () => _showAddSheet(context),
         child: const Icon(Icons.add),
       ),
-      body: Column(
-        children: [
-          // Account filter (hidden when locked to one account)
-          if (widget.lockedAccountId == null)
-            accountsAsync.when(
-              loading: () => const SizedBox(height: 48),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (accounts) => _AccountFilterBar(
-                accounts: accounts,
-                selectedId: _selectedAccountId,
-                onSelected: (id) => setState(() => _selectedAccountId = id),
-              ),
-            ),
-          // Date filter chips
-          _DateFilterBar(
-            selected: _dateFilter,
-            onSelected: (f) => setState(() => _dateFilter = f),
-          ),
-          // Category filter chips
-          ref.watch(categoriesProvider).whenOrNull(
-                data: (cats) => _CategoryFilterBar(
-                  categories: cats.where((c) => c.parentId == null).toList(),
-                  selectedId: _selectedCategoryId,
-                  onSelected: (id) =>
-                      setState(() => _selectedCategoryId = id),
-                ),
-              ) ??
-              const SizedBox.shrink(),
-          // Transaction list
-          Expanded(
-            child: txAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline,
-                        color: context.cs.error, size: 48),
-                    const SizedBox(height: 12),
-                    Text(e.toString(),
-                        style: TextStyle(color: context.appColors.textMuted),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(transactionsProvider),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-              data: (transactions) => _TransactionList(
-                transactions: transactions,
-                startingBalance: widget.startingBalance,
-                onEdit: (tx) => _showEditSheet(context, tx),
-                onDelete: (tx) => _deleteTransaction(tx),
-              ),
+      body: body,
+    );
+  }
+
+  Widget _buildBody() {
+    final accountsAsync = ref.watch(accountsProvider);
+    final (from, to) = _dateRange;
+    final txAsync = ref.watch(transactionsProvider(
+      accountId: _selectedAccountId,
+      categoryId: _selectedCategoryId,
+      search: _search.isEmpty ? null : _search,
+      dateFrom: from,
+      dateTo: to,
+    ));
+
+    return Column(
+      children: [
+        // Account filter (hidden when locked to one account)
+        if (!_embedded)
+          accountsAsync.when(
+            loading: () => const SizedBox(height: 48),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (accounts) => _AccountFilterBar(
+              accounts: accounts,
+              selectedId: _selectedAccountId,
+              onSelected: (id) => setState(() => _selectedAccountId = id),
             ),
           ),
-        ],
-      ),
+        // Date filter chips
+        _DateFilterBar(
+          selected: _dateFilter,
+          onSelected: (f) => setState(() => _dateFilter = f),
+        ),
+        // Category filter chips
+        ref.watch(categoriesProvider).whenOrNull(
+              data: (cats) => _CategoryFilterBar(
+                categories: cats.where((c) => c.parentId == null).toList(),
+                selectedId: _selectedCategoryId,
+                onSelected: (id) =>
+                    setState(() => _selectedCategoryId = id),
+              ),
+            ) ??
+            const SizedBox.shrink(),
+        // Transaction list
+        Expanded(
+          child: txAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline,
+                      color: context.cs.error, size: 48),
+                  const SizedBox(height: 12),
+                  Text(e.toString(),
+                      style: TextStyle(color: context.appColors.textMuted),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(transactionsProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+            data: (transactions) => _TransactionList(
+              transactions: transactions,
+              startingBalance: widget.startingBalance,
+              onEdit: (tx) => _showEditSheet(context, tx),
+              onDelete: (tx) => _deleteTransaction(tx),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -574,7 +586,7 @@ class _DateHeader extends StatelessWidget {
   });
 
   static final _fmt = DateFormat('EEEE, MMMM d');
-  static final _thisYear = DateTime.now().year;
+  static final _withYearFmt = DateFormat('MMMM d, yyyy');
 
   String get _label {
     final now = DateTime.now();
@@ -582,8 +594,8 @@ class _DateHeader extends StatelessWidget {
     final yesterday = today.subtract(const Duration(days: 1));
     if (date == today) return 'Today';
     if (date == yesterday) return 'Yesterday';
-    if (date.year == _thisYear) return _fmt.format(date);
-    return DateFormat('MMMM d, yyyy').format(date);
+    if (date.year == now.year) return _fmt.format(date);
+    return _withYearFmt.format(date);
   }
 
   @override

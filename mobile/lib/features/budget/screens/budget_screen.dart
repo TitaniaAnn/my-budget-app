@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/color.dart';
 import '../../../features/transactions/widgets/manage_categories_sheet.dart';
 import '../models/budget.dart';
 import '../providers/budget_provider.dart';
@@ -127,9 +128,7 @@ class _BudgetCard extends StatelessWidget {
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     // Use the category color if present, otherwise fall back to primary.
-    final barColor = item.categoryColor != null
-        ? Color(int.parse(item.categoryColor!.replaceFirst('#', '0xFF')))
-        : cs.primary;
+    final barColor = colorFromHex(item.categoryColor, fallback: cs.primary);
 
     final overBudget = item.isOverBudget;
 

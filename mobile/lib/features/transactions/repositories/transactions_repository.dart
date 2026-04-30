@@ -38,10 +38,17 @@ class TransactionsRepository {
     if (categoryId != null) query = query.eq('category_id', categoryId);
     if (search != null && search.isNotEmpty) {
       // Match either the raw description or the cleaned merchant column.
-      // PostgREST's `or=` operator wants commas between branches and any
-      // commas inside the search term must be escaped to keep them from
-      // being parsed as separators.
-      final term = search.replaceAll(',', '\\,');
+      // The user's input goes into a SQL ILIKE pattern, so:
+      //   1. escape the LIKE wildcards `%` and `_` (and the escape char `\`)
+      //      so that "50%" matches the literal string, not "anything starting
+      //      with 50";
+      //   2. escape the PostgREST `or=` separator `,` so commas in the input
+      //      don't split the filter into two branches.
+      final term = search
+          .replaceAll(r'\', r'\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_')
+          .replaceAll(',', r'\,');
       query = query.or('description.ilike.%$term%,merchant.ilike.%$term%');
     }
     if (from != null) {

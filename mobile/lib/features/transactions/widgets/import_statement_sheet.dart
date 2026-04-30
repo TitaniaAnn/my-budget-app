@@ -141,11 +141,15 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
           cents = (absAmount * 100).round();
         }
 
-        // externalId is a stable dedup key derived from the row's data.
+        // externalId is a stable dedup key derived from the row's data. Use
+        // the parsed integer cents and ISO date so the key is invariant to
+        // formatting differences across re-exports of the same statement
+        // (e.g. "$10.00" vs "10.00", "1/3/26" vs "01/03/2026").
         // Appending an occurrence index handles legitimate duplicate transactions
         // (same date+description+amount appearing twice) without causing a
         // PostgreSQL "ON CONFLICT DO UPDATE cannot affect row a second time" error.
-        final baseKey = '${dateStr}_${desc}_$amountStr';
+        final isoDate = date.toIso8601String().substring(0, 10);
+        final baseKey = '${isoDate}_${desc}_$cents';
         final occurrence = keyCounts[baseKey] = (keyCounts[baseKey] ?? 0) + 1;
         final externalId = '${baseKey}_$occurrence';
 

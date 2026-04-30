@@ -18,3 +18,14 @@ Color colorFromHex(String? hex, {Color fallback = const Color(0x00000000)}) {
   if (value == null) return fallback;
   return Color(0xFF000000 | value);
 }
+
+/// Encodes a [Color] as a "#RRGGBB" hex string (alpha is dropped).
+///
+/// On Flutter 3.27+, [Color.r], [Color.g], [Color.b] are normalized doubles
+/// in 0.0–1.0, so multiplying by 255 before rounding is required to recover
+/// the original 8-bit channel values.
+String colorToHex(Color color) {
+  String byte(double channel) =>
+      (channel * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+  return '#${byte(color.r)}${byte(color.g)}${byte(color.b)}';
+}

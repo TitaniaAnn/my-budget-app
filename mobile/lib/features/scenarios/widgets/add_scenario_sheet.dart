@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/utils/color.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/scenario.dart';
 import '../providers/scenarios_provider.dart';
@@ -18,11 +19,6 @@ const _palette = [
   Color(0xFF14B8A6), // teal
   Color(0xFFF97316), // orange
 ];
-
-String _toHex(Color c) =>
-    '#${c.r.round().toRadixString(16).padLeft(2, '0')}'
-    '${c.g.round().toRadixString(16).padLeft(2, '0')}'
-    '${c.b.round().toRadixString(16).padLeft(2, '0')}';
 
 class AddScenarioSheet extends ConsumerStatefulWidget {
   const AddScenarioSheet({super.key, this.existing});
@@ -57,10 +53,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
         _targetCtrl.text = (s.targetAmount! / 100).toStringAsFixed(0);
       }
       if (s.color != null) {
-        try {
-          _color = Color(
-              int.parse(s.color!.replaceFirst('#', '0xFF')));
-        } catch (_) {}
+        _color = colorFromHex(s.color, fallback: _palette.first);
       }
     }
   }
@@ -101,7 +94,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
 
     try {
       final repo = ref.read(scenariosRepositoryProvider);
-      final hexColor = _toHex(_color);
+      final hexColor = colorToHex(_color);
       final rawTarget =
           _targetCtrl.text.replaceAll(RegExp(r'[^\d.]'), '');
       final targetCents = rawTarget.isNotEmpty
@@ -249,7 +242,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
           Wrap(
             spacing: 8,
             children: _palette.map((c) {
-              final selected = c.toARGB32() == _color.toARGB32();
+              final selected = c == _color;
               return GestureDetector(
                 onTap: () => setState(() => _color = c),
                 child: Container(
