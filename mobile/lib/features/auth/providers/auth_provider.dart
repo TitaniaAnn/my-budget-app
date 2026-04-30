@@ -10,14 +10,26 @@ part 'auth_provider.g.dart';
 
 /// Streams [AuthState] changes from Supabase (login, logout, token refresh).
 /// The router watches this to redirect unauthenticated users to /login.
+///
+/// On cold start the stream's first event can take a moment to arrive, so
+/// we yield a synthetic event from the persisted session immediately.
+/// Without this seed the router briefly sees `loading` (treated as logged-out)
+/// and redirects already-authenticated users to /login before bouncing back.
 @riverpod
-Stream<AuthState> authState(AuthStateRef ref) {
-  return supabase.auth.onAuthStateChange;
+Stream<AuthState> authState(AuthStateRef ref) async* {
+  final initial = supabase.auth.currentSession;
+  if (initial != null) {
+    yield AuthState(AuthChangeEvent.initialSession, initial);
+  }
+  yield* supabase.auth.onAuthStateChange;
 }
 
 /// Derives the current [User] from the latest [AuthState].
-/// Returns null when no session is active (user is logged out).
+///
+/// Falls back to [supabase.auth.currentUser] before any auth event has fired
+/// so a persisted session is recognised on cold start.
 @riverpod
 User? currentUser(CurrentUserRef ref) {
-  return ref.watch(authStateProvider).valueOrNull?.session?.user;
+  return ref.watch(authStateProvider).valueOrNull?.session?.user ??
+      supabase.auth.currentUser;
 }

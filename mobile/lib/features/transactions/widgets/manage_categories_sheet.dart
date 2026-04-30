@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/color.dart';
 import '../models/category.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
@@ -90,15 +92,17 @@ class ManageCategoriesSheet extends ConsumerWidget {
     );
   }
 
-  Widget _sectionHeader(String label) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-            color: Color(0xFF64748B),
+  Widget _sectionHeader(String label) => Builder(
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: ctx.appColors.textSubtle,
+            ),
           ),
         ),
       );
@@ -148,10 +152,8 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = category.color != null
-        ? Color(int.parse(
-            'FF${category.color!.replaceAll('#', '')}', radix: 16))
-        : const Color(0xFF64748B);
+    final colors = context.appColors;
+    final color = colorFromHex(category.color, fallback: colors.textSubtle);
 
     return ListTile(
       leading: Container(
@@ -168,9 +170,7 @@ class _CategoryTile extends StatelessWidget {
         category.isIncome ? 'Income' : 'Expense',
         style: TextStyle(
           fontSize: 12,
-          color: category.isIncome
-              ? const Color(0xFF22C55E)
-              : const Color(0xFF94A3B8),
+          color: category.isIncome ? colors.income : colors.textMuted,
         ),
       ),
       trailing: canDelete
@@ -179,7 +179,8 @@ class _CategoryTile extends StatelessWidget {
                   color: Theme.of(context).colorScheme.error),
               onPressed: onDelete,
             )
-          : const Icon(Icons.lock_outline, size: 16, color: Color(0xFF475569)),
+          : Icon(Icons.lock_outline,
+              size: 16, color: colors.textSubtle),
     );
   }
 }

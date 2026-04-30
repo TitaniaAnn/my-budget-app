@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -70,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'MyBudget',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF3B82F6),
+                          color: BrandColors.primary,
                         ),
                     textAlign: TextAlign.center,
                   ),
@@ -80,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: Theme.of(context)
                         .textTheme
                         .bodyMedium
-                        ?.copyWith(color: const Color(0xFF94A3B8)),
+                        ?.copyWith(color: context.appColors.textMuted),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
@@ -132,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: const Color(0xFF94A3B8)),
+                        style: TextStyle(color: context.appColors.textMuted),
                       ),
                       TextButton(
                         onPressed: () => context.go('/register'),

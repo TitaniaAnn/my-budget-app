@@ -40,13 +40,13 @@ class DashboardData {
   List<Transaction> get _monthTransactions =>
       recentTransactions30d.where((t) => !t.transactionDate.isBefore(_monthStart)).toList();
 
-  /// Net worth = assets minus credit card debt.
-  int get netWorth => accounts.fold<int>(0, (sum, a) {
-        if (a.accountType == AccountType.creditCard) {
-          return sum - a.currentBalance.abs();
-        }
-        return sum + a.currentBalance;
-      });
+  /// Net worth = sum of every account's signed balance.
+  ///
+  /// All balances are stored signed: assets are positive, liabilities
+  /// (credit_card, mortgage) are negative — so a plain sum is correct
+  /// without any per-type special-casing.
+  int get netWorth =>
+      accounts.fold<int>(0, (sum, a) => sum + a.currentBalance);
 
   /// Total spending this month (expenses only, as positive cents).
   int get monthlySpending => _monthTransactions

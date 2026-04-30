@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
+import '../supabase/supabase_client.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
@@ -35,7 +36,12 @@ GoRouter appRouter(AppRouterRef ref) {
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull?.session != null;
+      // On cold start the auth stream may not have fired yet, so fall back
+      // to the persisted session from supabase.auth.currentSession. This
+      // prevents already-logged-in users from briefly seeing /login.
+      final isLoggedIn = (authState.valueOrNull?.session ??
+              supabase.auth.currentSession) !=
+          null;
       final isAuthRoute = state.matchedLocation.startsWith('/login') ||
           state.matchedLocation.startsWith('/register');
 

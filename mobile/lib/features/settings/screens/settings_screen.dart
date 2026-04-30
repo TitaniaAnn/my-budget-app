@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -103,9 +104,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout, color: Color(0xFFEF4444)),
-            title: const Text('Sign Out',
-                style: TextStyle(color: Color(0xFFEF4444))),
+            leading: Icon(Icons.logout, color: context.cs.error),
+            title: Text('Sign Out',
+                style: TextStyle(color: context.cs.error)),
             onTap: () async {
               await supabase.auth.signOut();
               if (context.mounted) context.go('/login');
@@ -113,10 +114,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.delete_forever_outlined,
-                color: Color(0xFFEF4444)),
-            title: const Text('Delete Account',
-                style: TextStyle(color: Color(0xFFEF4444))),
+            leading: Icon(Icons.delete_forever_outlined,
+                color: context.cs.error),
+            title: Text('Delete Account',
+                style: TextStyle(color: context.cs.error)),
             onTap: () => _confirmDeleteAccount(context, ref),
           ),
 

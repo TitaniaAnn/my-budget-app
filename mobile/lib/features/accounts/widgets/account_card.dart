@@ -1,6 +1,8 @@
 // Visual card for a single account shown in the Accounts list.
 // Credit cards get an additional utilization progress bar.
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../models/account.dart';
 
@@ -12,55 +14,32 @@ class AccountCard extends StatelessWidget {
 
   const AccountCard({super.key, required this.account, this.onTap});
 
-  /// Returns the account's custom color if set, otherwise a group default.
-  /// The hex string from the DB (e.g. "#3B82F6") is converted to a Color by
-  /// prepending FF (full opacity) and parsing as a 32-bit integer.
-  Color get _typeColor {
-    if (account.color != null) {
-      return Color(int.parse('FF${account.color!.replaceAll('#', '')}', radix: 16));
-    }
-    return switch (account.accountType.group) {
-      AccountGroup.banking => const Color(0xFF3B82F6),
-      AccountGroup.creditCards => const Color(0xFFEF4444),
-      AccountGroup.loans => const Color(0xFFF59E0B),
-      AccountGroup.investments => const Color(0xFF22C55E),
-    };
-  }
-
-  IconData get _typeIcon => switch (account.accountType) {
-        AccountType.checking => Icons.account_balance_outlined,
-        AccountType.savings => Icons.savings_outlined,
-        AccountType.creditCard => Icons.credit_card_outlined,
-        AccountType.brokerage => Icons.trending_up_outlined,
-        AccountType.iraTraditional ||
-        AccountType.iraRoth =>
-          Icons.account_balance_wallet_outlined,
-        AccountType.retirement401k ||
-        AccountType.retirement403b =>
-          Icons.work_outline,
-        AccountType.hsa => Icons.health_and_safety_outlined,
-        AccountType.college529 => Icons.school_outlined,
-        AccountType.cash => Icons.payments_outlined,
-        AccountType.mortgage => Icons.home_outlined,
-      };
+  /// Returns the account's custom color if set, otherwise the group default.
+  Color get _typeColor =>
+      colorFromHex(account.color, fallback: account.accountType.group.defaultColor);
 
   @override
   Widget build(BuildContext context) {
     final isCreditCard = account.accountType == AccountType.creditCard;
+    // Liability balances are stored as negative cents but shown as the
+    // magnitude owed ("$500.00" rather than "-$500.00").
+    final isLiability = account.accountType.isLiability;
     final balance = account.currentBalance;
+    final displayCents = isLiability ? balance.abs() : balance;
     final limit = account.creditLimit;
     final utilization = isCreditCard && limit != null && limit > 0
         ? creditUtilization(balance.abs(), limit)
         : null;
 
+    final colors = context.appColors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: context.cs.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF334155), width: 1),
+          border: Border.all(color: Theme.of(context).dividerColor, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -75,7 +54,8 @@ class AccountCard extends StatelessWidget {
                       color: _typeColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(_typeIcon, color: _typeColor, size: 20),
+                    child: Icon(account.accountType.icon,
+                        color: _typeColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -92,9 +72,9 @@ class AccountCard extends StatelessWidget {
                         if (account.institution != null)
                           Text(
                             account.institution!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF64748B),
+                              color: colors.textSubtle,
                             ),
                           ),
                       ],
@@ -104,23 +84,23 @@ class AccountCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        formatCurrency(balance),
+                        formatCurrency(displayCents),
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
-                          color: isCreditCard
-                              ? const Color(0xFFEF4444)
+                          color: isLiability
+                              ? colors.expense
                               : balance >= 0
-                                  ? const Color(0xFFF8FAFC)
-                                  : const Color(0xFFEF4444),
+                                  ? context.cs.onSurface
+                                  : colors.expense,
                         ),
                       ),
                       if (account.lastFour != null)
                         Text(
                           '••••${account.lastFour}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF64748B),
+                            color: colors.textSubtle,
                           ),
                         ),
                     ],
@@ -137,13 +117,13 @@ class AccountCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: (utilization / 100).clamp(0, 1),
                           minHeight: 4,
-                          backgroundColor: const Color(0xFF334155),
+                          backgroundColor: Theme.of(context).dividerColor,
                           valueColor: AlwaysStoppedAnimation(
                             utilization > 80
-                                ? const Color(0xFFEF4444)
+                                ? colors.expense
                                 : utilization > 50
-                                    ? const Color(0xFFF59E0B)
-                                    : const Color(0xFF22C55E),
+                                    ? colors.warning
+                                    : colors.income,
                           ),
                         ),
                       ),
@@ -151,9 +131,9 @@ class AccountCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '${utilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF64748B),
+                        color: colors.textSubtle,
                       ),
                     ),
                   ],
@@ -168,9 +148,7 @@ class AccountCard extends StatelessWidget {
                           ? Icons.percent_rounded
                           : Icons.trending_up_rounded,
                       size: 12,
-                      color: isCreditCard
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFF22C55E),
+                      color: isCreditCard ? colors.expense : colors.income,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -179,9 +157,7 @@ class AccountCard extends StatelessWidget {
                           : '${(account.interestRate! * 100).toStringAsFixed(2)}% APY',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isCreditCard
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF22C55E),
+                        color: isCreditCard ? colors.expense : colors.income,
                       ),
                     ),
                   ],

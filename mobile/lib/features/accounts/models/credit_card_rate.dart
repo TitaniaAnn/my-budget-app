@@ -15,6 +15,17 @@ enum CreditRateType {
         CreditRateType.balanceTransfer => 'Balance Transfer APR',
         CreditRateType.penalty => 'Penalty APR',
       };
+
+  /// Exact string stored in the Postgres `credit_rate_type` enum.
+  /// `.name` returns the Dart camelCase identifier (e.g. `cashAdvance`),
+  /// which doesn't match the snake_case enum values — so manual INSERTs
+  /// must use this getter instead.
+  String get dbValue => switch (this) {
+        CreditRateType.purchase => 'purchase',
+        CreditRateType.cashAdvance => 'cash_advance',
+        CreditRateType.balanceTransfer => 'balance_transfer',
+        CreditRateType.penalty => 'penalty',
+      };
 }
 
 @freezed

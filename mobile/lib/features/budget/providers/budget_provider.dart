@@ -61,18 +61,21 @@ class BudgetWithSpending {
 /// Computes the projected end-of-period spending given the amount spent so far,
 /// the period start, and the period end.
 ///
-/// Formula: spentCents / daysElapsed * totalDays
-/// Returns [spentCents] unchanged when today is the last day or no days have
-/// elapsed (avoids division by zero or nonsensical projections).
-int _project({
+/// Formula: `spentCents / daysElapsed * totalDays`. Returns [spentCents]
+/// unchanged when today is the last day or no days have elapsed (avoids
+/// division by zero or nonsensical projections).
+///
+/// [now] defaults to `DateTime.now()`; tests pass a fixed value.
+int projectEndOfPeriodSpend({
   required int spentCents,
   required DateTime from,
   required DateTime to,
+  DateTime? now,
 }) {
-  final now = DateTime.now();
+  final n = now ?? DateTime.now();
   final totalDays = to.difference(from).inDays + 1;
   // Days elapsed including today, but at least 1.
-  final elapsed = now.difference(from).inDays + 1;
+  final elapsed = n.difference(from).inDays + 1;
   if (elapsed <= 0 || elapsed >= totalDays) return spentCents;
   return (spentCents / elapsed * totalDays).round();
 }
@@ -113,8 +116,12 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
   return List.generate(budgets.length, (i) {
     final b = budgets[i];
     final (from, to) = b.period.currentRange();
-    final spent = spendingMaps[i][b.categoryId] ?? 0;
-    final projected = _project(spentCents: spent, from: from, to: to);
+    // Net spend can go negative when refunds exceed debits in a period;
+    // floor at zero so the UI doesn't show "-$10 spent".
+    final raw = spendingMaps[i][b.categoryId] ?? 0;
+    final spent = raw < 0 ? 0 : raw;
+    final projected =
+        projectEndOfPeriodSpend(spentCents: spent, from: from, to: to);
     final cat = catMap[b.categoryId];
 
     return BudgetWithSpending(

@@ -3,12 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../widgets/account_card.dart';
 import '../widgets/add_account_sheet.dart';
 
+import '../../../shared/widgets/app_sheet.dart';
 /// Displays accounts grouped into Banking / Credit Cards / Investments sections
 /// with a net-worth header. The + FAB opens [AddAccountSheet].
 class AccountsScreen extends ConsumerWidget {
@@ -38,11 +40,10 @@ class AccountsScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  color: Color(0xFFEF4444), size: 48),
+              Icon(Icons.error_outline, color: context.cs.error, size: 48),
               const SizedBox(height: 12),
               Text(e.toString(),
-                  style: const TextStyle(color: Color(0xFF94A3B8)),
+                  style: TextStyle(color: context.appColors.textMuted),
                   textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -58,15 +59,7 @@ class AccountsScreen extends ConsumerWidget {
   }
 
   void _showAddSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF0F172A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const AddAccountSheet(),
-    );
+    showAppSheet<void>(context, child: const AddAccountSheet());
   }
 }
 
@@ -74,16 +67,11 @@ class _AccountsList extends StatelessWidget {
   final List<Account> accounts;
   const _AccountsList({required this.accounts});
 
-  /// Net worth = sum of all balances, with credit card balances subtracted
-  /// (they represent debt, so a $500 balance reduces net worth by $500).
-  int get _netWorth {
-    return accounts.fold<int>(0, (sum, a) {
-      if (a.accountType == AccountType.creditCard) {
-        return sum - a.currentBalance.abs();
-      }
-      return sum + a.currentBalance;
-    });
-  }
+  /// Net worth = sum of every account's signed balance.
+  /// Liability accounts (credit_card, mortgage) are stored as negative cents
+  /// so a plain sum already deducts them.
+  int get _netWorth =>
+      accounts.fold<int>(0, (sum, a) => sum + a.currentBalance);
 
   @override
   Widget build(BuildContext context) {
@@ -92,17 +80,17 @@ class _AccountsList extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.account_balance_outlined,
-                size: 64, color: Color(0xFF334155)),
+            Icon(Icons.account_balance_outlined,
+                size: 64, color: Theme.of(context).dividerColor),
             const SizedBox(height: 16),
-            const Text('No accounts yet',
+            Text('No accounts yet',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B))),
+                    color: context.appColors.textMuted)),
             const SizedBox(height: 8),
-            const Text('Tap + to add your first account',
-                style: TextStyle(color: Color(0xFF475569))),
+            Text('Tap + to add your first account',
+                style: TextStyle(color: context.appColors.textSubtle)),
           ],
         ),
       );
@@ -141,22 +129,23 @@ class _NetWorthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A5F), Color(0xFF1E293B)],
+        gradient: LinearGradient(
+          colors: [colors.gradientStart, colors.gradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Net Worth',
-              style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+          Text('Net Worth',
+              style: TextStyle(fontSize: 13, color: colors.textMuted)),
           const SizedBox(height: 6),
           Text(
             formatCurrency(netWorthCents),
@@ -164,8 +153,8 @@ class _NetWorthCard extends StatelessWidget {
               fontSize: 32,
               fontWeight: FontWeight.w800,
               color: netWorthCents >= 0
-                  ? const Color(0xFFF8FAFC)
-                  : const Color(0xFFEF4444),
+                  ? context.cs.onSurface
+                  : colors.expense,
             ),
           ),
         ],
@@ -184,24 +173,25 @@ class _GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       children: [
         Text(
           group.displayName.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF64748B),
+            color: colors.textMuted,
             letterSpacing: 1,
           ),
         ),
         const Spacer(),
         Text(
           formatCurrency(_groupTotal),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF94A3B8),
+            color: colors.textMuted,
           ),
         ),
       ],

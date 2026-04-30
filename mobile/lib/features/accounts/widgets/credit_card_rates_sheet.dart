@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/credit_card_rate.dart';
 import '../providers/credit_card_rates_provider.dart';
 import '../repositories/credit_card_rates_repository.dart';
 
+import '../../../shared/widgets/field_label.dart';
 class CreditCardRatesSheet extends ConsumerWidget {
   final String accountId;
   const CreditCardRatesSheet({super.key, required this.accountId});
@@ -48,14 +50,14 @@ class CreditCardRatesSheet extends ConsumerWidget {
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (e, _) => Text(e.toString(),
-                style: const TextStyle(color: Color(0xFFEF4444))),
+                style: TextStyle(color: context.cs.error)),
             data: (rates) {
               if (rates.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text('No rates added yet. Tap + to add one.',
-                        style: TextStyle(color: Color(0xFF64748B))),
+                        style: TextStyle(color: context.appColors.textSubtle)),
                   ),
                 );
               }
@@ -135,6 +137,8 @@ class _RateTile extends StatelessWidget {
     final now = DateTime.now();
     final expired = rate.introEndsOn != null &&
         rate.introEndsOn!.isBefore(DateTime(now.year, now.month, now.day));
+    final colors = context.appColors;
+    final mutedColor = colors.textSubtle;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -163,9 +167,7 @@ class _RateTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: (expired
-                                  ? const Color(0xFF64748B)
-                                  : const Color(0xFF22C55E))
+                          color: (expired ? mutedColor : colors.income)
                               .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -174,9 +176,7 @@ class _RateTile extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: expired
-                                ? const Color(0xFF64748B)
-                                : const Color(0xFF22C55E),
+                            color: expired ? mutedColor : colors.income,
                           ),
                         ),
                       ),
@@ -187,14 +187,14 @@ class _RateTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF64748B).withValues(alpha: 0.15),
+                          color: mutedColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('INACTIVE',
+                        child: Text('INACTIVE',
                             style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF64748B))),
+                                color: mutedColor)),
                       ),
                     ],
                   ],
@@ -202,8 +202,7 @@ class _RateTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   rate.rateType.displayName,
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF64748B)),
+                  style: TextStyle(fontSize: 12, color: mutedColor),
                 ),
                 if (rate.introEndsOn != null)
                   Text(
@@ -212,9 +211,7 @@ class _RateTile extends StatelessWidget {
                         : 'Intro ends ${_dateFmt.format(rate.introEndsOn!)}',
                     style: TextStyle(
                       fontSize: 11,
-                      color: expired
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFF22C55E),
+                      color: expired ? colors.expense : colors.income,
                     ),
                   ),
               ],
@@ -225,23 +222,23 @@ class _RateTile extends StatelessWidget {
             children: [
               Text(
                 '${(rate.rate * 100).toStringAsFixed(2)}%',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFEF4444)),
+                    color: colors.expense),
               ),
               Row(
                 children: [
                   GestureDetector(
                     onTap: onEdit,
-                    child: const Icon(Icons.edit_outlined,
-                        size: 18, color: Color(0xFF64748B)),
+                    child: Icon(Icons.edit_outlined,
+                        size: 18, color: mutedColor),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: onDelete,
-                    child: const Icon(Icons.delete_outline,
-                        size: 18, color: Color(0xFFEF4444)),
+                    child: Icon(Icons.delete_outline,
+                        size: 18, color: colors.expense),
                   ),
                 ],
               ),
@@ -395,7 +392,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
               ),
               const SizedBox(height: 14),
               // Rate type (locked on edit)
-              _label('Rate Type'),
+              const FieldLabel('Rate Type'),
               DropdownButtonFormField<CreditRateType>(
                 initialValue: _rateType,
                 decoration: const InputDecoration(),
@@ -411,7 +408,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
               ),
               const SizedBox(height: 14),
               // APR value
-              _label('Annual Rate (APR)'),
+              const FieldLabel('Annual Rate (APR)'),
               TextFormField(
                 controller: _rateController,
                 keyboardType:
@@ -427,7 +424,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
               ),
               const SizedBox(height: 14),
               // Optional custom label
-              _label('Label (optional)'),
+              const FieldLabel('Label (optional)'),
               TextFormField(
                 controller: _labelController,
                 decoration: const InputDecoration(
@@ -446,7 +443,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
                 }),
               ),
               if (_isIntro) ...[
-                _label('Intro Ends On'),
+                const FieldLabel('Intro Ends On'),
                 GestureDetector(
                   onTap: _pickDate,
                   child: Container(
@@ -460,8 +457,8 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 16, color: Color(0xFF64748B)),
+                        Icon(Icons.calendar_today_outlined,
+                            size: 16, color: context.appColors.textSubtle),
                         const SizedBox(width: 8),
                         Text(
                           _introEndsOn != null
@@ -470,7 +467,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
                           style: TextStyle(
                             color: _introEndsOn != null
                                 ? null
-                                : const Color(0xFF64748B),
+                                : context.appColors.textSubtle,
                           ),
                         ),
                       ],
@@ -507,13 +504,4 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
       ),
     );
   }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8))),
-      );
 }

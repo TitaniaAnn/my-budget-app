@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../repositories/accounts_repository.dart';
 
+import '../../../shared/widgets/field_label.dart';
 class AddAccountSheet extends ConsumerStatefulWidget {
   /// When provided the sheet is in edit mode.
   final Account? account;
@@ -54,6 +57,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       _nameController.text = a.name;
       _institutionController.text = a.institution ?? '';
       _lastFourController.text = a.lastFour ?? '';
+      // For asset accounts the user enters and edits the balance directly.
+      // For liability accounts (credit_card, mortgage) we always present
+      // the magnitude — internally stored as negative, displayed as the
+      // amount owed so the user types "500" for a $500 balance.
       _balanceController.text =
           (a.startingBalance.abs() / 100).toStringAsFixed(2);
       if (a.creditLimit != null) {
@@ -83,17 +90,18 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     setState(() => _loading = true);
 
     try {
-      final balanceText =
-          _balanceController.text.replaceAll(RegExp(r'[^\d.]'), '');
+      // Parse the magnitude the user typed, then sign based on account type.
+      // Liabilities (credit_card, mortgage) are stored as negative cents so
+      // SUM(starting_balance + transactions) yields the right balance and
+      // SUM(current_balance) gives net worth without special-casing.
+      final magnitudeCents = parseToCents(_balanceController.text).abs();
       final balanceCents =
-          balanceText.isEmpty ? 0 : (double.parse(balanceText) * 100).round();
+          _selectedType.isLiability ? -magnitudeCents : magnitudeCents;
 
       int? limitCents;
       if (_selectedType == AccountType.creditCard &&
           _limitController.text.isNotEmpty) {
-        final limitText =
-            _limitController.text.replaceAll(RegExp(r'[^\d.]'), '');
-        limitCents = (double.parse(limitText) * 100).round();
+        limitCents = parseToCents(_limitController.text).abs();
       }
 
       double? interestRate;
@@ -184,13 +192,13 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            _label('Account Type'),
+            const FieldLabel('Account Type'),
             _AccountTypeSelector(
               selected: _selectedType,
               onChanged: (t) => setState(() => _selectedType = t),
             ),
             const SizedBox(height: 14),
-            _label('Account Name'),
+            const FieldLabel('Account Name'),
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(
@@ -200,7 +208,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 14),
-            _label('Institution (optional)'),
+            const FieldLabel('Institution (optional)'),
             TextFormField(
               controller: _institutionController,
               decoration: const InputDecoration(hintText: 'e.g. Chase, Fidelity'),
@@ -212,7 +220,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label('Starting Balance'),
+                      const FieldLabel('Starting Balance'),
                       TextFormField(
                         controller: _balanceController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -234,7 +242,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label('Last 4 (optional)'),
+                      const FieldLabel('Last 4 (optional)'),
                       TextFormField(
                         controller: _lastFourController,
                         keyboardType: TextInputType.number,
@@ -252,7 +260,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             ),
             if (_selectedType == AccountType.creditCard) ...[
               const SizedBox(height: 14),
-              _label('Credit Limit'),
+              const FieldLabel('Credit Limit'),
               TextFormField(
                 controller: _limitController,
                 keyboardType:
@@ -274,7 +282,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             ],
             if (_hasInterestRate) ...[
               const SizedBox(height: 14),
-              _label(_selectedType == AccountType.creditCard
+              FieldLabel(_selectedType == AccountType.creditCard
                   ? 'Interest Rate (APR)'
                   : _selectedType == AccountType.savings ||
                           _selectedType == AccountType.checking
@@ -311,15 +319,6 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       ),
     );
   }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8))),
-      );
 }
 
 class _AccountTypeSelector extends StatelessWidget {
@@ -354,6 +353,8 @@ class _AccountTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final cs = context.cs;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: _groups.map((group) {
@@ -363,10 +364,10 @@ class _AccountTypeSelector extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 4),
               child: Text(group.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
+                      color: colors.textSubtle,
                       letterSpacing: 0.5)),
             ),
             Wrap(
@@ -381,13 +382,13 @@ class _AccountTypeSelector extends StatelessWidget {
                         horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF3B82F6).withValues(alpha: 0.15)
-                          : const Color(0xFF1E293B),
+                          ? cs.primary.withValues(alpha: 0.15)
+                          : cs.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF3B82F6)
-                            : const Color(0xFF334155),
+                            ? cs.primary
+                            : Theme.of(context).dividerColor,
                       ),
                     ),
                     child: Text(
@@ -395,9 +396,7 @@ class _AccountTypeSelector extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected
-                            ? const Color(0xFF3B82F6)
-                            : const Color(0xFF94A3B8),
+                        color: isSelected ? cs.primary : colors.textMuted,
                       ),
                     ),
                   ),

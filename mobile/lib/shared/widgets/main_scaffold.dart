@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// Wraps an authenticated screen in the app's bottom navigation bar.
 /// Used as the [ShellRoute] builder in app_router.dart so the nav bar
 /// persists across tab switches without rebuilding.
@@ -36,16 +38,17 @@ class MainScaffold extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFF0F172A),
-        // Subtle blue highlight behind the selected tab icon
-        indicatorColor: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+        backgroundColor: context.appColors.surfaceDeep,
+        // Subtle highlight behind the selected tab icon
+        indicatorColor: BrandColors.primary.withValues(alpha: 0.2),
         selectedIndex: selected,
         onDestinationSelected: (i) => context.go(_tabs[i].path),
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: _tabs
             .map((t) => NavigationDestination(
-                  icon: Icon(t.icon, color: const Color(0xFF64748B)),
-                  selectedIcon: Icon(t.icon, color: const Color(0xFF3B82F6)),
+                  icon: Icon(t.icon, color: context.cs.outline),
+                  selectedIcon:
+                      Icon(t.icon, color: BrandColors.primary),
                   label: t.label,
                 ))
             .toList(),

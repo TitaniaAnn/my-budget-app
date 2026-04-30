@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/receipt.dart';
 import '../providers/receipts_provider.dart';
 import '../widgets/capture_receipt_sheet.dart';
@@ -189,9 +190,9 @@ class _EmptyState extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tap the camera button to capture\nyour first receipt.',
-            style: TextStyle(color: Color(0xFF64748B)),
+            style: TextStyle(color: context.appColors.textSubtle),
             textAlign: TextAlign.center,
           ),
         ],

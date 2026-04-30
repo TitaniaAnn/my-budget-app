@@ -2,6 +2,8 @@
 // account's own transaction list.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../../transactions/screens/transactions_screen.dart';
 import '../models/account.dart';
@@ -10,6 +12,7 @@ import '../widgets/add_account_sheet.dart';
 import '../widgets/credit_card_rates_sheet.dart';
 import '../repositories/accounts_repository.dart';
 
+import '../../../shared/widgets/app_sheet.dart';
 class AccountDetailScreen extends ConsumerWidget {
   final String accountId;
   const AccountDetailScreen({super.key, required this.accountId});
@@ -42,22 +45,18 @@ class _AccountDetailBody extends ConsumerWidget {
   final Account account;
   const _AccountDetailBody({required this.account});
 
-  Color get _typeColor {
-    if (account.color != null) {
-      return Color(
-          int.parse('FF${account.color!.replaceAll('#', '')}', radix: 16));
-    }
-    return switch (account.accountType.group) {
-      AccountGroup.banking => const Color(0xFF3B82F6),
-      AccountGroup.creditCards => const Color(0xFFEF4444),
-      AccountGroup.loans => const Color(0xFFF59E0B),
-      AccountGroup.investments => const Color(0xFF22C55E),
-    };
-  }
+  Color get _typeColor =>
+      colorFromHex(account.color, fallback: account.accountType.group.defaultColor);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isCreditCard = account.accountType == AccountType.creditCard;
+    // Liability balances are stored as negative cents but shown as the
+    // magnitude owed.
+    final isLiability = account.accountType.isLiability;
+    final displayCents = isLiability
+        ? account.currentBalance.abs()
+        : account.currentBalance;
     final limit = account.creditLimit;
     final utilization = isCreditCard && limit != null && limit > 0
         ? creditUtilization(account.currentBalance.abs(), limit)
@@ -118,7 +117,8 @@ class _AccountDetailBody extends ConsumerWidget {
                         color: _typeColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(_typeIcon, color: _typeColor, size: 22),
+                      child: Icon(account.accountType.icon,
+                          color: _typeColor, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -144,22 +144,22 @@ class _AccountDetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isCreditCard ? 'Balance (owed)' : 'Current Balance',
+                  isLiability ? 'Balance (owed)' : 'Current Balance',
                   style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.outline),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  formatCurrency(account.currentBalance),
+                  formatCurrency(displayCents),
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
-                    color: isCreditCard
-                        ? const Color(0xFFEF4444)
+                    color: isLiability
+                        ? context.appColors.expense
                         : account.currentBalance >= 0
                             ? Theme.of(context).colorScheme.onSurface
-                            : const Color(0xFFEF4444),
+                            : context.appColors.expense,
                   ),
                 ),
                 if (utilization != null) ...[
@@ -175,10 +175,10 @@ class _AccountDetailBody extends ConsumerWidget {
                             backgroundColor: Theme.of(context).dividerColor,
                             valueColor: AlwaysStoppedAnimation(
                               utilization > 80
-                                  ? const Color(0xFFEF4444)
+                                  ? context.appColors.expense
                                   : utilization > 50
-                                      ? const Color(0xFFF59E0B)
-                                      : const Color(0xFF22C55E),
+                                      ? context.appColors.warning
+                                      : context.appColors.income,
                             ),
                           ),
                         ),
@@ -203,8 +203,8 @@ class _AccountDetailBody extends ConsumerWidget {
                             : Icons.trending_up_rounded,
                         size: 14,
                         color: isCreditCard
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF22C55E),
+                            ? context.appColors.expense
+                            : context.appColors.income,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -218,8 +218,8 @@ class _AccountDetailBody extends ConsumerWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: isCreditCard
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFF22C55E),
+                              ? context.appColors.expense
+                              : context.appColors.income,
                         ),
                       ),
                       const Spacer(),
@@ -264,33 +264,8 @@ class _AccountDetailBody extends ConsumerWidget {
     );
   }
 
-  IconData get _typeIcon => switch (account.accountType) {
-        AccountType.checking => Icons.account_balance_outlined,
-        AccountType.savings => Icons.savings_outlined,
-        AccountType.creditCard => Icons.credit_card_outlined,
-        AccountType.brokerage => Icons.trending_up_outlined,
-        AccountType.iraTraditional ||
-        AccountType.iraRoth =>
-          Icons.account_balance_wallet_outlined,
-        AccountType.retirement401k ||
-        AccountType.retirement403b =>
-          Icons.work_outline,
-        AccountType.hsa => Icons.health_and_safety_outlined,
-        AccountType.college529 => Icons.school_outlined,
-        AccountType.cash => Icons.payments_outlined,
-        AccountType.mortgage => Icons.home_outlined,
-      };
-
   void _showEditSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => AddAccountSheet(account: account),
-    );
+    showAppSheet<void>(context, child: AddAccountSheet(account: account));
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

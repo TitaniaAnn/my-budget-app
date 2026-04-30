@@ -11,9 +11,11 @@ part 'household_provider.g.dart';
 
 /// Fetches the household_id for the currently authenticated user.
 ///
-/// Returns null if the user is not logged in. The household is created
-/// automatically by the [handle_new_user] DB trigger on signup, so every
-/// user is guaranteed to have exactly one household.
+/// Returns null if the user is not logged in or has no membership row yet
+/// (the [handle_new_user] DB trigger normally creates one on signup, but we
+/// don't crash if a race or invite-cleanup edge case briefly leaves the user
+/// without one). If the user belongs to multiple households (e.g. after a
+/// future household-switching feature), the most recently joined wins.
 @riverpod
 Future<String?> householdId(HouseholdIdRef ref) async {
   final user = ref.watch(currentUserProvider);
@@ -23,7 +25,9 @@ Future<String?> householdId(HouseholdIdRef ref) async {
       .from('household_members')
       .select('household_id')
       .eq('user_id', user.id)
-      .single();
+      .order('joined_at', ascending: false)
+      .limit(1)
+      .maybeSingle();
 
-  return row['household_id'] as String?;
+  return row?['household_id'] as String?;
 }

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/field_label.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -85,11 +87,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
-                      ?.copyWith(color: const Color(0xFF94A3B8)),
+                      ?.copyWith(color: context.appColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                _label('Your name'),
+                const FieldLabel('Your name'),
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -100,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       v == null || v.trim().isEmpty ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 12),
-                _label('Household name'),
+                const FieldLabel('Household name'),
                 TextFormField(
                   controller: _householdController,
                   decoration: const InputDecoration(
@@ -112,7 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : null,
                 ),
                 const SizedBox(height: 12),
-                _label('Email'),
+                const FieldLabel('Email'),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -125,7 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       v == null || !v.contains('@') ? 'Enter a valid email' : null,
                 ),
                 const SizedBox(height: 12),
-                _label('Password'),
+                const FieldLabel('Password'),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -160,9 +162,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Already have an account? ',
-                      style: TextStyle(color: Color(0xFF94A3B8)),
+                      style: TextStyle(color: context.appColors.textMuted),
                     ),
                     TextButton(
                       onPressed: () => context.go('/login'),
@@ -178,16 +180,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Small muted label rendered above each form field.
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF94A3B8),
-          ),
-        ),
-      );
 }

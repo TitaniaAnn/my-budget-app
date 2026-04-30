@@ -33,7 +33,7 @@ class CreditCardRatesRepository {
         .from('credit_card_rates')
         .insert({
           'account_id': accountId,
-          'rate_type': rateType.name,
+          'rate_type': rateType.dbValue,
           'rate': rate,
           'is_intro': isIntro,
           'intro_ends_on': introEndsOn?.toIso8601String().substring(0, 10),

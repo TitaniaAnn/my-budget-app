@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
@@ -17,6 +18,7 @@ import '../widgets/add_transaction_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
 
+import '../../../shared/widgets/app_sheet.dart';
 // ── Date-range quick filter ────────────────────────────────────────────────────
 
 enum _DateFilter {
@@ -185,11 +187,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Color(0xFFEF4444), size: 48),
+                    Icon(Icons.error_outline,
+                        color: context.cs.error, size: 48),
                     const SizedBox(height: 12),
                     Text(e.toString(),
-                        style: const TextStyle(color: Color(0xFF94A3B8)),
+                        style: TextStyle(color: context.appColors.textMuted),
                         textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     ElevatedButton(
@@ -213,28 +215,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _showAddSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) =>
-          AddTransactionSheet(preselectedAccountId: _selectedAccountId),
-    );
+    showAppSheet<void>(context, child: AddTransactionSheet(preselectedAccountId: _selectedAccountId));
   }
 
   void _showEditSheet(BuildContext context, Transaction tx) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => AddTransactionSheet(transaction: tx),
-    );
+    showAppSheet<void>(context, child: AddTransactionSheet(transaction: tx));
   }
 
   Future<void> _recategorize() async {
@@ -267,15 +252,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _showImportSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const ImportStatementSheet(),
-    );
+    showAppSheet<void>(context, child: const ImportStatementSheet());
   }
 
   Future<void> _deleteTransaction(Transaction tx) async {
@@ -490,18 +467,18 @@ class _TransactionList extends StatelessWidget {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.receipt_long_outlined,
-                size: 64, color: Color(0xFF334155)),
-            SizedBox(height: 16),
+                size: 64, color: Theme.of(context).dividerColor),
+            const SizedBox(height: 16),
             Text('No transactions',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B))),
-            SizedBox(height: 8),
+                    color: context.appColors.textMuted)),
+            const SizedBox(height: 8),
             Text('Tap + to add one or import a statement',
-                style: TextStyle(color: Color(0xFF475569))),
+                style: TextStyle(color: context.appColors.textSubtle)),
           ],
         ),
       );
@@ -561,7 +538,7 @@ class _TransactionList extends StatelessWidget {
                     background: Container(
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 20),
-                      color: const Color(0xFFEF4444),
+                      color: context.cs.error,
                       child: const Icon(Icons.delete_outline,
                           color: Colors.white),
                     ),
@@ -631,7 +608,7 @@ class _DateHeader extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: runningBalanceCents! < 0
-                    ? const Color(0xFFEF4444)
+                    ? context.appColors.expense
                     : Theme.of(context).colorScheme.onSurface,
               ),
             ),
@@ -643,8 +620,8 @@ class _DateHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: totalCents < 0
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFF22C55E),
+                    ? context.appColors.expense
+                    : context.appColors.income,
               ),
             ),
           ] else
@@ -656,8 +633,8 @@ class _DateHeader extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: totalCents < 0
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFF22C55E),
+                    ? context.appColors.expense
+                    : context.appColors.income,
               ),
             ),
         ],

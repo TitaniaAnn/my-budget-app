@@ -4,7 +4,10 @@
 // (current_balance, credit_limit) are stored as INTEGER CENTS.
 // Freezed generates immutable value semantics and copyWith; json_serializable
 // handles snake_case ↔ camelCase conversion via build.yaml field_rename config.
+import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 part 'account.freezed.dart';
 part 'account.g.dart';
@@ -69,6 +72,30 @@ enum AccountType {
         AccountType.mortgage => AccountGroup.loans,
         _ => AccountGroup.investments,
       };
+
+  /// Material icon shown in account cards / detail headers.
+  IconData get icon => switch (this) {
+        AccountType.checking => Icons.account_balance_outlined,
+        AccountType.savings => Icons.savings_outlined,
+        AccountType.creditCard => Icons.credit_card_outlined,
+        AccountType.brokerage => Icons.trending_up_outlined,
+        AccountType.iraTraditional ||
+        AccountType.iraRoth =>
+          Icons.account_balance_wallet_outlined,
+        AccountType.retirement401k ||
+        AccountType.retirement403b =>
+          Icons.work_outline,
+        AccountType.hsa => Icons.health_and_safety_outlined,
+        AccountType.college529 => Icons.school_outlined,
+        AccountType.cash => Icons.payments_outlined,
+        AccountType.mortgage => Icons.home_outlined,
+      };
+
+  /// True when this account represents money owed (debt) rather than an asset.
+  /// Liability balances are stored as negative cents and rendered as the
+  /// magnitude owed in the UI.
+  bool get isLiability =>
+      group == AccountGroup.creditCards || group == AccountGroup.loans;
 }
 
 /// Used to group accounts into sections on the Accounts screen.
@@ -83,6 +110,14 @@ enum AccountGroup {
         AccountGroup.creditCards => 'Credit Cards',
         AccountGroup.loans => 'Loans',
         AccountGroup.investments => 'Investments & Retirement',
+      };
+
+  /// Default accent color used when an account doesn't set its own [Account.color].
+  Color get defaultColor => switch (this) {
+        AccountGroup.banking => BrandColors.primary,
+        AccountGroup.creditCards => BrandColors.expense,
+        AccountGroup.loans => BrandColors.warning,
+        AccountGroup.investments => BrandColors.income,
       };
 }
 

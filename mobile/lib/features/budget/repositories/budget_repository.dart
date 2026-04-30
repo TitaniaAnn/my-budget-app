@@ -24,11 +24,15 @@ class BudgetRepository {
     return data.map<Budget>(Budget.fromJson).toList();
   }
 
-  /// Returns a map of categoryId → total spent (in cents, as a positive number)
+  /// Returns a map of categoryId → net spent (in cents, as a positive number)
   /// for the given date range.
   ///
-  /// Only negative transactions (debits) are summed. Categories with no
-  /// spending in the range are absent from the map.
+  /// Net = sum of debits minus refunds in the same category. A $50 grocery
+  /// charge followed by a $10 refund posted to "Groceries" yields $40, not
+  /// $50. The result can be negative if refunds exceed debits; the caller
+  /// (budget UI) treats those as $0 spent.
+  ///
+  /// Categories with no activity in the range are absent from the map.
   Future<Map<String, int>> fetchSpendingByCategory({
     required String householdId,
     required DateTime from,
@@ -38,7 +42,6 @@ class BudgetRepository {
         .from('transactions')
         .select('category_id, amount')
         .eq('household_id', householdId)
-        .lt('amount', 0) // debits only
         .gte('transaction_date', from.toIso8601String().substring(0, 10))
         .lte('transaction_date', to.toIso8601String().substring(0, 10));
 
@@ -46,8 +49,10 @@ class BudgetRepository {
     for (final row in data) {
       final catId = row['category_id'] as String?;
       if (catId == null) continue;
-      final amount = (row['amount'] as int).abs();
-      totals[catId] = (totals[catId] ?? 0) + amount;
+      // Negate so debits (stored negative) become positive spend and
+      // refunds (stored positive) become negative — i.e. they offset.
+      final delta = -(row['amount'] as int);
+      totals[catId] = (totals[catId] ?? 0) + delta;
     }
     return totals;
   }
@@ -67,7 +72,7 @@ class BudgetRepository {
           'household_id': householdId,
           'category_id': categoryId,
           'amount': amountCents,
-          'period': period.name,
+          'period': period.dbValue,
           'start_date':
               (startDate ?? DateTime.now()).toIso8601String().substring(0, 10),
           'created_by': createdBy,
@@ -88,7 +93,7 @@ class BudgetRepository {
         .from('budgets')
         .update({
           'amount': ?amountCents,
-          'period': ?period?.name,
+          'period': ?period?.dbValue,
         })
         .eq('id', budgetId)
         .select()

@@ -21,15 +21,28 @@ enum BudgetPeriod {
         BudgetPeriod.annual => 'Annual',
       };
 
+  /// Exact string stored in the Postgres `budget_period` enum.
+  /// Used when building INSERT/UPDATE payloads manually.
+  String get dbValue => switch (this) {
+        BudgetPeriod.weekly => 'weekly',
+        BudgetPeriod.biweekly => 'biweekly',
+        BudgetPeriod.monthly => 'monthly',
+        BudgetPeriod.semiannual => 'semiannual',
+        BudgetPeriod.annual => 'annual',
+      };
+
   /// Returns the [from, to] date range for the current cycle of this period.
   ///
   /// Weekly/biweekly cycles are anchored to Monday of the current week.
   /// Biweekly uses the ISO week number to determine which two-week block
   /// we are currently in, so the cycle is consistent across the year.
-  (DateTime from, DateTime to) currentRange() {
-    final now = DateTime.now();
-    // Strip time so comparisons are date-only.
-    final today = DateTime(now.year, now.month, now.day);
+  ///
+  /// [now] defaults to `DateTime.now()`; tests pass a fixed value.
+  (DateTime from, DateTime to) currentRange({DateTime? now}) {
+    final today = () {
+      final n = now ?? DateTime.now();
+      return DateTime(n.year, n.month, n.day);
+    }();
 
     switch (this) {
       case BudgetPeriod.weekly:

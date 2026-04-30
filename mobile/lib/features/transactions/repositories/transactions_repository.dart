@@ -37,7 +37,12 @@ class TransactionsRepository {
     if (accountId != null) query = query.eq('account_id', accountId);
     if (categoryId != null) query = query.eq('category_id', categoryId);
     if (search != null && search.isNotEmpty) {
-      query = query.ilike('description', '%$search%');
+      // Match either the raw description or the cleaned merchant column.
+      // PostgREST's `or=` operator wants commas between branches and any
+      // commas inside the search term must be escaped to keep them from
+      // being parsed as separators.
+      final term = search.replaceAll(',', '\\,');
+      query = query.or('description.ilike.%$term%,merchant.ilike.%$term%');
     }
     if (from != null) {
       query = query.gte('transaction_date', from.toIso8601String().substring(0, 10));
@@ -196,25 +201,30 @@ class TransactionsRepository {
     final rows = await query;
     if (rows.isEmpty) return 0;
 
-    final updates = <Map<String, dynamic>>[];
+    // Group transactions by their matched category so we can update each
+    // category's rows in a single UPDATE…WHERE id IN (…) call rather than
+    // one round-trip per row.
+    final byCategory = <String, List<String>>{};
     for (final row in rows) {
       final categoryId = matcher(
         row['description'] as String,
         isIncome: (row['amount'] as int) > 0,
       );
-      if (categoryId != null) {
-        updates.add({'id': row['id'] as String, 'category_id': categoryId});
-      }
+      if (categoryId == null) continue;
+      byCategory.putIfAbsent(categoryId, () => []).add(row['id'] as String);
     }
+    if (byCategory.isEmpty) return 0;
 
-    for (final update in updates) {
+    var updated = 0;
+    await Future.wait(byCategory.entries.map((entry) async {
       await supabase
           .from('transactions')
-          .update({'category_id': update['category_id']})
-          .eq('id', update['id'] as String);
-    }
+          .update({'category_id': entry.key})
+          .inFilter('id', entry.value);
+      updated += entry.value.length;
+    }));
 
-    return updates.length;
+    return updated;
   }
 
   /// Bulk-inserts imported transactions.

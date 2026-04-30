@@ -1,7 +1,9 @@
 // Single transaction row widget used in the grouped list on TransactionsScreen.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../models/transaction.dart';
 
@@ -19,21 +21,18 @@ class TransactionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isExpense = transaction.amount < 0;
     final category = transaction.category;
+    final cs = context.cs;
+    final colors = context.appColors;
 
-    Color? categoryColor;
-    if (category?.color != null) {
-      categoryColor = Color(
-          int.parse('FF${category!.color!.replaceAll('#', '')}', radix: 16));
-    }
+    final categoryColor =
+        category?.color == null ? null : colorFromHex(category!.color);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 2),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
-        ),
+        decoration: BoxDecoration(color: cs.surface),
         child: Row(
           children: [
             // Category icon circle
@@ -41,15 +40,14 @@ class TransactionCard extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: (categoryColor ?? const Color(0xFF3B82F6))
-                    .withValues(alpha: 0.15),
+                color: (categoryColor ?? cs.primary).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   categoryIconData(category?.icon),
                   size: 18,
-                  color: categoryColor ?? const Color(0xFF64748B),
+                  color: categoryColor ?? colors.textSubtle,
                 ),
               ),
             ),
@@ -72,7 +70,7 @@ class TransactionCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (categoryColor ?? const Color(0xFF334155))
+                        color: (categoryColor ?? Theme.of(context).dividerColor)
                             .withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -80,7 +78,7 @@ class TransactionCard extends StatelessWidget {
                         category.name,
                         style: TextStyle(
                           fontSize: 11,
-                          color: categoryColor ?? const Color(0xFF64748B),
+                          color: categoryColor ?? colors.textSubtle,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -98,15 +96,13 @@ class TransactionCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
-                    color: isExpense
-                        ? const Color(0xFFEF4444)
-                        : const Color(0xFF22C55E),
+                    color: isExpense ? colors.expense : colors.income,
                   ),
                 ),
                 Text(
                   _dateFmt.format(transaction.transactionDate),
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF64748B)),
+                  style:
+                      TextStyle(fontSize: 12, color: colors.textSubtle),
                 ),
               ],
             ),

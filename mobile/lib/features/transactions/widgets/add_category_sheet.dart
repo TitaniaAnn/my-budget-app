@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/color.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 
+import '../../../shared/widgets/field_label.dart';
 class AddCategorySheet extends ConsumerStatefulWidget {
   const AddCategorySheet({super.key});
 
@@ -61,8 +64,7 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(
-        int.parse('FF${_selectedColor.replaceAll('#', '')}', radix: 16));
+    final color = colorFromHex(_selectedColor);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -87,7 +89,7 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           const SizedBox(height: 16),
 
           // Name
-          _label('Category Name'),
+          const FieldLabel('Category Name'),
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(hintText: 'e.g. Pet Care'),
@@ -98,11 +100,11 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           // Income toggle
           Row(
             children: [
-              const Text('Type',
+              Text('Type',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8))),
+                      color: context.appColors.textMuted)),
               const Spacer(),
               _typeChip('Expense', false),
               const SizedBox(width: 8),
@@ -112,13 +114,12 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           const SizedBox(height: 16),
 
           // Color
-          _label('Color'),
+          const FieldLabel('Color'),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: _colorOptions.map((hex) {
-              final c = Color(
-                  int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+              final c = colorFromHex(hex);
               final selected = hex == _selectedColor;
               return GestureDetector(
                 onTap: () => setState(() => _selectedColor = hex),
@@ -142,7 +143,7 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           const SizedBox(height: 16),
 
           // Icon picker
-          _label('Icon'),
+          const FieldLabel('Icon'),
           SizedBox(
             height: 160,
             child: GridView.builder(
@@ -161,16 +162,18 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
                     decoration: BoxDecoration(
                       color: selected
                           ? color.withValues(alpha: 0.2)
-                          : const Color(0xFF1E293B),
+                          : context.cs.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: selected ? color : const Color(0xFF334155),
+                        color: selected
+                            ? color
+                            : Theme.of(context).dividerColor,
                       ),
                     ),
                     child: Icon(
                       categoryIconData(name),
                       size: 18,
-                      color: selected ? color : const Color(0xFF64748B),
+                      color: selected ? color : context.appColors.textSubtle,
                     ),
                   ),
                 );
@@ -194,38 +197,28 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
       ),
     );
   }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8))),
-      );
-
   Widget _typeChip(String label, bool value) {
     final selected = _isIncome == value;
+    final cs = context.cs;
+    final colors = context.appColors;
     return GestureDetector(
       onTap: () => setState(() => _isIncome = value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFF3B82F6).withValues(alpha: 0.15)
-              : const Color(0xFF1E293B),
+              ? cs.primary.withValues(alpha: 0.15)
+              : cs.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
+            color: selected ? cs.primary : Theme.of(context).dividerColor,
           ),
         ),
         child: Text(label,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: selected
-                  ? const Color(0xFF3B82F6)
-                  : const Color(0xFF94A3B8),
+              color: selected ? cs.primary : colors.textMuted,
             )),
       ),
     );

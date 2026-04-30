@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/color.dart';
 import '../models/scenario.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
@@ -134,15 +136,8 @@ class _ScenarioCard extends ConsumerWidget {
   const _ScenarioCard({required this.scenario});
   final Scenario scenario;
 
-  Color get _accent {
-    final hex = scenario.color;
-    if (hex == null) return const Color(0xFF6366F1);
-    try {
-      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return const Color(0xFF6366F1);
-    }
-  }
+  Color get _accent =>
+      colorFromHex(scenario.color, fallback: BrandColors.accent);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

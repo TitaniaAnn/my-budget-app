@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
@@ -48,11 +50,10 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  color: Color(0xFFEF4444), size: 48),
+              Icon(Icons.error_outline, color: context.cs.error, size: 48),
               const SizedBox(height: 12),
               Text(e.toString(),
-                  style: const TextStyle(color: Color(0xFF94A3B8)),
+                  style: TextStyle(color: context.appColors.textMuted),
                   textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -106,7 +107,7 @@ class _DashboardBody extends ConsumerWidget {
                 label: 'Spent',
                 cents: data.monthlySpending,
                 icon: Icons.arrow_upward_rounded,
-                color: const Color(0xFFEF4444),
+                color: context.appColors.expense,
               ),
             ),
             const SizedBox(width: 12),
@@ -115,7 +116,7 @@ class _DashboardBody extends ConsumerWidget {
                 label: 'Income',
                 cents: data.monthlyIncome,
                 icon: Icons.arrow_downward_rounded,
-                color: const Color(0xFF22C55E),
+                color: context.appColors.income,
               ),
             ),
           ],
@@ -215,22 +216,23 @@ class _NetWorthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A5F), Color(0xFF1E293B)],
+        gradient: LinearGradient(
+          colors: [colors.gradientStart, colors.gradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Net Worth',
-              style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+          Text('Net Worth',
+              style: TextStyle(fontSize: 13, color: colors.textMuted)),
           const SizedBox(height: 6),
           Text(
             formatCurrency(netWorthCents),
@@ -238,8 +240,8 @@ class _NetWorthCard extends StatelessWidget {
               fontSize: 36,
               fontWeight: FontWeight.w800,
               color: netWorthCents >= 0
-                  ? const Color(0xFFF8FAFC)
-                  : const Color(0xFFEF4444),
+                  ? context.cs.onSurface
+                  : colors.expense,
             ),
           ),
         ],
@@ -253,34 +255,8 @@ class _AccountsRow extends StatelessWidget {
   final List<Account> accounts;
   const _AccountsRow({required this.accounts});
 
-  Color _typeColor(Account a) {
-    if (a.color != null) {
-      return Color(int.parse('FF${a.color!.replaceAll('#', '')}', radix: 16));
-    }
-    return switch (a.accountType.group) {
-      AccountGroup.banking => const Color(0xFF3B82F6),
-      AccountGroup.creditCards => const Color(0xFFEF4444),
-      AccountGroup.loans => const Color(0xFFF59E0B),
-      AccountGroup.investments => const Color(0xFF22C55E),
-    };
-  }
-
-  IconData _typeIcon(AccountType t) => switch (t) {
-        AccountType.checking => Icons.account_balance_outlined,
-        AccountType.savings => Icons.savings_outlined,
-        AccountType.creditCard => Icons.credit_card_outlined,
-        AccountType.brokerage => Icons.trending_up_outlined,
-        AccountType.iraTraditional ||
-        AccountType.iraRoth =>
-          Icons.account_balance_wallet_outlined,
-        AccountType.retirement401k ||
-        AccountType.retirement403b =>
-          Icons.work_outline,
-        AccountType.hsa => Icons.health_and_safety_outlined,
-        AccountType.college529 => Icons.school_outlined,
-        AccountType.cash => Icons.payments_outlined,
-        AccountType.mortgage => Icons.home_outlined,
-      };
+  Color _typeColor(Account a) =>
+      colorFromHex(a.color, fallback: a.accountType.group.defaultColor);
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +269,9 @@ class _AccountsRow extends StatelessWidget {
         itemBuilder: (context, i) {
           final a = accounts[i];
           final color = _typeColor(a);
-          final isCreditCard = a.accountType == AccountType.creditCard;
+          final isLiability = a.accountType.isLiability;
+          final displayCents =
+              isLiability ? a.currentBalance.abs() : a.currentBalance;
           return Container(
             width: 148,
             padding: const EdgeInsets.all(12),
@@ -307,7 +285,7 @@ class _AccountsRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(_typeIcon(a.accountType), size: 16, color: color),
+                    Icon(a.accountType.icon, size: 16, color: color),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -322,20 +300,20 @@ class _AccountsRow extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  formatCurrency(a.currentBalance),
+                  formatCurrency(displayCents),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: isCreditCard
-                        ? const Color(0xFFEF4444)
+                    color: isLiability
+                        ? context.appColors.expense
                         : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 if (a.institution != null)
                   Text(
                     a.institution!,
-                    style: const TextStyle(
-                        fontSize: 10, color: Color(0xFF64748B)),
+                    style: TextStyle(
+                        fontSize: 10, color: context.appColors.textSubtle),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -378,8 +356,8 @@ class _SummaryTile extends StatelessWidget {
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
               Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF94A3B8))),
+                  style: TextStyle(
+                      fontSize: 12, color: context.appColors.textMuted)),
             ],
           ),
           const SizedBox(height: 8),
@@ -439,16 +417,16 @@ class _SpendingSparkline extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (value, _) {
                         final idx = value.toInt();
+                        final muted = context.appColors.textSubtle;
                         // Show label every 7 days + today
                         if (idx == 29) {
-                          return const Text('Today',
+                          return Text('Today',
                               style: TextStyle(
-                                  fontSize: 9, color: Color(0xFF64748B)));
+                                  fontSize: 9, color: muted));
                         }
                         if ((29 - idx) % 7 == 0 && idx != 29) {
                           return Text('${29 - idx}d',
-                              style: const TextStyle(
-                                  fontSize: 9, color: Color(0xFF64748B)));
+                              style: TextStyle(fontSize: 9, color: muted));
                         }
                         return const SizedBox.shrink();
                       },
@@ -464,8 +442,8 @@ class _SpendingSparkline extends StatelessWidget {
                       BarChartRodData(
                         toY: spendingByDay[i].toDouble(),
                         color: isToday
-                            ? const Color(0xFF3B82F6)
-                            : const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                            ? BrandColors.primary
+                            : BrandColors.primary.withValues(alpha: 0.4),
                         width: 6,
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(3)),
@@ -498,7 +476,8 @@ class _BudgetAlertTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOver = budget.isOverBudget;
-    final color = isOver ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+    final color =
+        isOver ? context.appColors.expense : context.appColors.warning;
     final pct = (budget.progress * 100).round();
 
     return Container(
@@ -544,8 +523,8 @@ class _BudgetAlertTile extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: color)),
               Text('of ${formatCurrency(budget.budget.amount)}',
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF64748B))),
+                  style: TextStyle(
+                      fontSize: 11, color: context.appColors.textSubtle)),
             ],
           ),
         ],
@@ -577,12 +556,7 @@ class _TopCategoriesCard extends StatelessWidget {
         children: categories.map((cat) {
           final fraction =
               totalSpending > 0 ? cat.totalCents / totalSpending : 0.0;
-          Color barColor = const Color(0xFF3B82F6);
-          if (cat.color != null) {
-            barColor = Color(int.parse(
-                'FF${cat.color!.replaceAll('#', '')}',
-                radix: 16));
-          }
+          final barColor = colorFromHex(cat.color, fallback: context.cs.primary);
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
@@ -596,14 +570,14 @@ class _TopCategoriesCard extends StatelessWidget {
                     ),
                     Text(
                       formatCurrency(cat.totalCents),
-                      style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF94A3B8)),
+                      style: TextStyle(
+                          fontSize: 13, color: context.appColors.textMuted),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       '${(fraction * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF64748B)),
+                      style: TextStyle(
+                          fontSize: 12, color: context.appColors.textSubtle),
                     ),
                   ],
                 ),
@@ -613,7 +587,7 @@ class _TopCategoriesCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: fraction.clamp(0, 1),
                     minHeight: 5,
-                    backgroundColor: const Color(0xFF334155),
+                    backgroundColor: Theme.of(context).dividerColor,
                     valueColor: AlwaysStoppedAnimation(barColor),
                   ),
                 ),
@@ -652,9 +626,9 @@ class _SectionHeader extends StatelessWidget {
             onTap: () => onAction?.call(context),
             child: Text(
               actionLabel!,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF3B82F6),
+                  color: context.cs.primary,
                   fontWeight: FontWeight.w500),
             ),
           ),
@@ -685,16 +659,16 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: const Color(0xFF334155)),
+          Icon(icon, size: 64, color: Theme.of(context).dividerColor),
           const SizedBox(height: 16),
           Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B))),
+                  color: context.appColors.textMuted)),
           const SizedBox(height: 8),
           Text(subtitle,
-              style: const TextStyle(color: Color(0xFF475569)),
+              style: TextStyle(color: context.appColors.textSubtle),
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
           ElevatedButton(

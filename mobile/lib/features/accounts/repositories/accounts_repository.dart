@@ -104,22 +104,15 @@ class AccountsRepository {
   /// Recalculates [accountId]'s balance by summing all transaction amounts
   /// and writes the result back to `current_balance`.
   /// Call this after any bulk transaction import.
+  ///
+  /// Implemented as a single Postgres RPC so the read-sum-write happens
+  /// atomically — a concurrent transaction insert can't be lost between
+  /// the read and the write.
   Future<void> recalculateBalance(String accountId) async {
-    final accountRow = await supabase
-        .from('accounts')
-        .select('starting_balance')
-        .eq('id', accountId)
-        .single();
-    final startingBalance = (accountRow['starting_balance'] as int?) ?? 0;
-
-    final rows = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('account_id', accountId);
-
-    final total = rows.fold<int>(startingBalance, (sum, r) => sum + (r['amount'] as int));
-
-    await updateBalance(accountId, total);
+    await supabase.rpc(
+      'recalculate_account_balance',
+      params: {'p_account_id': accountId},
+    );
   }
 
   /// Soft-deletes an account by marking it inactive rather than destroying

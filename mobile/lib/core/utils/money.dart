@@ -22,16 +22,18 @@ String centsToString(int cents) {
       .toStringAsFixed(2);
 }
 
-/// Parses a user-entered string (e.g. "$12.34" or "12.34") to integer cents.
-/// Strips non-numeric characters before parsing so currency symbols are safe.
-/// Example: "12.34" → 1234
+/// Parses a user-entered string (e.g. "-$12.34" or "12.34") to integer cents.
+/// Currency symbols and whitespace are stripped; a leading minus is preserved.
+/// Example: "12.34" → 1234, "-$12.34" → -1234
 int parseToCents(String value) {
+  final negative = value.trimLeft().startsWith('-');
   final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
   if (cleaned.isEmpty) return 0;
   // Multiply by 100 using Decimal to avoid floating-point rounding, then
   // convert to BigInt before toInt() because Decimal doesn't expose toInt().
-  final d = Decimal.parse(cleaned) * Decimal.fromInt(100);
-  return d.round().toBigInt().toInt();
+  final magnitude =
+      (Decimal.parse(cleaned) * Decimal.fromInt(100)).round().toBigInt().toInt();
+  return negative ? -magnitude : magnitude;
 }
 
 /// Returns credit utilization as a percentage (0–100+).

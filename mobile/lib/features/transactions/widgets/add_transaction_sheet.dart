@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
@@ -13,6 +15,7 @@ import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 
+import '../../../shared/widgets/field_label.dart';
 class AddTransactionSheet extends ConsumerStatefulWidget {
   /// Pre-select an account when opened from an account's transaction list.
   final String? preselectedAccountId;
@@ -143,9 +146,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     setState(() => _loading = true);
 
     try {
-      final amountText =
-          _amountController.text.replaceAll(RegExp(r'[^\d.]'), '');
-      final amountCents = (double.parse(amountText) * 100).round();
+      final amountCents = parseToCents(_amountController.text).abs();
       final signedAmount = _isExpense ? -amountCents : amountCents;
       final repo = ref.read(transactionsRepositoryProvider);
 
@@ -249,7 +250,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               // Expense / Income toggle
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: context.appColors.surfaceDeep,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -261,7 +262,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 16),
               // Amount
-              _label('Amount'),
+              const FieldLabel('Amount'),
               TextFormField(
                 controller: _amountController,
                 keyboardType:
@@ -277,7 +278,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 14),
               // Account selector
-              _label('Account'),
+              const FieldLabel('Account'),
               accountsAsync.when(
                 loading: () =>
                     const LinearProgressIndicator(),
@@ -299,7 +300,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 14),
               // Description
-              _label('Description'),
+              const FieldLabel('Description'),
               TextFormField(
                 controller: _descriptionController,
                 decoration:
@@ -315,7 +316,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _label('Merchant (optional)'),
+                        const FieldLabel('Merchant (optional)'),
                         TextFormField(
                           controller: _merchantController,
                           decoration: const InputDecoration(
@@ -329,22 +330,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _label('Date'),
+                        const FieldLabel('Date'),
                         GestureDetector(
                           onTap: _pickDate,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.cs.surface,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: const Color(0xFF334155)),
+                                  color: Theme.of(context).dividerColor),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.calendar_today_outlined,
-                                    size: 16, color: Color(0xFF64748B)),
+                                Icon(Icons.calendar_today_outlined,
+                                    size: 16,
+                                    color: context.appColors.textSubtle),
                                 const SizedBox(width: 6),
                                 Text(
                                   _dateFmt.format(_date),
@@ -361,7 +363,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 14),
               // Category
-              _label('Category (optional)'),
+              const FieldLabel('Category (optional)'),
               categoriesAsync.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (_, _) => const SizedBox.shrink(),
@@ -415,7 +417,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 14),
-                            _label('Interest Rate (optional)'),
+                            const FieldLabel('Interest Rate (optional)'),
                             DropdownButtonFormField<String>(
                               initialValue: _selectedRateId,
                               hint: const Text('Default (purchase rate)'),
@@ -464,6 +466,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   Widget _toggleBtn(String label, bool isExpense) {
     final selected = _isExpense == isExpense;
+    final colors = context.appColors;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _isExpense = isExpense),
@@ -471,9 +474,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? (isExpense
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFF22C55E))
+                ? (isExpense ? colors.expense : colors.income)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
@@ -482,7 +483,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF64748B),
+                color: selected ? Colors.white : colors.textSubtle,
               ),
             ),
           ),
@@ -490,13 +491,4 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       ),
     );
   }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8))),
-      );
 }

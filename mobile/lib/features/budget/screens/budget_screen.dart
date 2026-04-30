@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../features/transactions/widgets/manage_categories_sheet.dart';
 import '../models/budget.dart';
@@ -314,9 +315,9 @@ class _EmptyState extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tap + to set a spending limit\nfor a category.',
-            style: TextStyle(color: Color(0xFF64748B)),
+            style: TextStyle(color: context.appColors.textSubtle),
             textAlign: TextAlign.center,
           ),
         ],

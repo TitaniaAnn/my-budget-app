@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/accounts/models/account.dart';
@@ -57,7 +58,8 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
 
     try {
       // Normalise line endings — bank CSVs commonly use \r\n (Windows).
-      final raw = File(file.path!).readAsStringSync();
+      // Read async so a multi-MB statement doesn't freeze the UI thread.
+      final raw = await File(file.path!).readAsString();
       final content = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
       final rows = const CsvToListConverter(eol: '\n').convert(content);
       if (rows.length < 2) throw Exception('File appears empty');
@@ -284,9 +286,10 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'CSV files from most banks are supported',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            style: TextStyle(
+                fontSize: 13, color: context.appColors.textSubtle),
           ),
           const SizedBox(height: 16),
           // Account selector
@@ -317,14 +320,14 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                  color: context.cs.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                      color: context.cs.error.withValues(alpha: 0.3)),
                 ),
                 child: Text(_error!,
-                    style: const TextStyle(
-                        color: Color(0xFFEF4444), fontSize: 13)),
+                    style: TextStyle(
+                        color: context.cs.error, fontSize: 13)),
               ),
             ),
           if (_preview.isNotEmpty) ...[
@@ -333,14 +336,14 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
               children: [
                 Text(
                   '${_preview.length} transactions found',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF22C55E)),
+                      color: context.appColors.income),
                 ),
                 const Spacer(),
                 Text(
                   'Total: ${formatCurrency(_preview.fold<int>(0, (s, r) => s + r.amountCents))}',
-                  style: const TextStyle(color: Color(0xFF94A3B8)),
+                  style: TextStyle(color: context.appColors.textMuted),
                 ),
               ],
             ),
@@ -350,8 +353,8 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _preview.length.clamp(0, 20),
-                separatorBuilder: (_, _) => const Divider(
-                    height: 1, color: Color(0xFF334155)),
+                separatorBuilder: (_, _) => Divider(
+                    height: 1, color: Theme.of(context).dividerColor),
                 itemBuilder: (_, i) {
                   final r = _preview[i];
                   return Padding(
@@ -360,8 +363,9 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                       children: [
                         Text(
                           DateFormat('MM/dd').format(r.date),
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF64748B)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: context.appColors.textSubtle),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -377,8 +381,8 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: r.amountCents < 0
-                                ? const Color(0xFFEF4444)
-                                : const Color(0xFF22C55E),
+                                ? context.appColors.expense
+                                : context.appColors.income,
                           ),
                         ),
                       ],
@@ -392,8 +396,8 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '+ ${_preview.length - 20} more',
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF64748B)),
+                  style: TextStyle(
+                      fontSize: 12, color: context.appColors.textSubtle),
                   textAlign: TextAlign.center,
                 ),
               ),

@@ -3,8 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/household_provider.dart';
-import '../../../features/auth/providers/auth_provider.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/money.dart';
+import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
 import '../../../features/transactions/widgets/add_category_sheet.dart';
 import '../models/budget.dart';
@@ -50,9 +51,8 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
   }
 
   Future<void> _save() async {
-    final raw = _amountCtrl.text.replaceAll(RegExp(r'[^\d.]'), '');
-    final dollars = double.tryParse(raw);
-    if (dollars == null || dollars <= 0) {
+    final cents = parseToCents(_amountCtrl.text).abs();
+    if (cents <= 0) {
       setState(() => _error = 'Enter a valid amount.');
       return;
     }
@@ -68,7 +68,6 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
 
     try {
       final repo = ref.read(budgetRepositoryProvider);
-      final cents = (dollars * 100).round();
 
       if (_isEditing) {
         await repo.updateBudget(
