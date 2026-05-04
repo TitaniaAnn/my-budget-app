@@ -2,14 +2,18 @@
 // the list of line items extracted by OCR (or entered manually).
 //
 // Line items can be edited in-place and saved back to the database.
-// The "Pair to Transaction" action is a placeholder for future linking logic.
+// "Pair to Transaction" opens [PairReceiptSheet] which calls the
+// `find_receipt_match_candidates` RPC (migration 019) and writes
+// `transactions.receipt_id` on the chosen row.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../shared/widgets/app_sheet.dart';
 import '../models/receipt.dart';
 import '../models/receipt_line_item.dart';
 import '../providers/receipts_provider.dart';
 import '../repositories/receipts_repository.dart';
+import '../widgets/pair_receipt_sheet.dart';
 
 /// Displays the full receipt: image, merchant/date/total fields, and line items.
 ///
@@ -295,6 +299,17 @@ class _ReceiptDetailBody extends ConsumerWidget {
             label: Text(savingMeta ? 'Saving…' : 'Save Changes'),
           ),
         ],
+
+        // ── Pair to Transaction ─────────────────────────────────────────
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => showAppSheet<void>(
+            context,
+            child: PairReceiptSheet(receiptId: receipt.id),
+          ),
+          icon: const Icon(Icons.link_outlined),
+          label: const Text('Pair to Transaction'),
+        ),
 
         // ── Line items ──────────────────────────────────────────────────
         const SizedBox(height: 24),

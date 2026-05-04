@@ -58,6 +58,10 @@ class ReceiptsRepository {
   ///
   /// The receipt starts with [OcrStatus.pending]. An Edge Function (or manual
   /// update) advances the status once OCR is complete.
+  ///
+  /// If the row insert fails after the upload, the storage object is
+  /// best-effort removed so the bucket doesn't accumulate orphans the user
+  /// can't see.
   Future<Receipt> uploadReceipt({
     required String householdId,
     required String uploadedBy,
@@ -73,22 +77,29 @@ class ReceiptsRepository {
     // Upload image to the private receipts bucket.
     await supabase.storage.from(_bucket).upload(storagePath, imageFile);
 
-    // Insert the receipt row with pending OCR status.
-    final data = await supabase
-        .from('receipts')
-        .insert({
-          'household_id': householdId,
-          'uploaded_by': uploadedBy,
-          'storage_path': storagePath,
-          'merchant_name': merchantName,
-          'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
-          'total_amount': totalAmountCents,
-          'ocr_status': 'pending',
-        })
-        .select()
-        .single();
-
-    return Receipt.fromJson(data);
+    try {
+      final data = await supabase
+          .from('receipts')
+          .insert({
+            'household_id': householdId,
+            'uploaded_by': uploadedBy,
+            'storage_path': storagePath,
+            'merchant_name': merchantName,
+            'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
+            'total_amount': totalAmountCents,
+            'ocr_status': 'pending',
+          })
+          .select()
+          .single();
+      return Receipt.fromJson(data);
+    } catch (_) {
+      // Compensate the just-uploaded object. Swallow cleanup failures —
+      // the original error is what the caller needs to see.
+      try {
+        await supabase.storage.from(_bucket).remove([storagePath]);
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   /// Updates editable receipt metadata (merchant, date, total).
@@ -112,31 +123,25 @@ class ReceiptsRepository {
     return Receipt.fromJson(data);
   }
 
-  /// Inserts or replaces all line items for a receipt in a single upsert.
+  /// Atomically replaces all line items for a receipt.
+  ///
+  /// Implemented as a single Postgres RPC (migration 018) so a delete-then-
+  /// insert race can't leave the receipt with zero line items if the insert
+  /// half fails. The RPC assigns `sort_order` from the array position.
   Future<List<ReceiptLineItem>> saveLineItems({
     required String receiptId,
     required List<Map<String, dynamic>> items,
   }) async {
-    // Delete existing items first to avoid orphaned rows when count changes.
-    await supabase
-        .from('receipt_line_items')
-        .delete()
-        .eq('receipt_id', receiptId);
-
-    if (items.isEmpty) return [];
-
-    final withReceipt = items
-        .asMap()
-        .entries
-        .map((e) => {...e.value, 'receipt_id': receiptId, 'sort_order': e.key})
+    final data = await supabase.rpc(
+      'save_receipt_line_items',
+      params: {'p_receipt_id': receiptId, 'p_items': items},
+    );
+    if (data == null) return [];
+    return (data as List)
+        .map<ReceiptLineItem>(
+          (e) => ReceiptLineItem.fromJson(e as Map<String, dynamic>),
+        )
         .toList();
-
-    final data = await supabase
-        .from('receipt_line_items')
-        .insert(withReceipt)
-        .select();
-
-    return data.map<ReceiptLineItem>(ReceiptLineItem.fromJson).toList();
   }
 
   /// Generates a short-lived signed URL for displaying a private receipt image.
@@ -159,5 +164,70 @@ class ReceiptsRepository {
       supabase.from('receipts').delete().eq('id', receiptId),
       supabase.storage.from(_bucket).remove([storagePath]),
     ]);
+  }
+
+  /// Finds transactions that plausibly pair with [receiptId], ranked by
+  /// the SQL `find_receipt_match_candidates` RPC (migration 019).
+  ///
+  /// The RPC handles the ranking and RLS — we just deserialize the rows.
+  /// Empty list means no nearby transactions matched (or the user can't
+  /// see the receipt; RLS hides both cases the same way).
+  Future<List<ReceiptMatchCandidate>> findMatchCandidates(
+    String receiptId,
+  ) async {
+    final data = await supabase.rpc(
+      'find_receipt_match_candidates',
+      params: {'p_receipt_id': receiptId},
+    );
+    if (data == null) return [];
+    return (data as List)
+        .map<ReceiptMatchCandidate>(
+          (row) => ReceiptMatchCandidate.fromJson(row as Map<String, dynamic>),
+        )
+        .toList();
+  }
+}
+
+/// A transaction surfaced as a candidate for pairing with a receipt.
+///
+/// This is a query-result DTO, not a database table — kept next to the
+/// repository rather than in `models/` because nothing else owns it.
+/// Score is the RPC's combined date+amount proximity (0–1, higher better).
+class ReceiptMatchCandidate {
+  const ReceiptMatchCandidate({
+    required this.transactionId,
+    required this.accountId,
+    required this.transactionDate,
+    required this.amountCents,
+    required this.description,
+    required this.merchant,
+    required this.score,
+  });
+
+  final String transactionId;
+  final String accountId;
+  final DateTime transactionDate;
+
+  /// Signed amount in cents (negative for debits — same sign convention
+  /// as `transactions.amount`). The sheet displays `.abs()`.
+  final int amountCents;
+
+  final String description;
+  final String? merchant;
+
+  /// Combined match score from the RPC, 0.0–1.0. 1.0 means same date and
+  /// exact amount; ~0.5 means one of the two is off but still in window.
+  final double score;
+
+  factory ReceiptMatchCandidate.fromJson(Map<String, dynamic> json) {
+    return ReceiptMatchCandidate(
+      transactionId: json['transaction_id'] as String,
+      accountId: json['account_id'] as String,
+      transactionDate: DateTime.parse(json['transaction_date'] as String),
+      amountCents: json['amount'] as int,
+      description: json['description'] as String,
+      merchant: json['merchant'] as String?,
+      score: (json['score'] as num).toDouble(),
+    );
   }
 }

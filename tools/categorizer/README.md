@@ -11,7 +11,11 @@ mobile/assets/ml/
   category_model.onnx    — ONNX-exported sklearn pipeline
                            (TfidfVectorizer + LogisticRegression)
   vocab.json             — { ngram: index, ... } — feeds the Dart tokenizer
-  labels.json            — [ category_id, ... ] indexed by model output column
+  labels.json            — [ category_name, ... ] indexed by model output
+                           column. The Dart side resolves each name back to
+                           a Category row by matching `Category.name`, so
+                           household category renames silently invalidate
+                           predictions for that class until retrain.
   test_vectors.json      — golden-set fixture: input string → expected
                            sparse TF-IDF output. Asserts Dart/Python parity.
 ```

@@ -77,10 +77,14 @@ void main() {
 
   group('expense matching', () {
     test('matches grocery merchants', () {
-      expect(matcher.match('WALMART SUPERCENTER', isIncome: false),
-          'id-Groceries');
-      expect(matcher.match('Trader Joe\'s 555', isIncome: false),
-          'id-Groceries');
+      expect(
+        matcher.match('WALMART SUPERCENTER', isIncome: false),
+        'id-Groceries',
+      );
+      expect(
+        matcher.match('Trader Joe\'s 555', isIncome: false),
+        'id-Groceries',
+      );
     });
 
     test('matches gas stations', () {
@@ -89,27 +93,24 @@ void main() {
     });
 
     test('matches subscription services', () {
-      expect(matcher.match('NETFLIX.COM', isIncome: false),
-          'id-Subscriptions');
-      expect(matcher.match('SPOTIFY USA', isIncome: false),
-          'id-Subscriptions');
+      expect(matcher.match('NETFLIX.COM', isIncome: false), 'id-Subscriptions');
+      expect(matcher.match('SPOTIFY USA', isIncome: false), 'id-Subscriptions');
     });
 
     test('matches restaurants by chain name', () {
-      expect(matcher.match('CHIPOTLE 0123', isIncome: false),
-          'id-Restaurants');
+      expect(matcher.match('CHIPOTLE 0123', isIncome: false), 'id-Restaurants');
     });
 
     test('matches case-insensitively', () {
-      expect(matcher.match('starbucks', isIncome: false),
-          'id-Coffee & Drinks');
-      expect(matcher.match('STARBUCKS', isIncome: false),
-          'id-Coffee & Drinks');
+      expect(matcher.match('starbucks', isIncome: false), 'id-Coffee & Drinks');
+      expect(matcher.match('STARBUCKS', isIncome: false), 'id-Coffee & Drinks');
     });
 
     test('returns null for unrecognised merchants', () {
-      expect(matcher.match('TOTALLY UNKNOWN MERCHANT XYZ', isIncome: false),
-          isNull);
+      expect(
+        matcher.match('TOTALLY UNKNOWN MERCHANT XYZ', isIncome: false),
+        isNull,
+      );
     });
   });
 
@@ -120,8 +121,10 @@ void main() {
     });
 
     test('matches refunds as Other Income', () {
-      expect(matcher.match('AMAZON REFUND 123', isIncome: true),
-          'id-Other Income');
+      expect(
+        matcher.match('AMAZON REFUND 123', isIncome: true),
+        'id-Other Income',
+      );
     });
 
     test('does not match expense rules when isIncome=true', () {
@@ -138,8 +141,51 @@ void main() {
     test('Transfer beats more general matches', () {
       // "ZELLE" is in Transfer; the matcher iterates rules in declared order
       // and Transfer is first.
-      expect(matcher.match('ZELLE PAYMENT TO X', isIncome: false),
-          'id-Transfer');
+      expect(
+        matcher.match('ZELLE PAYMENT TO X', isIncome: false),
+        'id-Transfer',
+      );
+    });
+
+    test('"renters insurance" is Home Insurance, not Rent/Mortgage', () {
+      // Regression: 'rent' used to be a substring keyword in Rent/Mortgage,
+      // and Rent/Mortgage was checked before Home Insurance — so "RENTERS
+      // INSURANCE PMT" was mis-categorised as Rent/Mortgage. Both the rule
+      // ordering and the keyword specificity were tightened.
+      expect(
+        matcher.match('RENTERS INSURANCE PMT', isIncome: false),
+        'id-Home Insurance',
+      );
+      expect(
+        matcher.match('Renters Insurance — Lemonade', isIncome: false),
+        'id-Home Insurance',
+      );
+    });
+
+    test('genuine rent payments still match Rent / Mortgage', () {
+      expect(
+        matcher.match('RENT PAYMENT MARCH', isIncome: false),
+        'id-Rent / Mortgage',
+      );
+      expect(
+        matcher.match('APT RENT 0301', isIncome: false),
+        'id-Rent / Mortgage',
+      );
+      expect(
+        matcher.match('MORTGAGE PYMT WELLS FARGO', isIncome: false),
+        'id-Rent / Mortgage',
+      );
+    });
+
+    test('home insurance keywords match Home Insurance', () {
+      expect(
+        matcher.match('HOMEOWNER INSURANCE', isIncome: false),
+        'id-Home Insurance',
+      );
+      expect(
+        matcher.match('HOME INSURANCE PREMIUM', isIncome: false),
+        'id-Home Insurance',
+      );
     });
   });
 
@@ -148,7 +194,12 @@ void main() {
       // Build a matcher with only one category so rules that fire for other
       // names can't resolve to an id.
       final m = CategoryMatcher([
-        Category(id: 'id-Transfer', name: 'Transfer', isIncome: false, sortOrder: 0),
+        Category(
+          id: 'id-Transfer',
+          name: 'Transfer',
+          isIncome: false,
+          sortOrder: 0,
+        ),
       ]);
       // "shell" matches Gas — but Gas is absent.
       expect(m.match('SHELL OIL 7351', isIncome: false), isNull);

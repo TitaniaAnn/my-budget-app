@@ -53,10 +53,16 @@ class TransactionsRepository {
       query = query.or('description.ilike.%$term%,merchant.ilike.%$term%');
     }
     if (from != null) {
-      query = query.gte('transaction_date', from.toIso8601String().substring(0, 10));
+      query = query.gte(
+        'transaction_date',
+        from.toIso8601String().substring(0, 10),
+      );
     }
     if (to != null) {
-      query = query.lte('transaction_date', to.toIso8601String().substring(0, 10));
+      query = query.lte(
+        'transaction_date',
+        to.toIso8601String().substring(0, 10),
+      );
     }
 
     final data = await query
@@ -138,8 +144,10 @@ class TransactionsRepository {
           'merchant': merchant,
           'category_id': categoryId,
           'rate_id': rateId,
-          'transaction_date':
-              transactionDate.toIso8601String().substring(0, 10),
+          'transaction_date': transactionDate.toIso8601String().substring(
+            0,
+            10,
+          ),
           'source': 'manual',
           if (categoryId != null) 'category_assigned_by': 'user',
           if (categoryId != null)
@@ -185,23 +193,44 @@ class TransactionsRepository {
     required DateTime transactionDate,
     String? notes,
   }) async {
-    await supabase.from('transactions').update({
-      'amount': amount,
-      'description': description,
-      'merchant': merchant,
-      'category_id': categoryId,
-      'rate_id': rateId,
-      'transaction_date': transactionDate.toIso8601String().substring(0, 10),
-      'notes': notes,
-      if (categoryId != null) 'category_assigned_by': 'user',
-      if (categoryId != null)
-        'category_assigned_at': DateTime.now().toIso8601String(),
-    }).eq('id', id);
+    await supabase
+        .from('transactions')
+        .update({
+          'amount': amount,
+          'description': description,
+          'merchant': merchant,
+          'category_id': categoryId,
+          'rate_id': rateId,
+          'transaction_date': transactionDate.toIso8601String().substring(
+            0,
+            10,
+          ),
+          'notes': notes,
+          if (categoryId != null) 'category_assigned_by': 'user',
+          if (categoryId != null)
+            'category_assigned_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', id);
   }
 
   /// Hard-deletes a transaction row.
   Future<void> deleteTransaction(String id) async {
     await supabase.from('transactions').delete().eq('id', id);
+  }
+
+  /// Pairs an existing transaction with a receipt by setting [receiptId],
+  /// or unpairs when [receiptId] is null. The schema permits many
+  /// transactions per receipt (an installment plan, a bill split across
+  /// two charges) so this never inspects whether the receipt is already
+  /// linked elsewhere — the caller decides what makes sense.
+  Future<void> setReceiptId({
+    required String transactionId,
+    required String? receiptId,
+  }) async {
+    await supabase
+        .from('transactions')
+        .update({'receipt_id': receiptId})
+        .eq('id', transactionId);
   }
 
   /// Re-runs the [categorizer] on all uncategorized transactions for
@@ -237,21 +266,28 @@ class TransactionsRepository {
         amountCents: (row['amount'] as int),
       );
       if (r == null) continue;
-      groups.putIfAbsent((r.categoryId, r.source), () => []).add(row['id'] as String);
+      groups
+          .putIfAbsent((r.categoryId, r.source), () => [])
+          .add(row['id'] as String);
     }
     if (groups.isEmpty) return 0;
 
     final now = DateTime.now().toIso8601String();
     var updated = 0;
-    await Future.wait(groups.entries.map((entry) async {
-      final (categoryId, source) = entry.key;
-      await supabase.from('transactions').update({
-        'category_id': categoryId,
-        'category_assigned_by': source.dbValue,
-        'category_assigned_at': now,
-      }).inFilter('id', entry.value);
-      updated += entry.value.length;
-    }));
+    await Future.wait(
+      groups.entries.map((entry) async {
+        final (categoryId, source) = entry.key;
+        await supabase
+            .from('transactions')
+            .update({
+              'category_id': categoryId,
+              'category_assigned_by': source.dbValue,
+              'category_assigned_at': now,
+            })
+            .inFilter('id', entry.value);
+        updated += entry.value.length;
+      }),
+    );
 
     return updated;
   }
@@ -259,19 +295,23 @@ class TransactionsRepository {
   /// Bulk-inserts imported transactions.
   ///
   /// Uses upsert with conflict resolution on (account_id, external_id) so
-  /// re-importing the same CSV is safe — duplicates are silently ignored.
-  /// Returns the number of rows submitted (including any that were skipped).
+  /// re-importing the same CSV is safe. Returns a [BulkImportResult] with
+  /// the count actually inserted vs. skipped as duplicates — the user-facing
+  /// "Imported N transactions" toast needs this distinction so the count
+  /// matches reality after a partial re-import.
   ///
   /// Caller is responsible for setting `category_assigned_by` /
   /// `category_assigned_at` on any row where they also set `category_id`
   /// (the import sheet routes through the Categorizer façade for this).
-  Future<int> bulkImport({
+  Future<BulkImportResult> bulkImport({
     required String householdId,
     required String accountId,
     required String enteredBy,
     required List<Map<String, dynamic>> rows,
   }) async {
-    if (rows.isEmpty) return 0;
+    if (rows.isEmpty) {
+      return const BulkImportResult(inserted: 0, skipped: 0);
+    }
 
     final enriched = rows.map((r) {
       return {
@@ -284,10 +324,32 @@ class TransactionsRepository {
       };
     }).toList();
 
-    await supabase
+    // ignoreDuplicates: true makes the upsert behave like INSERT … ON
+    // CONFLICT DO NOTHING. The returned select() then contains only the
+    // rows that were actually written, so we can report a truthful count.
+    final returned = await supabase
         .from('transactions')
-        .upsert(enriched, onConflict: 'account_id,external_id');
+        .upsert(
+          enriched,
+          onConflict: 'account_id,external_id',
+          ignoreDuplicates: true,
+        )
+        .select('id');
 
-    return enriched.length;
+    final inserted = returned.length;
+    return BulkImportResult(
+      inserted: inserted,
+      skipped: enriched.length - inserted,
+    );
   }
+}
+
+/// Outcome of a [TransactionsRepository.bulkImport] call. The UI shows
+/// `inserted` to the user and may surface `skipped` separately to explain
+/// "fewer rows than the CSV had → duplicates were dropped".
+class BulkImportResult {
+  const BulkImportResult({required this.inserted, required this.skipped});
+
+  final int inserted;
+  final int skipped;
 }

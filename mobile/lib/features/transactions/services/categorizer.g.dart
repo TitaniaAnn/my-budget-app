@@ -6,7 +6,7 @@ part of 'categorizer.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$categorizerHash() => r'5d55e5b1fea8bacf7bfe2f38d4bf3e53c61d266c';
+String _$categorizerHash() => r'7d07e5159b7b6d72babba016ba712f51908a351a';
 
 /// Riverpod provider for the singleton [Categorizer].
 ///

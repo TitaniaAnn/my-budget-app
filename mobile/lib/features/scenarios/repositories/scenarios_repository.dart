@@ -11,16 +11,64 @@ ScenariosRepository scenariosRepository(ScenariosRepositoryRef ref) {
   return ScenariosRepository();
 }
 
+/// Walks backward from today's known net worth, emitting one end-of-day
+/// balance per transaction date.
+///
+/// `B_today = currentNetWorth`, and for each older transaction date `d` in
+/// descending order, `B_d = B_{prev} - D_{prev}`, where `prev` is the
+/// previous date emitted (or today on the first step). Days with no
+/// transactions are not in the output — adjacent emitted points are correct
+/// because non-transaction days have zero delta.
+///
+/// Returns points oldest-first so a chart can draw left-to-right.
+///
+/// Pure function so it can be regression-tested without a Supabase fixture
+/// (this is the math the off-by-one bug lived in).
+List<({DateTime date, int balanceCents})> reconstructHistoricalNetWorth({
+  required int currentNetWorth,
+  required Map<DateTime, int> deltasByDate,
+  required DateTime today,
+}) {
+  final todayKey = DateTime(today.year, today.month, today.day);
+
+  // Sorted descending; only dates strictly after today are dropped (a
+  // misdated future row should not pull current-balance into the past).
+  final dates = deltasByDate.keys.where((d) => !d.isAfter(todayKey)).toList()
+    ..sort((a, b) => b.compareTo(a));
+
+  final points = <({DateTime date, int balanceCents})>[];
+  var balance = currentNetWorth;
+  var prev = todayKey;
+  points.add((date: todayKey, balanceCents: balance));
+
+  for (final date in dates) {
+    if (!date.isBefore(prev)) continue; // skip today / duplicates
+    // Undo the deltas of `prev` to step from end-of-`prev` to end-of-`date`.
+    // Between two adjacent transaction dates there are no other deltas, so
+    // this is a single subtraction even when many days separate them.
+    balance -= deltasByDate[prev] ?? 0;
+    points.add((date: date, balanceCents: balance));
+    prev = date;
+  }
+
+  return points.reversed.toList();
+}
+
 class ScenariosRepository {
   /// Reconstructs historical net worth by walking backward from [currentNetWorth].
   ///
   /// Fetches all transactions for the household from [lookbackDays] ago to
   /// today, groups them by date, then replays them in reverse to build a
-  /// running balance at each date. Returns points oldest-first.
+  /// running end-of-day balance at each transaction date. Returns points
+  /// oldest-first.
   ///
-  /// Because account balances already reflect all past transactions, we
-  /// start from today's known net worth and subtract each day's net delta
-  /// as we step backward.
+  /// Because account balances already reflect all past transactions, we start
+  /// from today's known net worth (== end-of-today balance) and walk back:
+  /// `B_{date} = B_{prev} - D_{prev}`, where `prev` is the next-newer date
+  /// emitted (or today on the first step). Concretely: to compute end-of-day
+  /// balance for `date`, we undo the transactions that happened on every
+  /// day strictly *after* `date` — which, between two adjacent transaction
+  /// dates in the sorted list, reduces to undoing only the newer one.
   Future<List<({DateTime date, int balanceCents})>> fetchHistoricalNetWorth({
     required String householdId,
     required int currentNetWorth,
@@ -40,37 +88,20 @@ class ScenariosRepository {
       final dateStr = row['transaction_date'] as String;
       final parts = dateStr.split('-');
       final date = DateTime(
-          int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      deltasByDate[date] =
-          (deltasByDate[date] ?? 0) + (row['amount'] as int);
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+      deltasByDate[date] = (deltasByDate[date] ?? 0) + (row['amount'] as int);
     }
 
-    // Walk backward from today, subtracting each day's transactions.
-    // This reconstructs what the balance was before those transactions.
-    final today = DateTime.now();
-    final todayKey =
-        DateTime(today.year, today.month, today.day);
-
-    var balance = currentNetWorth;
-    final points = <({DateTime date, int balanceCents})>[];
-
-    // Collect all unique dates in descending order.
-    final dates = deltasByDate.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
-
-    // Insert today as the anchor point.
-    points.add((date: todayKey, balanceCents: balance));
-
-    for (final date in dates) {
-      if (date == todayKey) continue;
-      // Reverse the transactions that happened on this date.
-      balance -= deltasByDate[date]!;
-      points.add((date: date, balanceCents: balance));
-    }
-
-    // Return oldest-first so the chart draws left-to-right.
-    return points.reversed.toList();
+    return reconstructHistoricalNetWorth(
+      currentNetWorth: currentNetWorth,
+      deltasByDate: deltasByDate,
+      today: DateTime.now(),
+    );
   }
+
   /// Fetches all scenarios for the household, newest first.
   Future<List<Scenario>> fetchScenarios(String householdId) async {
     final data = await supabase
@@ -112,8 +143,10 @@ class ScenariosRepository {
           'name': name,
           'description': ?description,
           'color': ?color,
-          'base_date':
-              (baseDate ?? DateTime.now()).toIso8601String().substring(0, 10),
+          'base_date': (baseDate ?? DateTime.now()).toIso8601String().substring(
+            0,
+            10,
+          ),
           'is_baseline': false,
           'is_goal': isGoal,
           'target_amount': ?targetAmount,
@@ -200,8 +233,7 @@ class ScenariosRepository {
         .from('scenario_events')
         .update({
           'label': ?label,
-          'event_date':
-              ?eventDate?.toIso8601String().substring(0, 10),
+          'event_date': ?eventDate?.toIso8601String().substring(0, 10),
           'amount': ?amountCents,
           'event_type': ?eventType?.name,
           'is_recurring': ?isRecurring,
