@@ -34,33 +34,28 @@ class BudgetRepository {
   ///
   /// Categories with no activity in the range are absent from the map.
   ///
-  /// KNOWN SCALE LIMIT: this fetches every transaction row in the range
-  /// and aggregates in Dart. Fine at single-household scale (a few thousand
-  /// rows/year) — if this becomes a hosted service or households grow into
-  /// the millions of rows, swap for a `get_category_spending` SQL function
-  /// (one round-trip, server-side `GROUP BY category_id, SUM(amount)`).
+  /// Aggregation runs server-side via the `get_category_spending` RPC
+  /// (migration 021) — a single row per category over the wire instead
+  /// of every transaction in the range. RLS still applies (the RPC runs
+  /// as the caller, no SECURITY DEFINER).
   Future<Map<String, int>> fetchSpendingByCategory({
     required String householdId,
     required DateTime from,
     required DateTime to,
   }) async {
-    final data = await supabase
-        .from('transactions')
-        .select('category_id, amount')
-        .eq('household_id', householdId)
-        .gte('transaction_date', from.toIso8601String().substring(0, 10))
-        .lte('transaction_date', to.toIso8601String().substring(0, 10));
-
-    final totals = <String, int>{};
-    for (final row in data) {
-      final catId = row['category_id'] as String?;
-      if (catId == null) continue;
-      // Negate so debits (stored negative) become positive spend and
-      // refunds (stored positive) become negative — i.e. they offset.
-      final delta = -(row['amount'] as int);
-      totals[catId] = (totals[catId] ?? 0) + delta;
-    }
-    return totals;
+    final data = await supabase.rpc(
+      'get_category_spending',
+      params: {
+        'p_household_id': householdId,
+        'p_from': from.toIso8601String().substring(0, 10),
+        'p_to': to.toIso8601String().substring(0, 10),
+      },
+    );
+    if (data == null) return {};
+    return {
+      for (final row in data as List)
+        row['category_id'] as String: (row['net_cents'] as num).toInt(),
+    };
   }
 
   /// Creates a new budget and returns it.
