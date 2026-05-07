@@ -34,10 +34,22 @@ class ParsedStatementRow {
 }
 
 class ParsedStatement {
-  const ParsedStatement({required this.rows, required this.skipped});
+  const ParsedStatement({
+    required this.rows,
+    required this.skipped,
+    this.warnings = const [],
+  });
 
   final List<ParsedStatementRow> rows;
+
+  /// Rows the parser couldn't make sense of (bad date, missing amount,
+  /// too few columns). These never reach the import.
   final List<String> skipped;
+
+  /// Anomalies on rows that *did* import. The user should see these
+  /// before confirming — e.g. a split debit/credit row where both
+  /// columns were non-zero, which is not legal but still parsed.
+  final List<String> warnings;
 }
 
 /// Top-level entry point. Suitable for `compute()` so a multi-MB statement
@@ -86,6 +98,7 @@ ParsedStatement parseStatementCsv(String content) {
 
   final out = <ParsedStatementRow>[];
   final skipped = <String>[];
+  final warnings = <String>[];
   // Per-base-key occurrence counter so legitimate duplicate transactions on
   // the same day (same description and amount) get unique externalIds.
   final keyCounts = <String, int>{};
@@ -116,11 +129,13 @@ ParsedStatement parseStatementCsv(String content) {
 
     final int? cents;
     final amountErr = StringBuffer();
+    final amountWarn = StringBuffer();
     if (hasSplit) {
       cents = _parseSplitAmount(
         debit: row[debitIdx].toString().trim(),
         credit: row[creditIdx].toString().trim(),
         err: amountErr,
+        warn: amountWarn,
       );
     } else {
       cents = _parseSingleAmount(
@@ -132,6 +147,9 @@ ParsedStatement parseStatementCsv(String content) {
     if (cents == null) {
       skipped.add('Row $rowNum: ${amountErr.toString()}');
       continue;
+    }
+    if (amountWarn.isNotEmpty) {
+      warnings.add('Row $rowNum: ${amountWarn.toString()}');
     }
 
     final isoDate = date.toIso8601String().substring(0, 10);
@@ -149,7 +167,7 @@ ParsedStatement parseStatementCsv(String content) {
     );
   }
 
-  return ParsedStatement(rows: out, skipped: skipped);
+  return ParsedStatement(rows: out, skipped: skipped, warnings: warnings);
 }
 
 /// Returns the index of the first header containing any candidate substring.
@@ -244,10 +262,16 @@ int? _parseSingleAmount({
 
 /// One column has the magnitude, the other is empty. Some banks export
 /// both as positive — debit becomes negative cents, credit stays positive.
+///
+/// When both columns hold non-zero values (which shouldn't happen for a
+/// well-formed statement), a message is written to [warn] and the credit
+/// value is preferred. The row still imports — the user sees the warning
+/// in the import preview and can correct sign before confirming.
 int? _parseSplitAmount({
   required String debit,
   required String credit,
   required StringBuffer err,
+  required StringBuffer warn,
 }) {
   final hasDebit = debit.isNotEmpty;
   final hasCredit = credit.isNotEmpty;
@@ -256,13 +280,22 @@ int? _parseSplitAmount({
     return null;
   }
   if (hasDebit && hasCredit) {
-    // Defensive: a single transaction shouldn't have both columns filled.
-    // Trust whichever is non-zero; if both are non-zero, prefer credit
-    // (refunds posted as a debit/credit pair sometimes show up this way).
     final d = _parseToCentsStrict(debit, StringBuffer());
     final c = _parseToCentsStrict(credit, StringBuffer());
-    if (c != null && c != 0) return c.abs();
-    if (d != null && d != 0) return -d.abs();
+    final dNonZero = d != null && d != 0;
+    final cNonZero = c != null && c != 0;
+    if (dNonZero && cNonZero) {
+      // Both filled and both non-zero — surface to the caller. Refunds
+      // posted as a debit/credit pair occasionally land here, so prefer
+      // the credit value rather than skipping the row.
+      warn.write(
+        'both debit ($debit) and credit ($credit) columns are non-zero; '
+        'used credit value (review sign before importing)',
+      );
+      return c.abs();
+    }
+    if (cNonZero) return c.abs();
+    if (dNonZero) return -d.abs();
     return 0;
   }
   if (hasDebit) {

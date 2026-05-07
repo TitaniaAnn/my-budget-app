@@ -18,13 +18,20 @@ import 'package:mybudget/features/transactions/services/category_matcher.dart';
 import 'package:mybudget/features/transactions/services/ml_category_classifier.dart';
 
 List<Category> _categories() => [
-      Category(id: 'id-Coffee & Drinks', name: 'Coffee & Drinks',
-          isIncome: false, sortOrder: 0),
-      Category(id: 'id-Groceries', name: 'Groceries',
-          isIncome: false, sortOrder: 0),
-      Category(id: 'id-Transfer', name: 'Transfer',
-          isIncome: false, sortOrder: 0),
-    ];
+  Category(
+    id: 'id-Coffee & Drinks',
+    name: 'Coffee & Drinks',
+    isIncome: false,
+    sortOrder: 0,
+  ),
+  Category(
+    id: 'id-Groceries',
+    name: 'Groceries',
+    isIncome: false,
+    sortOrder: 0,
+  ),
+  Category(id: 'id-Transfer', name: 'Transfer', isIncome: false, sortOrder: 0),
+];
 
 void main() {
   group('without an ML model', () {
@@ -65,13 +72,15 @@ void main() {
       final c = Categorizer(
         categories: cats,
         keywordMatcher: CategoryMatcher(cats),
-        mlClassifier: _StubMl(predictions: {
-          'STARBUCKS STORE 1234||-': const MlPrediction(
-            categoryName: 'Groceries',
-            categoryId: 'id-Groceries',
-            confidence: 0.9,
-          ),
-        }),
+        mlClassifier: _StubMl(
+          predictions: {
+            'STARBUCKS STORE 1234||-': const MlPrediction(
+              categoryName: 'Groceries',
+              categoryId: 'id-Groceries',
+              confidence: 0.9,
+            ),
+          },
+        ),
         minMlConfidence: 0.55,
       );
       final r = c.categorize(
@@ -104,13 +113,15 @@ void main() {
       final c = Categorizer(
         categories: cats,
         keywordMatcher: CategoryMatcher(cats),
-        mlClassifier: _StubMl(predictions: {
-          'STARBUCKS STORE 1234||-': const MlPrediction(
-            categoryName: 'Subscriptions', // not in cats
-            categoryId: null,              // resolver couldn't map it
-            confidence: 0.99,
-          ),
-        }),
+        mlClassifier: _StubMl(
+          predictions: {
+            'STARBUCKS STORE 1234||-': const MlPrediction(
+              categoryName: 'Subscriptions', // not in cats
+              categoryId: null, // resolver couldn't map it
+              confidence: 0.99,
+            ),
+          },
+        ),
       );
       final r = c.categorize(
         description: 'STARBUCKS STORE 1234',
@@ -130,7 +141,7 @@ void main() {
 /// just that method.
 class _StubMl implements MlCategoryClassifier {
   _StubMl({required Map<String, MlPrediction?> predictions})
-      : _predictions = predictions;
+    : _predictions = predictions;
 
   final Map<String, MlPrediction?> _predictions;
 
@@ -139,7 +150,7 @@ class _StubMl implements MlCategoryClassifier {
     required String description,
     String? merchant,
     required int amountCents,
-    required List<Category> categories,
+    required Map<String, Category> categoriesByName,
     double minConfidence = 0.55,
   }) {
     final sign = amountCents > 0 ? '+' : '-';

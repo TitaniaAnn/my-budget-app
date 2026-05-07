@@ -154,6 +154,14 @@ class ReceiptsRepository {
   }
 
   /// Soft-deletes a receipt by removing both the DB row and Storage object.
+  ///
+  /// KNOWN LIMITATION (acceptable for personal use): this is best-effort,
+  /// not transactional. If the storage delete fails after the row delete
+  /// commits, the storage object is orphaned and unreachable through the
+  /// app — once the row is gone, RLS no longer authorises any
+  /// `{household_id}/...` path read. For a hosted-service rewrite, the
+  /// senior fix is an Edge Function with a pending-deletion queue
+  /// (mark-for-delete in DB, retry storage cleanup with backoff).
   Future<void> deleteReceipt({
     required String receiptId,
     required String storagePath,

@@ -81,6 +81,11 @@ def build_classifier() -> LogisticRegression:
         max_iter=1000,
         class_weight="balanced",
         solver="liblinear",
+        # Pinned explicitly: liblinear's implicit default. sklearn ≥ 1.5
+        # warns when this is omitted, and skl2onnx's converter cares
+        # which strategy was used. Don't change without re-exporting the
+        # ONNX model AND re-checking the Dart parity fixture.
+        multi_class="ovr",
     )
 
 

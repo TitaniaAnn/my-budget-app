@@ -12,6 +12,16 @@ seed UUIDs are generated at INSERT time so they're not stable across DB
 resets, and using names lets the trained model resolve to whichever
 category id the user's household has for that name (mirrors how the
 legacy CategoryMatcher already works).
+
+KNOWN CONSTRAINT — regex parsing of Dart source.
+The RULE_BLOCK_RE / QUOTED_STR_RE pair below is fragile to refactors of
+the Dart map literal in category_matcher.dart (e.g. switching to a
+function builder, splitting the rules across files, or introducing
+multi-line raw strings). Acceptable trade-off: the alternative is
+maintaining a duplicate Python copy of the keyword rules, which would
+silently drift. If you change the shape of `_incomeRules` /
+`_expenseRules`, re-run `python bootstrap_seed.py --out /tmp/seed.csv`
+and eyeball the result — empty CSV means the regex stopped matching.
 """
 from __future__ import annotations
 

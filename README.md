@@ -16,7 +16,7 @@ Multi-user household budgeting with roles, shared accounts, and the kind of corr
 - **Accounts** across ten types: checking, savings, credit cards, brokerage, IRA (traditional & Roth), 401(k), 403(b), HSA, 529, and cash.
 - **Transactions** entered manually, imported from bank CSVs (with header heuristics and dedup), or attached to a receipt.
 - **Auto-categorization** of transactions via an on-device ML model (TF-IDF + LogisticRegression, ONNX), with the legacy keyword matcher kept as a cold-start fallback. Predictions never leave the device.
-- **Receipts** uploaded to private Storage, line-itemized via OCR (Supabase Edge Function → Google Cloud Vision).
+- **Receipts** uploaded to private Storage, line-itemized via OCR (Supabase Edge Function → Google Cloud Vision). The Edge Function is deployed externally and not in this repo; locally, a test Supabase stack with a stubbed function that mirrors the production OCR shape is the planned mirror setup.
 - **Budgets** with weekly / monthly / annual periods and live progress against actual spending.
 - **Scenarios & goals** — what-if planning with iCal RRULE recurring events, parent-branching for alternatives, and `is_goal` overlay for target-date savings tracking. Projection runs forward from current net worth; historical net worth is reconstructed by walking transaction deltas backward.
 
@@ -89,6 +89,8 @@ Each feature folder follows the same shape: `models/` (Freezed immutables), `pro
 **ML tooling:** scikit-learn + skl2onnx + onnxruntime (Python) for offline training; the resulting model runs on-device via the Dart `onnxruntime` package.
 
 **External services:** Google Cloud Vision (OCR).
+
+> The OCR Edge Function (`receipts.ocr_status: pending → done`) is **deployed externally and not committed here.** The schema and storage bucket are in this repo, and `MlCategoryClassifier` will categorise the line items once they arrive — but no code in this repo advances the OCR status. To exercise the full flow locally, plan to spin up a Supabase test stack and stub the function to mirror the production OCR shape.
 
 ---
 

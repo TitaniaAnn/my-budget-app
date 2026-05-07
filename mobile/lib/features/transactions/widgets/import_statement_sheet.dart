@@ -70,10 +70,17 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       if (!mounted) return;
       setState(() {
         _preview = parsed.rows;
+        final lines = <String>[];
         if (parsed.skipped.isNotEmpty) {
-          _error =
-              '${parsed.skipped.length} row(s) skipped:\n${parsed.skipped.join('\n')}';
+          lines.add('${parsed.skipped.length} row(s) skipped:');
+          lines.addAll(parsed.skipped);
         }
+        if (parsed.warnings.isNotEmpty) {
+          if (lines.isNotEmpty) lines.add('');
+          lines.add('${parsed.warnings.length} row(s) imported with warnings:');
+          lines.addAll(parsed.warnings);
+        }
+        _error = lines.isEmpty ? null : lines.join('\n');
       });
     } catch (e) {
       if (!mounted) return;

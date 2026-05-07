@@ -15,6 +15,13 @@ part 'auth_provider.g.dart';
 /// we yield a synthetic event from the persisted session immediately.
 /// Without this seed the router briefly sees `loading` (treated as logged-out)
 /// and redirects already-authenticated users to /login before bouncing back.
+///
+/// `onAuthStateChange` itself emits `initialSession` once it warms up, so
+/// the router can see two `initialSession` events on cold start. The router
+/// redirect is idempotent (it only navigates when the destination differs
+/// from the current location), so the duplicate is harmless — keeping the
+/// manual yield avoids the cold-start race that the duplicate would
+/// otherwise paper over.
 @riverpod
 Stream<AuthState> authState(AuthStateRef ref) async* {
   final initial = supabase.auth.currentSession;

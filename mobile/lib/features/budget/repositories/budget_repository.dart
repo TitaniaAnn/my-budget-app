@@ -33,6 +33,12 @@ class BudgetRepository {
   /// (budget UI) treats those as $0 spent.
   ///
   /// Categories with no activity in the range are absent from the map.
+  ///
+  /// KNOWN SCALE LIMIT: this fetches every transaction row in the range
+  /// and aggregates in Dart. Fine at single-household scale (a few thousand
+  /// rows/year) — if this becomes a hosted service or households grow into
+  /// the millions of rows, swap for a `get_category_spending` SQL function
+  /// (one round-trip, server-side `GROUP BY category_id, SUM(amount)`).
   Future<Map<String, int>> fetchSpendingByCategory({
     required String householdId,
     required DateTime from,
@@ -73,8 +79,9 @@ class BudgetRepository {
           'category_id': categoryId,
           'amount': amountCents,
           'period': period.dbValue,
-          'start_date':
-              (startDate ?? DateTime.now()).toIso8601String().substring(0, 10),
+          'start_date': (startDate ?? DateTime.now())
+              .toIso8601String()
+              .substring(0, 10),
           'created_by': createdBy,
         })
         .select()
@@ -91,10 +98,7 @@ class BudgetRepository {
   }) async {
     final data = await supabase
         .from('budgets')
-        .update({
-          'amount': ?amountCents,
-          'period': ?period?.dbValue,
-        })
+        .update({'amount': ?amountCents, 'period': ?period?.dbValue})
         .eq('id', budgetId)
         .select()
         .single();

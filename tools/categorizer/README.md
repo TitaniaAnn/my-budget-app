@@ -93,5 +93,6 @@ on both sides ("VENMO" → Transfer either way; "AMAZON +" → refund vs
   and the magnitude rarely disambiguates a category.
 - No *account*, *date*, or *user* — would leak household identifiers and
   hurt generalisation.
-- No category *names* — only category IDs. Model output is decoded back
-  to IDs via `labels.json`, then resolved to a `Category` row in the app.
+- No category *UUIDs* — `category_id` isn't stable across DB resets, and
+  the Dart side resolves predictions by name anyway. `labels.json` stores
+  category names; renames invalidate the matching class until retrain.

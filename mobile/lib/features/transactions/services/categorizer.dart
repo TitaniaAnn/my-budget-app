@@ -44,9 +44,14 @@ class Categorizer {
     required CategoryMatcher keywordMatcher,
     MlCategoryClassifier? mlClassifier,
     double minMlConfidence = 0.55,
-  })  : _keyword = keywordMatcher,
-        _ml = mlClassifier,
-        _minMlConfidence = minMlConfidence;
+  }) : _keyword = keywordMatcher,
+       _ml = mlClassifier,
+       _minMlConfidence = minMlConfidence,
+       // Built once at construction so bulk-import paths don't pay an
+       // O(N) linear scan over `categories` per ML prediction. The
+       // Riverpod provider rebuilds the Categorizer when the household's
+       // category list changes, so this map is effectively immutable.
+       _categoriesByName = {for (final c in categories) c.name: c};
 
   /// The category list the ML model resolves predictions against.
   /// Held here so callers don't have to thread it through every call.
@@ -55,6 +60,7 @@ class Categorizer {
   final CategoryMatcher _keyword;
   final MlCategoryClassifier? _ml;
   final double _minMlConfidence;
+  final Map<String, Category> _categoriesByName;
 
   /// True when an ML model is loaded and will be tried first. False
   /// during cold-start (model assets missing) — the façade silently
@@ -76,7 +82,7 @@ class Categorizer {
       description: description,
       merchant: merchant,
       amountCents: amountCents,
-      categories: categories,
+      categoriesByName: _categoriesByName,
       minConfidence: _minMlConfidence,
     );
     if (ml != null && ml.categoryId != null) {

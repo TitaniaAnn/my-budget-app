@@ -140,6 +140,23 @@ void main() {
       );
     });
 
+    test('imports both-non-zero rows with a warning, preferring credit', () {
+      // A well-formed statement shouldn't have both columns filled, but
+      // refund pairs occasionally land this way. Don't drop the row —
+      // import using the credit value and surface the anomaly so the
+      // user can sanity-check before confirming.
+      const csv =
+          'Date,Description,Debit,Credit\n'
+          '01/15/2026,REFUND PAIR,4.50,4.50\n';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, hasLength(1));
+      expect(result.rows.single.amountCents, 450);
+      expect(result.skipped, isEmpty);
+      expect(result.warnings, hasLength(1));
+      expect(result.warnings.single, contains('Row 2'));
+      expect(result.warnings.single, contains('non-zero'));
+    });
+
     test('single Amount column takes precedence over split columns', () {
       // Banks that include all three columns (Amount + zero-stub Debit/
       // Credit) parse via the signed Amount path.

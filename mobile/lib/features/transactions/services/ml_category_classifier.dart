@@ -50,9 +50,9 @@ class MlCategoryClassifier {
     required OrtSession session,
     required TfidfVectoriser vectoriser,
     required List<String> labels,
-  })  : _session = session,
-        _vectoriser = vectoriser,
-        _labels = labels;
+  }) : _session = session,
+       _vectoriser = vectoriser,
+       _labels = labels;
 
   final OrtSession _session;
   final TfidfVectoriser _vectoriser;
@@ -98,7 +98,12 @@ class MlCategoryClassifier {
   ///
   /// Returns null when the model's top-class probability is below
   /// [minConfidence] (caller should fall back to the keyword matcher),
-  /// or when the predicted category is not present in [categories].
+  /// or when the predicted name has no entry in [categoriesByName].
+  ///
+  /// [categoriesByName] is the household's category list keyed by
+  /// `Category.name`. Pass an O(1) map (the Categorizer builds it once
+  /// per construction) — bulk-import paths previously did O(N) linear
+  /// scans of the list per prediction.
   ///
   /// [description], [merchant], and the sign of [amountCents] are
   /// rendered into the same string format used during training:
@@ -107,7 +112,7 @@ class MlCategoryClassifier {
     required String description,
     String? merchant,
     required int amountCents,
-    required List<Category> categories,
+    required Map<String, Category> categoriesByName,
     double minConfidence = 0.55,
   }) {
     final input = _renderInput(description, merchant, amountCents);
@@ -116,7 +121,7 @@ class MlCategoryClassifier {
     if (confidence < minConfidence) return null;
 
     final name = _labels[idx];
-    final cat = categories.where((c) => c.name == name).firstOrNull;
+    final cat = categoriesByName[name];
     return MlPrediction(
       categoryName: name,
       categoryId: cat?.id,
@@ -131,10 +136,10 @@ class MlCategoryClassifier {
   // ── Private inference helpers ─────────────────────────────────────────────
 
   (int, double) _runOnce(Float32List vector) {
-    final tensor = OrtValueTensor.createTensorWithDataList(
-      vector,
-      [1, vector.length],
-    );
+    final tensor = OrtValueTensor.createTensorWithDataList(vector, [
+      1,
+      vector.length,
+    ]);
     final inputName = _session.inputNames.first;
     final outputs = _session.run(OrtRunOptions(), {inputName: tensor});
     tensor.release();
@@ -178,9 +183,7 @@ class MlCategoryClassifier {
     if (raw is List && raw.isNotEmpty && raw.first is List) {
       return (raw.first as List).cast<num>().map((n) => n.toDouble()).toList();
     }
-    throw StateError(
-      'Unexpected proba output type: ${raw.runtimeType}',
-    );
+    throw StateError('Unexpected proba output type: ${raw.runtimeType}');
   }
 
   static String _renderInput(String description, String? merchant, int amount) {
@@ -213,12 +216,11 @@ class TfidfVectoriser {
   factory TfidfVectoriser.fromJson(Map<String, dynamic> j) {
     final analyzer = j['analyzer'] as String;
     if (analyzer != 'char_wb') {
-      throw StateError(
-        'Only char_wb analyzer is supported, got: $analyzer',
-      );
+      throw StateError('Only char_wb analyzer is supported, got: $analyzer');
     }
-    final vocab = (j['vocabulary'] as Map<String, dynamic>)
-        .map((k, v) => MapEntry(k, (v as num).toInt()));
+    final vocab = (j['vocabulary'] as Map<String, dynamic>).map(
+      (k, v) => MapEntry(k, (v as num).toInt()),
+    );
     final idfList = (j['idf'] as List).cast<num>();
     final idf = Float32List(idfList.length);
     for (var i = 0; i < idfList.length; i++) {
@@ -308,4 +310,3 @@ String _safeSlice(String s, int start, int end) {
   final stop = end > s.length ? s.length : end;
   return s.substring(start, stop);
 }
-

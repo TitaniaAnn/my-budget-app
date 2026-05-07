@@ -210,9 +210,9 @@ class CategoryMatcher {
       'safeway', 'publix', 'hy-vee', 'hyvee', 'price chopper', 'sprouts',
       'meijer', 'winco', 'food lion', 'harris teeter', 'albertsons',
       'samsclub', "sam's club", 'costco', 'bj\'s wholesale',
-      'fresh market', 'natural grocers', 'aldi',
+      'fresh market', 'natural grocers',
       'target', 'super target', // Target is mostly grocery/general
-      'grocery', 'supermarket', 'food store', 'fresh market',
+      'grocery', 'supermarket', 'food store',
     ],
 
     // ── Transportation ────────────────────────────────────────────────────
