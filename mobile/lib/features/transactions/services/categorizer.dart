@@ -38,6 +38,24 @@ class CategorizerResult {
   final double? confidence;
 }
 
+/// Converts a categorizer hit's float confidence into the basis-points
+/// integer the database stores in `transactions.ml_model_confidence`.
+///
+/// Returns null for non-ML hits (keyword matcher) and for ML hits without
+/// a confidence value — the column is nullable for both reasons.
+///
+/// Confidence is rounded to the nearest percentage point (1% == 100 bp)
+/// so the bulk-recategorize grouping doesn't degenerate to one-bucket-
+/// per-row when every prediction has a slightly different float. The
+/// active-learning UX thinks in "high / mid / low" bands, not exact
+/// values, so the precision loss is invisible there.
+int? confidenceToBasisPoints(CategorizerResult result) {
+  if (result.source != CategorizerSource.mlModel) return null;
+  final c = result.confidence;
+  if (c == null) return null;
+  return (c * 100).round() * 100;
+}
+
 class Categorizer {
   Categorizer({
     required this.categories,
@@ -67,17 +85,24 @@ class Categorizer {
   /// becomes a thin wrapper around the keyword matcher.
   bool get mlAvailable => _ml != null;
 
+  /// Lowest plausible auto-apply threshold across all classes. Below this,
+  /// even a per-class learned threshold wouldn't auto-apply — the model
+  /// is too uncertain to be useful. Used as the floor passed to
+  /// [MlCategoryClassifier.predict] so per-class thresholds in the
+  /// 0.30–0.55 band are still reachable.
+  static const double _autoApplyFloor = 0.30;
+
   /// Categorises a single transaction. Tries the ML classifier first
   /// (when available) and falls back to the keyword matcher when the
-  /// model is unavailable, returns no prediction, returns one below
-  /// [minMlConfidence], or names a category the household doesn't have.
+  /// model is unavailable, returns no prediction, returns one below the
+  /// per-class auto-apply threshold (or [_minMlConfidence] for classes
+  /// without a learned threshold), or names a category the household
+  /// doesn't have.
   ///
   /// [accountType] is the snake_case Postgres enum for the account the
   /// transaction belongs to (`checking`, `credit_card`, …). Pass null
   /// when the caller can't easily determine it; the model handles the
-  /// unknown-account case as a placeholder. This was a no-op feature
-  /// before the model started consuming `account_type` — keeping the
-  /// optionality lets older call paths through without churn.
+  /// unknown-account case as a placeholder.
   ///
   /// Returns null when neither engine produces a hit.
   CategorizerResult? categorize({
@@ -86,20 +111,29 @@ class Categorizer {
     required int amountCents,
     String? accountType,
   }) {
+    // Predict at the floor; per-class threshold enforced below. With no
+    // per-class map loaded, every class falls back to _minMlConfidence —
+    // matches the pre-Tier-2 behaviour exactly.
     final ml = _ml?.predict(
       description: description,
       merchant: merchant,
       amountCents: amountCents,
       categoriesByName: _categoriesByName,
       accountType: accountType,
-      minConfidence: _minMlConfidence,
+      minConfidence: _autoApplyFloor,
     );
     if (ml != null && ml.categoryId != null) {
-      return CategorizerResult(
-        categoryId: ml.categoryId!,
-        source: CategorizerSource.mlModel,
-        confidence: ml.confidence,
+      final threshold = _ml!.thresholdFor(
+        ml.categoryName,
+        defaultThreshold: _minMlConfidence,
       );
+      if (ml.confidence >= threshold) {
+        return CategorizerResult(
+          categoryId: ml.categoryId!,
+          source: CategorizerSource.mlModel,
+          confidence: ml.confidence,
+        );
+      }
     }
 
     final kwId = _keyword.match(description, isIncome: amountCents > 0);
@@ -113,15 +147,16 @@ class Categorizer {
   }
 
   /// Same as [categorize] but also returns the ML's top guess when its
-  /// confidence falls in the uncertain band `[lowerBound, minMlConfidence)`.
-  /// Used by the "Review uncertain categorisations" surface so the user
-  /// can confirm/correct near-misses, turning them into ground-truth
-  /// labels for the next retrain.
+  /// confidence falls in the uncertain band — at or above [lowerBound]
+  /// but below the predicted class's auto-apply threshold (per-class via
+  /// [MlCategoryClassifier.thresholdFor], or [_minMlConfidence] when no
+  /// per-class map is loaded).
   ///
   /// `confirmed` mirrors what [categorize] would have returned (auto-apply
-  /// only when confidence ≥ minMlConfidence). `uncertain` is non-null
+  /// only when confidence ≥ class threshold). `uncertain` is non-null
   /// when the ML had a guess in the band but it was suppressed for
-  /// auto-apply. Both can be null (no guess at all).
+  /// auto-apply — feed those to the Review surface. Both can be null (no
+  /// guess at all).
   ({CategorizerResult? confirmed, CategorizerResult? uncertain})
   categorizeWithUncertain({
     required String description,
@@ -147,7 +182,11 @@ class Categorizer {
         source: CategorizerSource.mlModel,
         confidence: ml.confidence,
       );
-      if (ml.confidence >= _minMlConfidence) {
+      final threshold = _ml!.thresholdFor(
+        ml.categoryName,
+        defaultThreshold: _minMlConfidence,
+      );
+      if (ml.confidence >= threshold) {
         return (confirmed: result, uncertain: null);
       }
       return (confirmed: null, uncertain: result);

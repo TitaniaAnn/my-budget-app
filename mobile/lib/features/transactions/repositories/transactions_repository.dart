@@ -327,10 +327,7 @@ class TransactionsRepository {
         accountType: acct?['account_type'] as String?,
       );
       if (r == null) continue;
-      final confidenceBp =
-          r.source == CategorizerSource.mlModel && r.confidence != null
-          ? ((r.confidence! * 100).round()) * 100
-          : null;
+      final confidenceBp = confidenceToBasisPoints(r);
       groups
           .putIfAbsent((r.categoryId, r.source, confidenceBp), () => [])
           .add(row['id'] as String);

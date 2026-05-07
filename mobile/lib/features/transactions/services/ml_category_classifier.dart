@@ -50,23 +50,47 @@ class MlCategoryClassifier {
     required OrtSession session,
     required TfidfVectoriser vectoriser,
     required List<String> labels,
+    Map<String, double>? perClassThresholds,
   }) : _session = session,
        _vectoriser = vectoriser,
-       _labels = labels;
+       _labels = labels,
+       _perClassThresholds = perClassThresholds;
 
   final OrtSession _session;
   final TfidfVectoriser _vectoriser;
   final List<String> _labels;
 
+  /// Auto-apply thresholds learned at training time (precision-maximising
+  /// at recall ≥ target_recall). Null when `assets/ml/thresholds.json` is
+  /// absent — older model assets ship without it. Categorizer falls back
+  /// to its global `_minMlConfidence` for any class missing from the map.
+  final Map<String, double>? _perClassThresholds;
+
   /// Number of input features the model expects (== vocabulary size).
   int get inputSize => _vectoriser.vocabSize;
 
+  /// Per-class auto-apply threshold for [className]. Returns
+  /// [defaultThreshold] when no per-class map is loaded or [className]
+  /// isn't in it (rare class, missing fixture, etc.).
+  ///
+  /// This degenerates to "global threshold for all classes" when
+  /// `thresholds.json` is missing — older model assets stay backwards-
+  /// compatible without code changes.
+  double thresholdFor(String className, {required double defaultThreshold}) {
+    final t = _perClassThresholds?[className];
+    return t ?? defaultThreshold;
+  }
+
   /// Loads the model + vocab + label index from `assets/ml/`.
   ///
-  /// Returns null when any asset is missing or unreadable — callers
-  /// should treat this as "ML disabled, fall back to the keyword
+  /// Returns null when any *required* asset is missing or unreadable —
+  /// callers should treat this as "ML disabled, fall back to the keyword
   /// matcher". OrtEnv must be initialised once before this is called
   /// (see main.dart).
+  ///
+  /// `thresholds.json` is OPTIONAL — older model assets shipped without
+  /// it and the per-class threshold path degenerates cleanly to the
+  /// global default.
   static Future<MlCategoryClassifier?> load() async {
     try {
       final vocabJson = await rootBundle.loadString('assets/ml/vocab.json');
@@ -81,10 +105,31 @@ class MlCategoryClassifier {
         modelBytes.buffer.asUint8List(),
         OrtSessionOptions(),
       );
+
+      // Optional: per-class thresholds. Absent file = older asset bundle
+      // = use the global default for every class.
+      Map<String, double>? perClassThresholds;
+      try {
+        final thrJson = await rootBundle.loadString(
+          'assets/ml/thresholds.json',
+        );
+        final raw = jsonDecode(thrJson) as Map<String, dynamic>;
+        final perClass = raw['per_class'] as Map<String, dynamic>?;
+        if (perClass != null) {
+          perClassThresholds = {
+            for (final e in perClass.entries)
+              e.key: (e.value as num).toDouble(),
+          };
+        }
+      } catch (_) {
+        // Older asset bundle, malformed JSON, etc. — silently degrade.
+      }
+
       return MlCategoryClassifier._(
         session: session,
         vectoriser: vectoriser,
         labels: labels,
+        perClassThresholds: perClassThresholds,
       );
     } catch (_) {
       // Most common path on a fresh clone: assets/ml/ is empty because

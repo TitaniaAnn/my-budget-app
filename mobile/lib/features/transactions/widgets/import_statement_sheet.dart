@@ -125,15 +125,9 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
           amountCents: r.amountCents,
           accountType: accountType,
         );
-        // Round confidence to the nearest percentage point (basis points
-        // ÷ 100) so the column stays coarse-grained — same convention as
-        // bulkRecategorize. Keyword hits leave the column null.
-        final confidenceBp =
-            result != null &&
-                result.source == CategorizerSource.mlModel &&
-                result.confidence != null
-            ? ((result.confidence! * 100).round()) * 100
-            : null;
+        final confidenceBp = result == null
+            ? null
+            : confidenceToBasisPoints(result);
         return {
           'description': r.description,
           'amount': r.amountCents,

@@ -63,6 +63,7 @@ jobs:
           cp tools/categorizer/build/category_model.onnx mobile/assets/ml/
           cp tools/categorizer/build/vocab.json          mobile/assets/ml/
           cp tools/categorizer/build/labels.json         mobile/assets/ml/
+          cp tools/categorizer/build/thresholds.json     mobile/assets/ml/
           cp tools/categorizer/build/test_vectors.json   mobile/assets/ml/
 
       - uses: subosito/flutter-action@v2
