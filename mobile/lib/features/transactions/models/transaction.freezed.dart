@@ -52,6 +52,12 @@ mixin _$Transaction {
 
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
   String? get externalId => throw _privateConstructorUsedError;
+
+  /// Top-class probability from the ML categorizer in basis points
+  /// (0–10000, where 10000 == 1.00). Populated only when
+  /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
+  /// uncertain" surface filters on this field to surface near-misses.
+  int? get mlModelConfidence => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -93,6 +99,7 @@ abstract class $TransactionCopyWith<$Res> {
     String? rateId,
     String? notes,
     String? externalId,
+    int? mlModelConfidence,
     DateTime createdAt,
     DateTime updatedAt,
     Category? category,
@@ -133,6 +140,7 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
     Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
+    Object? mlModelConfidence = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? category = freezed,
@@ -207,6 +215,10 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
                 ? _value.externalId
                 : externalId // ignore: cast_nullable_to_non_nullable
                       as String?,
+            mlModelConfidence: freezed == mlModelConfidence
+                ? _value.mlModelConfidence
+                : mlModelConfidence // ignore: cast_nullable_to_non_nullable
+                      as int?,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -266,6 +278,7 @@ abstract class _$$TransactionImplCopyWith<$Res>
     String? rateId,
     String? notes,
     String? externalId,
+    int? mlModelConfidence,
     DateTime createdAt,
     DateTime updatedAt,
     Category? category,
@@ -306,6 +319,7 @@ class __$$TransactionImplCopyWithImpl<$Res>
     Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
+    Object? mlModelConfidence = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? category = freezed,
@@ -380,6 +394,10 @@ class __$$TransactionImplCopyWithImpl<$Res>
             ? _value.externalId
             : externalId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        mlModelConfidence: freezed == mlModelConfidence
+            ? _value.mlModelConfidence
+            : mlModelConfidence // ignore: cast_nullable_to_non_nullable
+                  as int?,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -418,6 +436,7 @@ class _$TransactionImpl implements _Transaction {
     this.rateId,
     this.notes,
     this.externalId,
+    this.mlModelConfidence,
     required this.createdAt,
     required this.updatedAt,
     this.category,
@@ -474,6 +493,13 @@ class _$TransactionImpl implements _Transaction {
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
   @override
   final String? externalId;
+
+  /// Top-class probability from the ML categorizer in basis points
+  /// (0–10000, where 10000 == 1.00). Populated only when
+  /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
+  /// uncertain" surface filters on this field to surface near-misses.
+  @override
+  final int? mlModelConfidence;
   @override
   final DateTime createdAt;
   @override
@@ -485,7 +511,7 @@ class _$TransactionImpl implements _Transaction {
 
   @override
   String toString() {
-    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, rateId: $rateId, notes: $notes, externalId: $externalId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
+    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, rateId: $rateId, notes: $notes, externalId: $externalId, mlModelConfidence: $mlModelConfidence, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
   }
 
   @override
@@ -521,6 +547,8 @@ class _$TransactionImpl implements _Transaction {
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.externalId, externalId) ||
                 other.externalId == externalId) &&
+            (identical(other.mlModelConfidence, mlModelConfidence) ||
+                other.mlModelConfidence == mlModelConfidence) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -550,6 +578,7 @@ class _$TransactionImpl implements _Transaction {
     rateId,
     notes,
     externalId,
+    mlModelConfidence,
     createdAt,
     updatedAt,
     category,
@@ -588,6 +617,7 @@ abstract class _Transaction implements Transaction {
     final String? rateId,
     final String? notes,
     final String? externalId,
+    final int? mlModelConfidence,
     required final DateTime createdAt,
     required final DateTime updatedAt,
     final Category? category,
@@ -644,6 +674,13 @@ abstract class _Transaction implements Transaction {
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
   @override
   String? get externalId;
+
+  /// Top-class probability from the ML categorizer in basis points
+  /// (0–10000, where 10000 == 1.00). Populated only when
+  /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
+  /// uncertain" surface filters on this field to surface near-misses.
+  @override
+  int? get mlModelConfidence;
   @override
   DateTime get createdAt;
   @override

@@ -27,6 +27,7 @@ _$TransactionImpl _$$TransactionImplFromJson(Map<String, dynamic> json) =>
       rateId: json['rate_id'] as String?,
       notes: json['notes'] as String?,
       externalId: json['external_id'] as String?,
+      mlModelConfidence: (json['ml_model_confidence'] as num?)?.toInt(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       category: json['category'] == null
@@ -53,6 +54,7 @@ Map<String, dynamic> _$$TransactionImplToJson(_$TransactionImpl instance) =>
       'rate_id': instance.rateId,
       'notes': instance.notes,
       'external_id': instance.externalId,
+      'ml_model_confidence': instance.mlModelConfidence,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
       'category': instance.category?.toJson(),

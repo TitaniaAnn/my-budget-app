@@ -105,17 +105,21 @@ class MlCategoryClassifier {
   /// per construction) — bulk-import paths previously did O(N) linear
   /// scans of the list per prediction.
   ///
-  /// [description], [merchant], and the sign of [amountCents] are
-  /// rendered into the same string format used during training:
-  /// `"<description>|<merchant or empty>|<+/->"`.
+  /// The input string fed to the vectoriser is
+  /// `"<description>|<merchant or empty>|<+/->|<amt_bucket>|<account_type>"`,
+  /// matching `tools/categorizer/train.py:render`. [accountType] should be
+  /// the snake_case Postgres enum (`checking`, `credit_card`, …) or null
+  /// when the caller can't determine it; the model treats null/empty as
+  /// the unknown-account prior.
   MlPrediction? predict({
     required String description,
     String? merchant,
     required int amountCents,
     required Map<String, Category> categoriesByName,
+    String? accountType,
     double minConfidence = 0.55,
   }) {
-    final input = _renderInput(description, merchant, amountCents);
+    final input = _renderInput(description, merchant, amountCents, accountType);
     final vector = _vectoriser.transform(input);
     final (idx, confidence) = _runOnce(vector);
     if (confidence < minConfidence) return null;
@@ -186,9 +190,31 @@ class MlCategoryClassifier {
     throw StateError('Unexpected proba output type: ${raw.runtimeType}');
   }
 
-  static String _renderInput(String description, String? merchant, int amount) {
+  /// Byte-identical mirror of `tools/categorizer/train.py:render`. Any
+  /// change here MUST land in lockstep with the Python side or the parity
+  /// test in `ml_category_classifier_test.dart` will fail (which is the
+  /// invariant we want — drift between Dart and Python silently breaks
+  /// every prediction).
+  static String _renderInput(
+    String description,
+    String? merchant,
+    int amount,
+    String? accountType,
+  ) {
     final sign = amount > 0 ? '+' : '-';
-    return '$description|${merchant ?? ''}|$sign';
+    final bucket = _amountBucket(amount);
+    return '$description|${merchant ?? ''}|$sign|$bucket|${accountType ?? ''}';
+  }
+
+  /// Cents → bucket label. Mirrors `train.py:_amount_bucket`. Boundaries
+  /// match the AMOUNT_BUCKETS list in train.py — keep the two in sync.
+  static String _amountBucket(int amountCents) {
+    final a = amountCents.abs();
+    if (a < 1000) return 'xs'; // < $10
+    if (a < 5000) return 's'; // < $50
+    if (a < 20000) return 'm'; // < $200
+    if (a < 100000) return 'l'; // < $1000
+    return 'xl'; // ≥ $1000
   }
 }
 

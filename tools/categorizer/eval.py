@@ -34,9 +34,17 @@ def main() -> int:
 
     df = pd.read_csv(args.csv)
     df = df.dropna(subset=["category_name"])
+    # Older CSVs may lack the account_type column — treat as empty so the
+    # render() default kicks in and parity stays with what train.py does.
+    if "account_type" not in df.columns:
+        df["account_type"] = ""
     df["text"] = df.apply(
-        lambda r: render(r.get("description"), r.get("merchant"),
-                         int(r["amount"])),
+        lambda r: render(
+            r.get("description"),
+            r.get("merchant"),
+            int(r["amount"]),
+            str(r.get("account_type") or ""),
+        ),
         axis=1,
     )
 

@@ -2,7 +2,8 @@
 Train the on-device transaction classifier and export the artefacts the
 Flutter app consumes from `mobile/assets/ml/`.
 
-Inputs (CSV with columns id, description, merchant, amount, category_name):
+Inputs (CSV with columns id, description, merchant, amount, account_type,
+category_name):
   - real labels from dump_labels.py
   - synthetic seeds from bootstrap_seed.py (cold-start only)
 
@@ -19,8 +20,16 @@ Pipeline:
   → LogisticRegression(C=4.0, max_iter=1000, class_weight='balanced',
                        solver='liblinear', multi_class='ovr')
 
-The text fed to the vectoriser is `<description>|<merchant>|<sign>` where
-sign is '+' for credits or '-' for debits — same shape used at inference.
+The text fed to the vectoriser is
+  `<description>|<merchant>|<sign>|<amt_bucket>|<account_type>`
+where:
+  • sign is '+' for credits, '-' for debits;
+  • amt_bucket is one of xs|s|m|l|xl (see AMOUNT_BUCKETS), bucketed by
+    absolute value of cents;
+  • account_type is the snake_case Postgres enum (checking, savings,
+    credit_card, cash, mortgage, …) or '' if unknown at training time.
+The Dart `_renderInput` MUST stay byte-identical to `render()` below —
+the parity test in ml_category_classifier_test.dart pins it.
 """
 from __future__ import annotations
 
@@ -42,10 +51,44 @@ from skl2onnx.common.data_types import FloatTensorType
 
 # ── Feature shaping ─────────────────────────────────────────────────────────
 
-def render(description: str, merchant: str, amount: int) -> str:
-    """Same string format used at inference time on the device."""
+# Cents thresholds (absolute) → bucket label. Boundaries are inclusive on
+# the LOW side: $10.00 → 's', $50.00 → 'm', $200.00 → 'l', $1000.00 → 'xl'.
+# The Dart side mirrors these in `_amountBucket` — change in lockstep.
+AMOUNT_BUCKETS = (
+    (1000,    "xs"),   # < $10
+    (5000,    "s"),    # < $50
+    (20000,   "m"),    # < $200
+    (100000,  "l"),    # < $1000
+    (10**12,  "xl"),   # ≥ $1000 (any larger value)
+)
+
+
+def _amount_bucket(amount_cents: int) -> str:
+    a = abs(int(amount_cents))
+    for cutoff, label in AMOUNT_BUCKETS:
+        if a < cutoff:
+            return label
+    return "xl"
+
+
+def render(
+    description: str,
+    merchant: str,
+    amount: int,
+    account_type: str = "",
+) -> str:
+    """Same string format used at inference time on the device.
+
+    Order: description|merchant|sign|amt_bucket|account_type. Empty
+    `account_type` is rendered as the empty string (model sees an
+    unknown-account placeholder, same as merchant).
+    """
     sign = "+" if amount > 0 else "-"
-    return f"{description or ''}|{merchant or ''}|{sign}"
+    bucket = _amount_bucket(amount)
+    return (
+        f"{description or ''}|{merchant or ''}|"
+        f"{sign}|{bucket}|{account_type or ''}"
+    )
 
 
 # Vocab cap. Char-n-gram dictionaries fan out fast; this keeps the asset
@@ -148,23 +191,25 @@ def write_onnx(clf: LogisticRegression, n_features: int, path: Path) -> None:
 # ── Main ────────────────────────────────────────────────────────────────────
 
 GOLDEN_INPUTS = [
-    # Stable handful that exercises sign + merchant + special chars + casing.
-    "STARBUCKS STORE 1234|Starbucks|-",
-    "AMAZON.COM*MK1AB2CD|Amazon|-",
-    "AMAZON REFUND ORDER|Amazon|+",
-    "ZELLE PAYMENT TO JOHN|Zelle|-",
-    "PAYROLL DEPOSIT - ADP|ADP|+",
-    "shell gas #4421|Shell|-",
-    "VENMO TRANSFER||+",
-    "CHIPOTLE 0987||-",
-    "Netflix.com|Netflix|-",
-    "TRADER JOE'S #102|Trader Joe's|-",
+    # Stable handful that exercises sign + merchant + special chars + casing,
+    # plus the amount-bucket and account-type fields. Format mirrors
+    # render(): description|merchant|sign|amt_bucket|account_type.
+    "STARBUCKS STORE 1234|Starbucks|-|xs|credit_card",
+    "AMAZON.COM*MK1AB2CD|Amazon|-|s|credit_card",
+    "AMAZON REFUND ORDER|Amazon|+|s|credit_card",
+    "ZELLE PAYMENT TO JOHN|Zelle|-|m|checking",
+    "PAYROLL DEPOSIT - ADP|ADP|+|xl|checking",
+    "shell gas #4421|Shell|-|s|credit_card",
+    "VENMO TRANSFER||+|s|checking",
+    "CHIPOTLE 0987||-|xs|credit_card",
+    "Netflix.com|Netflix|-|xs|credit_card",
+    "TRADER JOE'S #102|Trader Joe's|-|s|credit_card",
     # Edge cases:
-    "||-",                        # empty desc + empty merchant
-    "X|Y|+",                      # very short
-    "a b c d e|f g h|-",          # multi-token
-    "ÜBER eats|Über|-",          # non-ASCII
-    "  CAPS WITH  SPACES  ||-",  # leading/trailing/internal whitespace
+    "||-|xs|",                       # empty desc + empty merchant + empty account
+    "X|Y|+|xs|cash",                 # very short
+    "a b c d e|f g h|-|m|savings",   # multi-token
+    "ÜBER eats|Über|-|xs|credit_card",  # non-ASCII
+    "  CAPS WITH  SPACES  ||-|l|checking",  # whitespace + larger amount bucket
 ]
 
 
@@ -185,8 +230,17 @@ def main() -> int:
         print("ERROR: input CSV is empty", file=sys.stderr)
         return 1
     df = df.dropna(subset=["category_name"])
+    # Backwards-compat: older dump CSVs may not have an account_type column.
+    # Treat missing as empty string (matches the inference-time fallback).
+    if "account_type" not in df.columns:
+        df["account_type"] = ""
     df["text"] = df.apply(
-        lambda r: render(r.get("description"), r.get("merchant"), int(r["amount"])),
+        lambda r: render(
+            r.get("description"),
+            r.get("merchant"),
+            int(r["amount"]),
+            str(r.get("account_type") or ""),
+        ),
         axis=1,
     )
 

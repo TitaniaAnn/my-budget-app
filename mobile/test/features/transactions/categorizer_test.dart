@@ -132,6 +132,107 @@ void main() {
       expect(r.categoryId, 'id-Coffee & Drinks');
     });
   });
+
+  group('categorizeWithUncertain', () {
+    final cats = _categories();
+
+    test(
+      'high-confidence ML hit lands in `confirmed`, `uncertain` is null',
+      () {
+        final c = Categorizer(
+          categories: cats,
+          keywordMatcher: CategoryMatcher(cats),
+          mlClassifier: _StubMl(
+            predictions: {
+              'STARBUCKS STORE 1234||-': const MlPrediction(
+                categoryName: 'Groceries',
+                categoryId: 'id-Groceries',
+                confidence: 0.85,
+              ),
+            },
+          ),
+          minMlConfidence: 0.55,
+        );
+        final r = c.categorizeWithUncertain(
+          description: 'STARBUCKS STORE 1234',
+          amountCents: -485,
+        );
+        expect(r.confirmed, isNotNull);
+        expect(r.confirmed!.categoryId, 'id-Groceries');
+        expect(r.confirmed!.source, CategorizerSource.mlModel);
+        expect(r.uncertain, isNull);
+      },
+    );
+
+    test('mid-confidence ML hit lands in `uncertain`, `confirmed` is null', () {
+      // 0.40 is below minMlConfidence (0.55) but above lowerBound (default
+      // 0.30), so it should surface as a Review-uncertain candidate.
+      final c = Categorizer(
+        categories: cats,
+        keywordMatcher: CategoryMatcher(cats),
+        mlClassifier: _StubMl(
+          predictions: {
+            'OBSCURE MERCHANT||-': const MlPrediction(
+              categoryName: 'Groceries',
+              categoryId: 'id-Groceries',
+              confidence: 0.40,
+            ),
+          },
+        ),
+        minMlConfidence: 0.55,
+      );
+      final r = c.categorizeWithUncertain(
+        description: 'OBSCURE MERCHANT',
+        amountCents: -485,
+      );
+      expect(r.confirmed, isNull);
+      expect(r.uncertain, isNotNull);
+      expect(r.uncertain!.categoryId, 'id-Groceries');
+      expect(r.uncertain!.confidence, closeTo(0.40, 1e-9));
+    });
+
+    test('below-lowerBound ML hit is dropped; falls through to keyword', () {
+      // 0.20 < lowerBound (0.30), so the stub returns null.
+      // Categorizer should consult the keyword matcher and surface that
+      // hit as `confirmed` (keyword hits are never "uncertain").
+      final c = Categorizer(
+        categories: cats,
+        keywordMatcher: CategoryMatcher(cats),
+        mlClassifier: _StubMl(
+          predictions: {
+            'STARBUCKS STORE 1234||-': const MlPrediction(
+              categoryName: 'Groceries',
+              categoryId: 'id-Groceries',
+              confidence: 0.20,
+            ),
+          },
+        ),
+        minMlConfidence: 0.55,
+      );
+      final r = c.categorizeWithUncertain(
+        description: 'STARBUCKS STORE 1234',
+        amountCents: -485,
+      );
+      expect(r.confirmed, isNotNull);
+      expect(r.confirmed!.source, CategorizerSource.keywordMatcher);
+      expect(r.confirmed!.categoryId, 'id-Coffee & Drinks');
+      expect(r.uncertain, isNull);
+    });
+
+    test('no ML, no keyword → both null', () {
+      final c = Categorizer(
+        categories: cats,
+        keywordMatcher: CategoryMatcher(cats),
+        mlClassifier: _StubMl(predictions: const {}),
+      );
+      final r = c.categorizeWithUncertain(
+        description: 'TOTALLY UNKNOWN MERCHANT XYZ',
+        amountCents: -485,
+      );
+      expect(r.confirmed, isNull);
+      expect(r.uncertain, isNull);
+    });
+  });
 }
 
 /// Minimal stand-in for MlCategoryClassifier.
@@ -151,8 +252,13 @@ class _StubMl implements MlCategoryClassifier {
     String? merchant,
     required int amountCents,
     required Map<String, Category> categoriesByName,
+    String? accountType,
     double minConfidence = 0.55,
   }) {
+    // Test stub key keeps the original three-field shape so existing
+    // test fixtures don't have to know about amount buckets / account
+    // types — those features only matter to the real model. New tests
+    // that need to assert on the richer key can subclass this.
     final sign = amountCents > 0 ? '+' : '-';
     final key = '$description|${merchant ?? ''}|$sign';
     final p = _predictions[key];

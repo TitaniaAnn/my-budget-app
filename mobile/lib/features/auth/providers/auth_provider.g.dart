@@ -16,6 +16,13 @@ String _$authStateHash() => r'f0677f3c98f70ade260a12aa9fcdc96005efd474';
 /// Without this seed the router briefly sees `loading` (treated as logged-out)
 /// and redirects already-authenticated users to /login before bouncing back.
 ///
+/// `onAuthStateChange` itself emits `initialSession` once it warms up, so
+/// the router can see two `initialSession` events on cold start. The router
+/// redirect is idempotent (it only navigates when the destination differs
+/// from the current location), so the duplicate is harmless — keeping the
+/// manual yield avoids the cold-start race that the duplicate would
+/// otherwise paper over.
+///
 /// Copied from [authState].
 @ProviderFor(authState)
 final authStateProvider = AutoDisposeStreamProvider<AuthState>.internal(

@@ -273,5 +273,30 @@ final categoriesProvider = AutoDisposeFutureProvider<List<Category>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CategoriesRef = AutoDisposeFutureProviderRef<List<Category>>;
+String _$uncertainTransactionsHash() =>
+    r'8cb7367a91b95bbcc764949be6f78e5ea279f87e';
+
+/// Fetches ML-categorised transactions whose confidence fell in the
+/// uncertain band. Backs the "Review categorisations" surface — the user
+/// confirms or corrects each row, which flips `category_assigned_by` to
+/// 'user' and feeds the next retrain.
+///
+/// Copied from [uncertainTransactions].
+@ProviderFor(uncertainTransactions)
+final uncertainTransactionsProvider =
+    AutoDisposeFutureProvider<List<Transaction>>.internal(
+      uncertainTransactions,
+      name: r'uncertainTransactionsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$uncertainTransactionsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef UncertainTransactionsRef =
+    AutoDisposeFutureProviderRef<List<Transaction>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

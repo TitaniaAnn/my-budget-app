@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/transactions/screens/review_categorisations_screen.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
 import '../providers/settings_provider.dart';
@@ -52,25 +53,27 @@ class SettingsScreen extends ConsumerWidget {
                       ? const Icon(Icons.chevron_right)
                       : null,
                   onTap: info.isOwner
-                      ? () => _editHouseholdName(
-                          context, ref, info.householdName)
+                      ? () =>
+                            _editHouseholdName(context, ref, info.householdName)
                       : null,
                 ),
                 const Divider(),
-                ...info.members.map((m) => ListTile(
-                      leading: CircleAvatar(
-                        child: Text(
-                          m.displayName.isNotEmpty
-                              ? m.displayName[0].toUpperCase()
-                              : '?',
-                        ),
+                ...info.members.map(
+                  (m) => ListTile(
+                    leading: CircleAvatar(
+                      child: Text(
+                        m.displayName.isNotEmpty
+                            ? m.displayName[0].toUpperCase()
+                            : '?',
                       ),
-                      title: Text(m.displayName),
-                      subtitle: Text(m.role),
-                      trailing: m.isCurrentUser
-                          ? const Chip(label: Text('You'))
-                          : null,
-                    )),
+                    ),
+                    title: Text(m.displayName),
+                    subtitle: Text(m.role),
+                    trailing: m.isCurrentUser
+                        ? const Chip(label: Text('You'))
+                        : null,
+                  ),
+                ),
                 if (info.isOwner) ...[
                   const Divider(),
                   ListTile(
@@ -85,7 +88,9 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.vpn_key_outlined),
                   title: const Text('Join with Code'),
-                  subtitle: const Text('Enter an invite code to join a household'),
+                  subtitle: const Text(
+                    'Enter an invite code to join a household',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _joinWithCode(context, ref),
                 ),
@@ -97,6 +102,22 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader('Appearance'),
           _ThemeTile(current: themeMode),
 
+          // ── Categorisations ────────────────────────────────────────────
+          _SectionHeader('Categorisations'),
+          ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('Review uncertain ML guesses'),
+            subtitle: const Text(
+              'Confirm or correct categorisations the model was unsure about',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ReviewCategorisationsScreen(),
+              ),
+            ),
+          ),
+
           // ── Account ────────────────────────────────────────────────────
           _SectionHeader('Account'),
           ListTile(
@@ -107,8 +128,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           ListTile(
             leading: Icon(Icons.logout, color: context.cs.error),
-            title: Text('Sign Out',
-                style: TextStyle(color: context.cs.error)),
+            title: Text('Sign Out', style: TextStyle(color: context.cs.error)),
             onTap: () async {
               await supabase.auth.signOut();
               if (context.mounted) context.go('/login');
@@ -116,10 +136,14 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           ListTile(
-            leading: Icon(Icons.delete_forever_outlined,
-                color: context.cs.error),
-            title: Text('Delete Account',
-                style: TextStyle(color: context.cs.error)),
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: context.cs.error,
+            ),
+            title: Text(
+              'Delete Account',
+              style: TextStyle(color: context.cs.error),
+            ),
             onTap: () => _confirmDeleteAccount(context, ref),
           ),
 
@@ -128,8 +152,9 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(
               'MyBudget · v1.0.0',
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontSize: 12),
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -141,7 +166,10 @@ class SettingsScreen extends ConsumerWidget {
   // ── Action helpers ─────────────────────────────────────────────────────────
 
   Future<void> _editDisplayName(
-      BuildContext context, WidgetRef ref, String current) async {
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) async {
     final ctrl = TextEditingController(text: current);
     final result = await showDialog<String>(
       context: context,
@@ -155,11 +183,13 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
-              child: const Text('Save')),
+            onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -170,7 +200,10 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _editHouseholdName(
-      BuildContext context, WidgetRef ref, String current) async {
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) async {
     final ctrl = TextEditingController(text: current);
     final result = await showDialog<String>(
       context: context,
@@ -184,17 +217,18 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
-              child: const Text('Save')),
+            onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
     if (result != null && result.isNotEmpty) {
-      final householdId =
-          await ref.read(householdIdProvider.future);
+      final householdId = await ref.read(householdIdProvider.future);
       if (householdId != null) {
         await ref
             .read(settingsRepositoryProvider)
@@ -205,7 +239,10 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _changePassword(
-      BuildContext context, WidgetRef ref, String email) async {
+    BuildContext context,
+    WidgetRef ref,
+    String email,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -213,11 +250,13 @@ class SettingsScreen extends ConsumerWidget {
         content: Text('Send a password reset link to $email?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Send')),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Send'),
+          ),
         ],
       ),
     );
@@ -230,7 +269,10 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _inviteMember(
-      BuildContext context, WidgetRef ref, String householdId) async {
+    BuildContext context,
+    WidgetRef ref,
+    String householdId,
+  ) async {
     final emailCtrl = TextEditingController();
     String selectedRole = 'partner';
 
@@ -262,11 +304,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(dialogCtx, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(dialogCtx, true),
-                child: const Text('Generate Code')),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Generate Code'),
+            ),
           ],
         ),
       ),
@@ -275,7 +319,9 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true || emailCtrl.text.trim().isEmpty) return;
 
     try {
-      final code = await ref.read(settingsRepositoryProvider).createInvite(
+      final code = await ref
+          .read(settingsRepositoryProvider)
+          .createInvite(
             householdId: householdId,
             email: emailCtrl.text.trim(),
             role: selectedRole,
@@ -292,32 +338,39 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(dialogCtx).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      dialogCtx,
+                    ).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     code,
                     style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 6),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 6,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Expires in 7 days',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(dialogCtx).colorScheme.outline),
+                    fontSize: 12,
+                    color: Theme.of(dialogCtx).colorScheme.outline,
+                  ),
                 ),
               ],
             ),
             actions: [
               FilledButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text('Done')),
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Done'),
+              ),
             ],
           ),
         );
@@ -347,11 +400,13 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Join')),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Join'),
+          ),
         ],
       ),
     );
@@ -373,7 +428,9 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDeleteAccount(
-      BuildContext context, WidgetRef ref) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final confirmed = await confirmDestructive(
       context,
       title: 'Delete Account?',
@@ -390,7 +447,8 @@ class SettingsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Signed out. Contact support to fully delete your account.'),
+              'Signed out. Contact support to fully delete your account.',
+            ),
             duration: Duration(seconds: 6),
           ),
         );
@@ -434,12 +492,18 @@ class _ErrorTile extends StatelessWidget {
   final String message;
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Icon(Icons.error_outline,
-            color: Theme.of(context).colorScheme.error),
-        title: Text(message,
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.error, fontSize: 13)),
-      );
+    leading: Icon(
+      Icons.error_outline,
+      color: Theme.of(context).colorScheme.error,
+    ),
+    title: Text(
+      message,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.error,
+        fontSize: 13,
+      ),
+    ),
+  );
 }
 
 class _ProfileTile extends StatelessWidget {
@@ -461,11 +525,16 @@ class _ProfileTile extends StatelessWidget {
         child: Text(
           displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
           style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
         ),
       ),
-      title: Text(displayName,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        displayName,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(email),
       trailing: const Icon(Icons.edit_outlined),
       onTap: onEdit,
@@ -486,27 +555,29 @@ class _ThemeTile extends ConsumerWidget {
       trailing: SegmentedButton<ThemeMode>(
         segments: const [
           ButtonSegment(
-              value: ThemeMode.system,
-              icon: Icon(Icons.brightness_auto, size: 18)),
+            value: ThemeMode.system,
+            icon: Icon(Icons.brightness_auto, size: 18),
+          ),
           ButtonSegment(
-              value: ThemeMode.light,
-              icon: Icon(Icons.light_mode, size: 18)),
+            value: ThemeMode.light,
+            icon: Icon(Icons.light_mode, size: 18),
+          ),
           ButtonSegment(
-              value: ThemeMode.dark,
-              icon: Icon(Icons.dark_mode, size: 18)),
+            value: ThemeMode.dark,
+            icon: Icon(Icons.dark_mode, size: 18),
+          ),
         ],
         selected: {current},
         onSelectionChanged: (s) =>
             ref.read(themeModeNotifierProvider.notifier).setMode(s.first),
-        style: const ButtonStyle(
-            visualDensity: VisualDensity.compact),
+        style: const ButtonStyle(visualDensity: VisualDensity.compact),
       ),
     );
   }
 
   IconData _icon(ThemeMode m) => switch (m) {
-        ThemeMode.system => Icons.brightness_auto,
-        ThemeMode.light => Icons.light_mode,
-        ThemeMode.dark => Icons.dark_mode,
-      };
+    ThemeMode.system => Icons.brightness_auto,
+    ThemeMode.light => Icons.light_mode,
+    ThemeMode.dark => Icons.dark_mode,
+  };
 }

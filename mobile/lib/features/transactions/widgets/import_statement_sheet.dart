@@ -107,11 +107,33 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       final categorizer = await ref.read(categorizerProvider.future);
       final now = DateTime.now().toIso8601String();
 
+      // Pull the account_type once so the categorizer's amount-bucket /
+      // account-type features see the right value for every row in the
+      // batch (all rows belong to the same account here).
+      final selectedAccount = ref
+          .read(accountsProvider)
+          .valueOrNull
+          ?.firstWhere(
+            (a) => a.id == _selectedAccountId,
+            orElse: () => throw Exception('Selected account not found'),
+          );
+      final accountType = selectedAccount?.accountType.dbValue;
+
       final rows = _preview.map((r) {
         final result = categorizer.categorize(
           description: r.description,
           amountCents: r.amountCents,
+          accountType: accountType,
         );
+        // Round confidence to the nearest percentage point (basis points
+        // ÷ 100) so the column stays coarse-grained — same convention as
+        // bulkRecategorize. Keyword hits leave the column null.
+        final confidenceBp =
+            result != null &&
+                result.source == CategorizerSource.mlModel &&
+                result.confidence != null
+            ? ((result.confidence! * 100).round()) * 100
+            : null;
         return {
           'description': r.description,
           'amount': r.amountCents,
@@ -122,6 +144,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             'category_id': result.categoryId,
             'category_assigned_by': result.source.dbValue,
             'category_assigned_at': now,
+            'ml_model_confidence': ?confidenceBp,
           },
         };
       }).toList();

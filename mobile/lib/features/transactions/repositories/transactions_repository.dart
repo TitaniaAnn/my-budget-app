@@ -159,6 +159,33 @@ class TransactionsRepository {
     return Transaction.fromJson(data);
   }
 
+  /// Fetches transactions whose ML-assigned category fell in the
+  /// "uncertain" confidence band — predictions that auto-applied at or
+  /// above [maxConfidenceBp] are excluded (those are the "we're sure"
+  /// cases the active-learning UX shouldn't bother the user with).
+  ///
+  /// Confidence is stored in basis points (0–10000) so the comparison
+  /// stays integer-only. The default upper bound mirrors the Categorizer's
+  /// `minMlConfidence` of 0.55 (== 5500 bp).
+  ///
+  /// Ordered by confidence ascending so the most-uncertain rows surface
+  /// first — that's where user feedback is most valuable for retraining.
+  Future<List<Transaction>> fetchUncertain({
+    required String householdId,
+    int maxConfidenceBp = 5500,
+    int limit = 100,
+  }) async {
+    final data = await supabase
+        .from('transactions')
+        .select('*, category:categories(*)')
+        .eq('household_id', householdId)
+        .eq('category_assigned_by', 'ml_model')
+        .lt('ml_model_confidence', maxConfidenceBp)
+        .order('ml_model_confidence', ascending: true)
+        .limit(limit);
+    return data.map<Transaction>(Transaction.fromJson).toList();
+  }
+
   /// Fetches all transactions within a date range for dashboard summaries.
   /// Joins categories so spending-by-category can be computed in Dart.
   Future<List<Transaction>> fetchTransactionsForDashboard({
@@ -218,6 +245,28 @@ class TransactionsRepository {
     await supabase.from('transactions').delete().eq('id', id);
   }
 
+  /// Confirms or corrects an ML-assigned category, flipping provenance to
+  /// 'user' so the row joins the next training dump. Clears the stored
+  /// ML confidence — the value is only meaningful while the row is still
+  /// "what the model guessed", not after the user accepts or overrides.
+  ///
+  /// Used by the active-learning Review surface; doesn't touch any other
+  /// fields, so it's safe to call without re-supplying amount/date/etc.
+  Future<void> setUserCategory({
+    required String transactionId,
+    required String categoryId,
+  }) async {
+    await supabase
+        .from('transactions')
+        .update({
+          'category_id': categoryId,
+          'category_assigned_by': 'user',
+          'category_assigned_at': DateTime.now().toIso8601String(),
+          'ml_model_confidence': null,
+        })
+        .eq('id', transactionId);
+  }
+
   /// Pairs an existing transaction with a receipt by setting [receiptId],
   /// or unpairs when [receiptId] is null. The schema permits many
   /// transactions per receipt (an installment plan, a bill split across
@@ -242,9 +291,14 @@ class TransactionsRepository {
     String? accountId,
     required Categorizer categorizer,
   }) async {
+    // Join through `accounts` so the categorizer can use account_type as a
+    // feature. Uses the `account:accounts(account_type)` PostgREST shape
+    // that's already the convention here.
     var query = supabase
         .from('transactions')
-        .select('id, description, merchant, amount')
+        .select(
+          'id, description, merchant, amount, account:accounts(account_type)',
+        )
         .eq('household_id', householdId)
         .isFilter('category_id', null);
 
@@ -253,21 +307,32 @@ class TransactionsRepository {
     final rows = await query;
     if (rows.isEmpty) return 0;
 
-    // Group transactions by (categoryId, source) so we can update each
-    // group with a single UPDATE…WHERE id IN (…) call rather than one
-    // round-trip per row. The source is part of the key so an ML hit
-    // and a keyword-matcher hit on the same category don't blur their
-    // provenance for downstream training.
-    final groups = <(String, CategorizerSource), List<String>>{};
+    // Group transactions by (categoryId, source, confidenceBp) so we can
+    // update each group with a single UPDATE…WHERE id IN (…) call rather
+    // than one round-trip per row. The source is part of the key so an
+    // ML hit and a keyword-matcher hit on the same category don't blur
+    // their provenance for downstream training. Confidence is rounded
+    // to the nearest percentage point (1 percent == 100 basis points)
+    // so the grouping doesn't degenerate to one-bucket-per-row when
+    // every prediction has a slightly different float — the precision
+    // loss is invisible to the active-learning UX which thinks in
+    // "high / mid / low" bands.
+    final groups = <(String, CategorizerSource, int?), List<String>>{};
     for (final row in rows) {
+      final acct = row['account'] as Map<String, dynamic>?;
       final r = categorizer.categorize(
         description: row['description'] as String,
         merchant: row['merchant'] as String?,
         amountCents: (row['amount'] as int),
+        accountType: acct?['account_type'] as String?,
       );
       if (r == null) continue;
+      final confidenceBp =
+          r.source == CategorizerSource.mlModel && r.confidence != null
+          ? ((r.confidence! * 100).round()) * 100
+          : null;
       groups
-          .putIfAbsent((r.categoryId, r.source), () => [])
+          .putIfAbsent((r.categoryId, r.source, confidenceBp), () => [])
           .add(row['id'] as String);
     }
     if (groups.isEmpty) return 0;
@@ -276,13 +341,16 @@ class TransactionsRepository {
     var updated = 0;
     await Future.wait(
       groups.entries.map((entry) async {
-        final (categoryId, source) = entry.key;
+        final (categoryId, source, confidenceBp) = entry.key;
         await supabase
             .from('transactions')
             .update({
               'category_id': categoryId,
               'category_assigned_by': source.dbValue,
               'category_assigned_at': now,
+              // Always write the column — for keyword rows this clears
+              // any stale value carried over from a prior ML run.
+              'ml_model_confidence': confidenceBp,
             })
             .inFilter('id', entry.value);
         updated += entry.value.length;

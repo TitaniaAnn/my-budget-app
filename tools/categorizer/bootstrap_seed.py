@@ -103,8 +103,18 @@ def main() -> int:
                     "id": str(uuid.uuid4()),
                     "description": kw,
                     "merchant": "",
-                    # Magnitude isn't a feature; train.py only looks at sign.
-                    "amount": amount_sign * 1000,
+                    # Magnitude is now a feature (amount bucket). Pick a
+                    # plausible per-category default so seed rows don't all
+                    # land in the same bucket: rent/mortgage is large,
+                    # subscriptions are small, payroll is xl, etc. The
+                    # bucketing is in train.py:_amount_bucket; values here
+                    # are absolute cents.
+                    "amount": amount_sign * _seed_amount_cents(cat_name),
+                    # Bootstrap rows have no real account context; leave
+                    # account_type empty so the model treats them as the
+                    # "unknown account" prior. Real labels from
+                    # dump_labels.py supply the account_type.
+                    "account_type": "",
                     "category_name": cat_name,
                 })
 
@@ -112,13 +122,80 @@ def main() -> int:
     with args.out.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["id", "description", "merchant", "amount", "category_name"],
+            fieldnames=[
+                "id", "description", "merchant", "amount",
+                "account_type", "category_name",
+            ],
         )
         writer.writeheader()
         writer.writerows(rows)
 
     print(f"Wrote {len(rows)} synthetic rows to {args.out}")
     return 0
+
+
+# Per-category amount priors for seed rows, in absolute cents. Loose hand-
+# picked values that put each seeded category in a plausible bucket so the
+# model picks up the amount-bucket signal even from synthetic data. Falls
+# back to $20 (which lands in 's') for unknown categories.
+_SEED_AMOUNT_CENTS = {
+    # Income — typically large
+    "Salary": 250000,           # xl
+    "Freelance": 80000,         # l
+    "Investment Income": 5000,  # m
+    "Other Income": 2000,       # s
+    # Housing
+    "Rent / Mortgage": 150000,  # xl
+    "Home Insurance": 12000,    # m
+    "Utilities": 8000,          # m
+    "Internet / Phone": 7500,   # m
+    "Home Maintenance": 4000,   # s
+    # Food
+    "Groceries": 8000,          # m
+    "Restaurants": 3500,        # s
+    "Coffee & Drinks": 600,     # xs
+    "Takeout & Delivery": 2500, # s
+    # Transport
+    "Gas": 4000,                # s
+    "Car Insurance": 12000,     # m
+    "Car Payment": 35000,       # l
+    "Car Maintenance": 8000,    # m
+    "Rideshare / Parking": 1500,
+    "Public Transit": 500,
+    # Health
+    "Health Insurance": 30000,  # l
+    "Doctor / Dentist": 15000,  # m
+    "Prescriptions": 2500,      # s
+    "Gym & Fitness": 4000,      # s
+    "Vision & Dental": 8000,    # m
+    # Personal / lifestyle
+    "Subscriptions": 1500,      # s
+    "Entertainment": 3000,      # s
+    "Personal Care": 4000,      # s
+    "Clothing": 5000,           # m
+    "Books & Education": 3000,  # s
+    "Hobbies": 4000,            # s
+    # Kids
+    "Childcare": 80000,         # l
+    "School & Supplies": 4000,  # s
+    "Activities & Sports": 5000,
+    # Debt
+    "Credit Card Payment": 50000,  # l
+    "Student Loan": 30000,         # l
+    # Savings — vary
+    "401k / Retirement": 50000,    # l
+    "HSA Contribution": 30000,     # l
+    "529 / College Savings": 25000,
+    # Other
+    "Charitable Donations": 5000,  # m
+    "Gifts": 5000,                  # m
+    "Taxes": 100000,                # xl
+    "Transfer": 50000,              # l
+}
+
+
+def _seed_amount_cents(category_name: str) -> int:
+    return _SEED_AMOUNT_CENTS.get(category_name, 2000)  # default $20 → 's'
 
 
 if __name__ == "__main__":

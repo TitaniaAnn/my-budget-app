@@ -20,29 +20,43 @@ class Transaction with _$Transaction {
     required String id,
     required String householdId,
     required String accountId,
+
     /// Amount in cents. Negative = debit/expense, positive = credit/income.
     required int amount,
     required String currency,
+
     /// Raw description from the bank statement or user entry.
     required String description,
+
     /// Cleaned merchant name (may differ from description).
     String? merchant,
     String? categoryId,
+
     /// The date the transaction occurred (not the processing date).
     required DateTime transactionDate,
+
     /// The date the transaction cleared the account (may lag transactionDate).
     DateTime? postedDate,
     required bool pending,
+
     /// How the transaction was created: 'manual', 'import', or 'plaid'.
     required String source,
     String? enteredBy,
     String? receiptId,
     String? rateId,
     String? notes,
+
     /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
     String? externalId,
+
+    /// Top-class probability from the ML categorizer in basis points
+    /// (0–10000, where 10000 == 1.00). Populated only when
+    /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
+    /// uncertain" surface filters on this field to surface near-misses.
+    int? mlModelConfidence,
     required DateTime createdAt,
     required DateTime updatedAt,
+
     /// Eagerly-loaded category row (null if uncategorized or not joined).
     Category? category,
   }) = _Transaction;

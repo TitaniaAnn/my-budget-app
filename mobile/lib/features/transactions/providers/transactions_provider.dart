@@ -41,3 +41,17 @@ Future<List<Category>> categories(CategoriesRef ref) async {
   final repo = ref.watch(transactionsRepositoryProvider);
   return repo.fetchCategories();
 }
+
+/// Fetches ML-categorised transactions whose confidence fell in the
+/// uncertain band. Backs the "Review categorisations" surface — the user
+/// confirms or corrects each row, which flips `category_assigned_by` to
+/// 'user' and feeds the next retrain.
+@riverpod
+Future<List<Transaction>> uncertainTransactions(
+  UncertainTransactionsRef ref,
+) async {
+  final householdId = await ref.watch(householdIdProvider.future);
+  if (householdId == null) return [];
+  final repo = ref.watch(transactionsRepositoryProvider);
+  return repo.fetchUncertain(householdId: householdId);
+}

@@ -30,7 +30,9 @@ from supabase import create_client
 
 PAGE_SIZE = 1000
 
-CSV_FIELDS = ["id", "description", "merchant", "amount", "category_name"]
+CSV_FIELDS = [
+    "id", "description", "merchant", "amount", "account_type", "category_name",
+]
 
 
 def main() -> int:
@@ -54,7 +56,11 @@ def main() -> int:
     while True:
         resp = (
             client.table("transactions")
-            .select("id, description, merchant, amount, category:categories(name)")
+            .select(
+                "id, description, merchant, amount, "
+                "category:categories(name), "
+                "account:accounts(account_type)"
+            )
             .eq("category_assigned_by", "user")
             .not_.is_("category_id", "null")
             .range(offset, offset + PAGE_SIZE - 1)
@@ -65,11 +71,15 @@ def main() -> int:
             break
         for r in page:
             cat = r.get("category") or {}
+            acct = r.get("account") or {}
             rows.append({
                 "id": r.get("id"),
                 "description": r.get("description") or "",
                 "merchant": r.get("merchant") or "",
                 "amount": r.get("amount") or 0,
+                # Postgres enum as snake_case string; empty when the
+                # account row was deleted (rare, but defend against it).
+                "account_type": acct.get("account_type") or "",
                 "category_name": cat.get("name") or "",
             })
         if len(page) < PAGE_SIZE:

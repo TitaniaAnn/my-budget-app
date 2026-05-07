@@ -1,0 +1,83 @@
+name: ML categorizer
+
+# Separate from the main `flutter` workflow so a Dart-only PR doesn't pay
+# the Python install + train cost. Triggered on changes to the training
+# pipeline or the shipped model assets.
+#
+# Pipeline (kept end-to-end so a regression in any stage fails the gate):
+#   1. Bootstrap synthetic seed from the Dart keyword rules.
+#   2. Train the ONNX model + parity fixture.
+#   3. Hold-out evaluation against --min-accuracy 0.70 (eval.py exit code).
+#   4. Dart-side parity test against the just-built test_vectors.json — this
+#      is what enforces "Dart _renderInput stays byte-identical to Python
+#      render()" in CI rather than relying on a developer's local check.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'tools/categorizer/**'
+      - 'mobile/assets/ml/**'
+      - 'mobile/lib/features/transactions/services/ml_category_classifier.dart'
+      - '.github/workflows/categorizer.yaml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'tools/categorizer/**'
+      - 'mobile/assets/ml/**'
+      - 'mobile/lib/features/transactions/services/ml_category_classifier.dart'
+      - '.github/workflows/categorizer.yaml'
+
+jobs:
+  categorizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/categorizer/requirements.txt
+
+      - name: Install Python deps
+        working-directory: tools/categorizer
+        run: pip install -r requirements.txt
+
+      - name: Bootstrap synthetic seed from keyword rules
+        working-directory: tools/categorizer
+        run: python bootstrap_seed.py --out seed.csv
+
+      - name: Train + export model artefacts
+        working-directory: tools/categorizer
+        run: python train.py --in seed.csv --out-dir build/
+
+      - name: Holdout-accuracy gate (>= 0.70)
+        working-directory: tools/categorizer
+        run: python eval.py --in seed.csv --model build/category_model.onnx --min-accuracy 0.70
+
+      - name: Stage built artefacts for the Dart parity test
+        run: |
+          mkdir -p mobile/assets/ml
+          cp tools/categorizer/build/category_model.onnx mobile/assets/ml/
+          cp tools/categorizer/build/vocab.json          mobile/assets/ml/
+          cp tools/categorizer/build/labels.json         mobile/assets/ml/
+          cp tools/categorizer/build/test_vectors.json   mobile/assets/ml/
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Generate freezed / riverpod / json_serializable
+        working-directory: mobile
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Dart parity test against freshly-built fixture
+        working-directory: mobile
+        run: flutter test test/features/transactions/ml_category_classifier_test.dart
