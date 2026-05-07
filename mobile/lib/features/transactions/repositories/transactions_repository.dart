@@ -151,7 +151,7 @@ class TransactionsRepository {
           'source': 'manual',
           if (categoryId != null) 'category_assigned_by': 'user',
           if (categoryId != null)
-            'category_assigned_at': DateTime.now().toIso8601String(),
+            'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
         })
         .select('*, category:categories(*)')
         .single();
@@ -235,7 +235,7 @@ class TransactionsRepository {
           'notes': notes,
           if (categoryId != null) 'category_assigned_by': 'user',
           if (categoryId != null)
-            'category_assigned_at': DateTime.now().toIso8601String(),
+            'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', id);
   }
@@ -252,6 +252,11 @@ class TransactionsRepository {
   ///
   /// Used by the active-learning Review surface; doesn't touch any other
   /// fields, so it's safe to call without re-supplying amount/date/etc.
+  ///
+  /// Timestamp uses `.toUtc().toIso8601String()` so the wire string ends
+  /// in `Z`. A timezone-naive string would be interpreted as UTC by
+  /// Postgres TIMESTAMPTZ, silently shifting the stored time by the
+  /// host's UTC offset.
   Future<void> setUserCategory({
     required String transactionId,
     required String categoryId,
@@ -261,7 +266,7 @@ class TransactionsRepository {
         .update({
           'category_id': categoryId,
           'category_assigned_by': 'user',
-          'category_assigned_at': DateTime.now().toIso8601String(),
+          'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
           'ml_model_confidence': null,
         })
         .eq('id', transactionId);
@@ -334,7 +339,7 @@ class TransactionsRepository {
     }
     if (groups.isEmpty) return 0;
 
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
     var updated = 0;
     await Future.wait(
       groups.entries.map((entry) async {

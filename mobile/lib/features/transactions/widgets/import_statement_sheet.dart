@@ -105,7 +105,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       if (householdId == null || user == null) throw Exception('Not logged in');
 
       final categorizer = await ref.read(categorizerProvider.future);
-      final now = DateTime.now().toIso8601String();
+      final now = DateTime.now().toUtc().toIso8601String();
 
       // Pull the account_type once so the categorizer's amount-bucket /
       // account-type features see the right value for every row in the
