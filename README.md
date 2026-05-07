@@ -15,8 +15,8 @@ Multi-user household budgeting with roles, shared accounts, and the kind of corr
 - **Households with roles** — owner, partner, child — and granular per-account visibility grants on top of role defaults.
 - **Accounts** across ten types: checking, savings, credit cards, brokerage, IRA (traditional & Roth), 401(k), 403(b), HSA, 529, and cash.
 - **Transactions** entered manually, imported from bank CSVs (with header heuristics and dedup), or attached to a receipt.
-- **Auto-categorization** of transactions via an on-device ML model (TF-IDF + LogisticRegression, ONNX), with the legacy keyword matcher kept as a cold-start fallback. Predictions never leave the device.
-- **Receipts** uploaded to private Storage, line-itemized via OCR (Supabase Edge Function → Google Cloud Vision). The Edge Function is deployed externally and not in this repo; locally, a test Supabase stack with a stubbed function that mirrors the production OCR shape is the planned mirror setup.
+- **Auto-categorization** of transactions via an on-device ML model (Platt-calibrated LogReg over char-ngram TF-IDF, ONNX) with per-class auto-apply thresholds. Predictions never leave the device. Below-threshold guesses surface in a "Review uncertain" Settings screen so the user's correction becomes ground-truth for the next retrain. The legacy keyword matcher stays as a cold-start / fall-through path.
+- **Receipts** uploaded to private Storage, line-itemized via OCR (Supabase Edge Function → Google Cloud Vision). The production Edge Function is deployed externally; this repo ships a stub at [`supabase/functions/process-receipt-ocr/`](supabase/functions/process-receipt-ocr/) that mirrors its output shape so the local stack can exercise the full flow without API keys.
 - **Budgets** with weekly / monthly / annual periods and live progress against actual spending.
 - **Scenarios & goals** — what-if planning with iCal RRULE recurring events, parent-branching for alternatives, and `is_goal` overlay for target-date savings tracking. Projection runs forward from current net worth; historical net worth is reconstructed by walking transaction deltas backward.
 
@@ -42,7 +42,17 @@ The bits that took the most thought, in case you're skimming the repo to see how
 
 **Storage security via path convention.** Receipt images live in a private bucket at `{household_id}/{uuid}.jpg`; RLS policies parse the household ID out of the path to scope access.
 
-**On-device categorizer with honest provenance.** Transaction categorization is a sklearn TF-IDF (`char_wb`, n-grams 3–5) + LogisticRegression model trained in [`tools/categorizer/`](tools/categorizer/), exported via skl2onnx, and run client-side via [`onnxruntime`](https://pub.dev/packages/onnxruntime) — descriptions never leave the device. The Dart-side TF-IDF transform is a byte-for-byte port of sklearn's `char_wb` analyser, gated by a parity test ([`ml_category_classifier_test.dart`](mobile/test/features/transactions/ml_category_classifier_test.dart)) that asserts identical sparse vectors against a Python-generated fixture. A [`Categorizer` façade](mobile/lib/features/transactions/services/categorizer.dart) tries the model first, falls through to the keyword matcher when confidence < 0.55 or the predicted category isn't in the household's list — so cold-start households (no model assets, no labels yet) keep working unchanged. Migration [`017_category_assignment_source.sql`](supabase/migrations/017_category_assignment_source.sql) adds a `category_assigned_by` enum (`user` / `keyword_matcher` / `ml_model`) so the model is only ever retrained on user-confirmed labels — preventing the classic "model overfits to its own past mistakes" failure mode.
+**Integration tests against a local Supabase stack.** Repository methods whose value is "did I write the right SQL / does RLS hold?" can't be tested honestly with mocks — those just verify which builder methods got called. [`mobile/test/integration/`](mobile/test/integration/) hits a real `supabase start` stack via a thin harness ([`_supabase_harness.dart`](mobile/test/integration/_supabase_harness.dart)) that signs up a fresh user per run, leans on the `handle_new_user` trigger to provision the household, and tears everything down at the end. Gated on `--dart-define=SUPABASE_TEST_URL=...` so default `flutter test` runs are unaffected. The suite paid for itself the same hour it was written: it caught an RLS recursion between `accounts` and `account_visibility_grants` (fixed in [`023`](supabase/migrations/023_fix_account_visibility_grants_rls_recursion.sql)) and a timezone-naive timestamp pattern silently shifting every `category_assigned_at` by the host's UTC offset.
+
+**On-device categorizer with honest provenance and a real feedback loop.** The classifier is a `CalibratedClassifierCV(LogisticRegression, method='sigmoid', ensemble=False)` over a `char_wb` TF-IDF (n-grams 3–5, ≤10K features), trained in [`tools/categorizer/`](tools/categorizer/), exported via skl2onnx, and run client-side via [`onnxruntime`](https://pub.dev/packages/onnxruntime) — descriptions never leave the device. The Dart-side TF-IDF transform is a byte-for-byte port of sklearn's `char_wb` analyser, gated by a parity test ([`ml_category_classifier_test.dart`](mobile/test/features/transactions/ml_category_classifier_test.dart)) that asserts identical sparse vectors against a Python-generated fixture; the [`categorizer.yaml`](.github/workflows/categorizer.yaml) workflow rebuilds the fixture from scratch on every push that touches the training pipeline.
+
+What's worth a closer look:
+
+- **Feature shape.** The model sees `<description>|<merchant>|<sign>|<amt_bucket>|<account_type>` — magnitude (xs/s/m/l/xl) and account type (`checking`, `credit_card`, …) carry signal that pure-text models miss. A $5 charge at Walmart is overwhelmingly Groceries; a $700 charge at Walmart is more likely Home Improvement.
+- **Calibrated probabilities.** Uncalibrated LogReg overstates extremes — `confidence: 0.7` doesn't always mean "right 70% of the time". Platt scaling makes the confidence number actually mean what it claims, which is what lets the per-class thresholds and the active-learning band cut-offs be principled instead of guess-y.
+- **Per-class auto-apply thresholds.** Computed at training time as the highest threshold maintaining recall ≥ 0.7 on a holdout. Confident classes can auto-apply at confidences below the global default; noisy classes hold out above it. Shipped in `assets/ml/thresholds.json` and consulted via `MlCategoryClassifier.thresholdFor`.
+- **Active learning loop.** Migration `022_ml_model_confidence.sql` adds a basis-points integer column for the model's probability per row. Predictions in the uncertain band `[0.30, per-class threshold)` surface in a "Review uncertain ML guesses" Settings screen; the user's confirm-or-correct flips `category_assigned_by` to `'user'` and feeds the next training dump. The classic "model overfits to its own past mistakes" failure mode is closed by migration [`017_category_assignment_source.sql`](supabase/migrations/017_category_assignment_source.sql) — only `user`-sourced rows enter training data, never the model's own predictions.
+- **Accuracy gate in the retraining script.** `eval.py --min-accuracy 0.70` exits non-zero on regression. The categorizer CI workflow runs this end-to-end (bootstrap seed → train → eval → parity test) so a model regression breaks CI, not production.
 
 ---
 
@@ -51,7 +61,9 @@ The bits that took the most thought, in case you're skimming the repo to see how
 ```
 my-budget-app/
 ├── .github/workflows/
-│   └── ci.yml                       — analyze + test on push/PR
+│   ├── ci.yaml                      — format + analyze + test on push/PR
+│   └── categorizer.yaml             — Python tests, train, eval gate, Dart
+│                                      parity (only on ML-pipeline changes)
 ├── mobile/                          — Flutter app
 │   ├── lib/
 │   │   ├── core/                    — supabase client, theme, router, shared utils
@@ -64,15 +76,20 @@ my-budget-app/
 │   │       ├── receipts/
 │   │       ├── dashboard/
 │   │       └── settings/
-│   ├── test/                        — unit tests for matchers, derived data, money math
+│   ├── test/
+│   │   ├── ...                      — unit tests, run by default `flutter test`
+│   │   └── integration/             — hit a local Supabase stack (env-gated)
 │   ├── pubspec.yaml
 │   └── CLAUDE.md                    — repo conventions for AI tooling
 ├── supabase/
+│   ├── functions/
+│   │   └── process-receipt-ocr/     — local stub mirroring the production
+│   │                                  Edge Function's output shape
 │   └── migrations/                  — numbered, idempotent, named after the bug they fix
 ├── tools/
 │   └── categorizer/                 — Python pipeline that trains the on-device
-│                                      ML categorizer (TF-IDF + LogisticRegression
-│                                      → ONNX). See its README for the workflow.
+│                                      ML categorizer (TF-IDF + Platt-calibrated
+│                                      LogReg → ONNX). See its README for the workflow.
 └── README.md
 ```
 
@@ -176,7 +193,7 @@ flutter analyze
 flutter test
 ```
 
-CI runs all three on every push and PR — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+CI runs all three on every push and PR — see [`.github/workflows/ci.yaml`](.github/workflows/ci.yaml). A second workflow, [`categorizer.yaml`](.github/workflows/categorizer.yaml), triggers on `tools/categorizer/**` or `mobile/assets/ml/**` and runs the Python pytest + a full bootstrap → train → eval (`--min-accuracy 0.70`) → Dart parity test pipeline, splitting Python install cost away from Dart-only PRs.
 
 ### Retraining the categorizer
 
@@ -206,11 +223,15 @@ Once the assets land in `mobile/assets/ml/`, `flutter test` runs the parity chec
 
 ## Testing
 
-Unit tests live in `mobile/test/`, mirroring the feature structure under `lib/`. Coverage focuses on the parts that are easy to break and expensive to get wrong:
+Three layers, each with a different trade-off between speed and what it can catch.
+
+### Dart unit tests — `mobile/test/`
+
+Mirror the feature structure under `lib/`. Cover the parts that are easy to break and expensive to get wrong:
 
 - **`category_matcher_test.dart`** — rule precedence, case insensitivity, income/expense disambiguation, missing-category fallthrough, plus a regression that pins `"renters insurance"` to Home Insurance after a substring overlap with the `rent` keyword used to mis-categorise it as Rent / Mortgage.
 - **`ml_category_classifier_test.dart`** — char_wb tokenisation hand-traced against sklearn's documented algorithm, plus a parity test that asserts byte-identical sparse vectors against a Python-generated fixture (auto-skipped on a fresh clone where `assets/ml/` is empty).
-- **`categorizer_test.dart`** — façade routing: ML hits above threshold win, fall through to the keyword matcher otherwise (low confidence, no model loaded, predicted category absent from the household's list).
+- **`categorizer_test.dart`** — façade routing (ML wins above threshold, falls through to keyword on low confidence / missing model / unknown category), per-class threshold behaviour (lower threshold lets a confident class auto-apply below the global default; higher threshold suppresses an otherwise-acceptable hit), the active-learning `categorizeWithUncertain` band, and `confidenceToBasisPoints` rounding.
 - **`statement_parser_test.dart`** — CSV import: signed and split debit/credit columns, sign-inference precedence (credit keywords beat debit on overlap), Decimal-based cents conversion, dedup-key normalisation across casing/whitespace, two-digit-year pivot, accounting-paren negatives.
 - **`historical_net_worth_test.dart`** — pure-function regression for the end-of-day balance walkback: `B_d = B_{prev} − D_{prev}`, including no-transaction days, future-dated rows, and positive-delta (income) cases.
 - **`dashboard_data_test.dart`** — net-worth correctness across account types (regression test for the mortgage-as-asset bug), monthly aggregates, top-N category grouping, 30-day spending bucket placement.
@@ -221,6 +242,33 @@ Run them all:
 cd mobile
 flutter test
 ```
+
+### Python pure-logic tests — `tools/categorizer/test_train.py`
+
+Pin three things on the Python side so a future refactor doesn't have to wait for a Dart parity run to surface mistakes: `_amount_bucket` boundary behaviour, `render` field shape, and `compute_per_class_thresholds` (recall-boundary picking + rare-class / can't-reach-target fallbacks).
+
+```bash
+cd tools/categorizer
+pip install -r requirements-dev.txt    # adds pytest on top of training deps
+pytest
+```
+
+Wired into the [categorizer CI workflow](.github/workflows/categorizer.yaml) ahead of the heavier train+ONNX export steps so a pure-logic regression fails fast.
+
+### Integration tests — `mobile/test/integration/`
+
+Hit a real `supabase start` stack via [`_supabase_harness.dart`](mobile/test/integration/_supabase_harness.dart). What unit tests can't reach: SQL semantics (does the WHERE clause actually return the right rows?), RLS (does household isolation hold?), schema mismatches that would otherwise drift silently. Skipped by default — gated on env vars so vanilla `flutter test` runs aren't affected.
+
+```bash
+supabase start   # if not already running
+cd mobile
+flutter test \
+  --dart-define=SUPABASE_TEST_URL=http://localhost:54421 \
+  --dart-define=SUPABASE_TEST_ANON_KEY=<from `supabase status`> \
+  test/integration/
+```
+
+Current coverage: `TransactionsRepository.setUserCategory`, `fetchUncertain` (filtering, ordering, custom bound, limit), and an explicit RLS-isolation test that pins household separation.
 
 ---
 
@@ -238,6 +286,9 @@ The `supabase/migrations/` folder is a small case study in iterating on a live s
 | `018_save_receipt_line_items_function.sql`  | Atomicized a delete-then-insert line-item replace that could leave a receipt with zero items if the insert half failed — same shape of bug as 015. |
 | `019_receipt_match_candidates.sql`          | RPC that ranks plausible transactions for a receipt by combined date+amount proximity, so the pair sheet ships only the top N rows over the wire and excludes already-paired transactions. |
 | `020_transaction_tags.sql`                  | Tags as a second dimension orthogonal to categories. Two assignment tables (transactions and receipt line items) so a Costco run can be tagged at whichever granularity reflects the truth. |
+| `021_get_category_spending_function.sql`    | Server-side `GROUP BY category_id, SUM(amount)` so the budget screen ships one row per category instead of every transaction in the range. RLS still applies — the RPC runs as the caller. |
+| `022_ml_model_confidence.sql`               | Basis-points INTEGER column for the model's top-class probability, plus a partial index on uncertain ML rows. Backs the active-learning Review surface; basis points keep the cents-everywhere INTEGER invariant intact. |
+| `023_fix_account_visibility_grants_rls_recursion.sql` | RLS recursion between `accounts` and `account_visibility_grants` (Postgres error 42P17). Same shape of bug as 004; fixed via a new `account_household_id()` `SECURITY DEFINER` helper that resolves the relationship without re-entering the user's RLS path. Surfaced by the integration suite. |
 
 ---
 
