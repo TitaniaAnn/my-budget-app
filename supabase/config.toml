@@ -1,25 +1,29 @@
 # Supabase local dev configuration
 # Run `supabase start` to spin up the local stack
+#
+# Ports are shifted +100 from the Supabase CLI defaults so this stack can
+# coexist with another local Supabase project on the same machine. Update
+# `mobile/.env.json` accordingly: SUPABASE_URL=http://localhost:54421.
 
 [api]
-port = 54321
+port = 54421
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 54322
-shadow_port = 54320
+port = 54422
+shadow_port = 54420
 major_version = 15
 
 [studio]
-port = 54323
+port = 54423
 api_url = "http://localhost"
 
 [inbucket]
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
+port = 54424
+smtp_port = 54425
+pop3_port = 54426
 
 [storage]
 file_size_limit = "50MiB"

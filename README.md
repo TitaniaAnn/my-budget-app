@@ -90,7 +90,7 @@ Each feature folder follows the same shape: `models/` (Freezed immutables), `pro
 
 **External services:** Google Cloud Vision (OCR).
 
-> The OCR Edge Function (`receipts.ocr_status: pending → done`) is **deployed externally and not committed here.** The schema and storage bucket are in this repo, and `MlCategoryClassifier` will categorise the line items once they arrive — but no code in this repo advances the OCR status. To exercise the full flow locally, plan to spin up a Supabase test stack and stub the function to mirror the production OCR shape.
+> The OCR Edge Function (`receipts.ocr_status: pending → complete`) is **deployed externally** for production — Google Cloud Vision is the upstream. For local development, this repo ships a stub function at [`supabase/functions/process-receipt-ocr/`](supabase/functions/process-receipt-ocr/) that mirrors the production output shape but generates synthetic line items instead of calling Vision. Run `supabase start` (see [CLAUDE.md](CLAUDE.md#local-test-stack)) and the stub deploys automatically.
 
 ---
 
