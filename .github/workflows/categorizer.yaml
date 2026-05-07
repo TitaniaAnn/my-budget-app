@@ -41,9 +41,13 @@ jobs:
           cache: pip
           cache-dependency-path: tools/categorizer/requirements.txt
 
-      - name: Install Python deps
+      - name: Install Python deps (incl. test runner)
         working-directory: tools/categorizer
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
+
+      - name: Run Python unit tests
+        working-directory: tools/categorizer
+        run: pytest -q
 
       - name: Bootstrap synthetic seed from keyword rules
         working-directory: tools/categorizer

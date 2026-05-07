@@ -1,0 +1,5 @@
+# Dev-only deps for running the test suite. Loaded in CI by the
+# categorizer workflow alongside requirements.txt; not needed for the
+# train / eval / dump scripts at runtime.
+-r requirements.txt
+pytest>=7.0,<9.0
