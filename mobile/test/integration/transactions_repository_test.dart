@@ -13,7 +13,11 @@
 //     test/integration/
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mybudget/features/transactions/models/category.dart';
 import 'package:mybudget/features/transactions/repositories/transactions_repository.dart';
+import 'package:mybudget/features/transactions/services/categorizer.dart';
+import 'package:mybudget/features/transactions/services/category_matcher.dart';
+import 'package:mybudget/features/transactions/services/ml_category_classifier.dart';
 
 import '_supabase_harness.dart';
 
@@ -218,6 +222,242 @@ void main() {
       }, skip: reason);
     });
 
+    // ── createTransaction + updateTransaction (UTC timestamp) ───────────
+    //
+    // Pins the .toUtc().toIso8601String() convention end-to-end. A
+    // timezone-naive write would land in TIMESTAMPTZ shifted by the
+    // host's UTC offset; this test catches that drift if it ever
+    // returns.
+
+    group('category_assigned_at UTC discipline', () {
+      Future<DateTime> readAssignedAt(String txId) async {
+        final row = await harness.client
+            .from('transactions')
+            .select('category_assigned_at')
+            .eq('id', txId)
+            .single();
+        return DateTime.parse(row['category_assigned_at'] as String);
+      }
+
+      test('createTransaction writes category_assigned_at within seconds of '
+          'now() in UTC', () async {
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+        final created = await repo.createTransaction(
+          householdId: harness.householdId,
+          accountId: harness.accountId,
+          enteredBy: harness.userId,
+          amount: -1234,
+          description: 'UTC TEST CREATE',
+          transactionDate: DateTime.now(),
+          categoryId: groceriesId,
+        );
+        final ts = await readAssignedAt(created.id);
+        final skew = DateTime.now().toUtc().difference(ts.toUtc()).abs();
+        expect(
+          skew.inMinutes < 5,
+          isTrue,
+          reason:
+              'category_assigned_at drifted by $skew — likely a '
+              'timezone-naive write. Use .toUtc().toIso8601String().',
+        );
+      }, skip: reason);
+
+      test('updateTransaction refreshes category_assigned_at in UTC', () async {
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+        final coffeeId = await harness.systemCategoryIdByName(
+          'Coffee & Drinks',
+        );
+
+        // Insert with a deliberately-old timestamp so we can prove the
+        // update moves it to "now".
+        final txId = await harness.insertTransaction(
+          description: 'UTC TEST UPDATE',
+          categoryId: groceriesId,
+          categoryAssignedBy: 'user',
+        );
+        await harness.client
+            .from('transactions')
+            .update({
+              'category_assigned_at': DateTime.utc(
+                2020,
+                1,
+                1,
+              ).toIso8601String(),
+            })
+            .eq('id', txId);
+
+        await repo.updateTransaction(
+          id: txId,
+          amount: -1234,
+          description: 'UTC TEST UPDATE',
+          transactionDate: DateTime.now(),
+          categoryId: coffeeId,
+        );
+
+        final ts = await readAssignedAt(txId);
+        final skew = DateTime.now().toUtc().difference(ts.toUtc()).abs();
+        expect(
+          skew.inMinutes < 5,
+          isTrue,
+          reason:
+              'updateTransaction left category_assigned_at at the old '
+              'value or drifted by $skew. Should be near now() in UTC.',
+        );
+      }, skip: reason);
+    });
+
+    // ── bulkRecategorize ─────────────────────────────────────────────────
+    //
+    // Verifies the actual SQL effect of the grouped UPDATEs: matching
+    // rows get their category_id, category_assigned_by, and
+    // ml_model_confidence written; non-matching rows are left alone;
+    // already-categorised rows are excluded from the input set.
+
+    group('bulkRecategorize', () {
+      test('keyword path: writes category + provenance, leaves '
+          'ml_model_confidence null', () async {
+        // Build a Categorizer that uses keyword matcher only (no ML).
+        // Fetching system categories so the matcher can resolve
+        // names → IDs.
+        final catRows = await harness.client
+            .from('categories')
+            .select()
+            .isFilter('household_id', null);
+        final cats = (catRows as List)
+            .map((r) => Category.fromJson(r as Map<String, dynamic>))
+            .toList();
+        final categorizer = Categorizer(
+          categories: cats,
+          keywordMatcher: CategoryMatcher(cats),
+          // No ML classifier — exercises the keyword path.
+        );
+
+        final coffeeId = await harness.systemCategoryIdByName(
+          'Coffee & Drinks',
+        );
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+
+        // Two rows the keyword matcher will hit, one it won't.
+        final starbucksId = await harness.insertTransaction(
+          description: 'STARBUCKS COFFEE 1234',
+        );
+        final walmartId = await harness.insertTransaction(
+          description: 'WALMART SUPERCENTER',
+        );
+        final unknownId = await harness.insertTransaction(
+          description: 'TOTALLY UNRECOGNISED MERCHANT XYZ',
+        );
+
+        // Pre-categorised row should NOT be touched (filter is
+        // category_id IS NULL).
+        final alreadyId = await harness.insertTransaction(
+          description: 'STARBUCKS DOWNTOWN',
+          categoryId: groceriesId, // wrong category on purpose
+          categoryAssignedBy: 'user',
+        );
+
+        final updated = await repo.bulkRecategorize(
+          householdId: harness.householdId,
+          categorizer: categorizer,
+        );
+
+        // Expected: 2 rows updated (starbucks + walmart). Unknown stays
+        // null; pre-categorised row stays as-is.
+        expect(updated, 2);
+
+        Future<Map<String, dynamic>> fetchRow(String id) async => await harness
+            .client
+            .from('transactions')
+            .select('category_id, category_assigned_by, ml_model_confidence')
+            .eq('id', id)
+            .single();
+
+        final starbucks = await fetchRow(starbucksId);
+        expect(starbucks['category_id'], coffeeId);
+        expect(starbucks['category_assigned_by'], 'keyword_matcher');
+        expect(
+          starbucks['ml_model_confidence'],
+          isNull,
+          reason:
+              'keyword hits must NOT populate ml_model_confidence — the '
+              'column is reserved for ML provenance.',
+        );
+
+        final walmart = await fetchRow(walmartId);
+        expect(walmart['category_id'], groceriesId);
+        expect(walmart['category_assigned_by'], 'keyword_matcher');
+        expect(walmart['ml_model_confidence'], isNull);
+
+        final unknown = await fetchRow(unknownId);
+        expect(
+          unknown['category_id'],
+          isNull,
+          reason:
+              'unmatched rows must stay uncategorised — the matcher had '
+              'no rule for this description.',
+        );
+
+        final already = await fetchRow(alreadyId);
+        expect(
+          already['category_id'],
+          groceriesId,
+          reason:
+              'already-categorised rows must not be touched (the SELECT '
+              'filter is category_id IS NULL).',
+        );
+        expect(already['category_assigned_by'], 'user');
+      }, skip: reason);
+
+      test(
+        'ML path: writes category + ml_model_confidence in basis points',
+        () async {
+          // Build a Categorizer with a stub ML classifier so we can pin
+          // the confidence-bp write without depending on shipped model
+          // assets. The stub returns a fixed prediction for any input
+          // it recognises.
+          final catRows = await harness.client
+              .from('categories')
+              .select()
+              .isFilter('household_id', null);
+          final cats = (catRows as List)
+              .map((r) => Category.fromJson(r as Map<String, dynamic>))
+              .toList();
+          final groceriesId = await harness.systemCategoryIdByName('Groceries');
+          final categorizer = Categorizer(
+            categories: cats,
+            keywordMatcher: CategoryMatcher(cats),
+            mlClassifier: _StubHighConfidenceMl(
+              categoryName: 'Groceries',
+              categoryId: groceriesId,
+              confidence: 0.83, // → 8300 bp
+            ),
+            minMlConfidence: 0.55,
+          );
+
+          final txId = await harness.insertTransaction(
+            description: 'OBSCURE BUT MODELED MERCHANT',
+          );
+
+          await repo.bulkRecategorize(
+            householdId: harness.householdId,
+            categorizer: categorizer,
+          );
+
+          final row = await harness.client
+              .from('transactions')
+              .select('category_id, category_assigned_by, ml_model_confidence')
+              .eq('id', txId)
+              .single();
+          expect(row['category_id'], groceriesId);
+          expect(row['category_assigned_by'], 'ml_model');
+          // 0.83 → round(83) × 100 = 8300 bp. Also verifies the
+          // basis-points conversion is integer-only at the wire layer.
+          expect(row['ml_model_confidence'], 8300);
+        },
+        skip: reason,
+      );
+    });
+
     // ── RLS sanity ──────────────────────────────────────────────────────
     //
     // The riskiest property in the repo is household isolation. This
@@ -253,7 +493,7 @@ void main() {
             // doesn't appear, no matter which household_id we pass.
             await harness.client.auth.signInWithPassword(
               email: harness.email,
-              password: 'test-password-12345',
+              password: Harness.testPassword,
             );
             final ourRows = await repo.fetchUncertain(
               householdId: harness.householdId,
@@ -285,13 +525,13 @@ void main() {
             // their household.
             await harness.client.auth.signInWithPassword(
               email: other.email,
-              password: 'test-password-12345',
+              password: Harness.testPassword,
             );
             await other.dispose();
             // Restore our test user's session for any later test ordering.
             await harness.client.auth.signInWithPassword(
               email: harness.email,
-              password: 'test-password-12345',
+              password: Harness.testPassword,
             );
           }
         },
@@ -299,4 +539,48 @@ void main() {
       );
     });
   });
+}
+
+/// Minimal stand-in for [MlCategoryClassifier] used by the
+/// `bulkRecategorize` ML-path test. Returns a fixed prediction for
+/// every input — what we're testing is the repository's wire-format
+/// handling of confidence (basis-points conversion + grouped UPDATE),
+/// not the model itself.
+class _StubHighConfidenceMl implements MlCategoryClassifier {
+  _StubHighConfidenceMl({
+    required this.categoryName,
+    required this.categoryId,
+    required this.confidence,
+  });
+
+  final String categoryName;
+  final String categoryId;
+  final double confidence;
+
+  @override
+  MlPrediction? predict({
+    required String description,
+    String? merchant,
+    required int amountCents,
+    required Map<String, Category> categoriesByName,
+    String? accountType,
+    double minConfidence = 0.55,
+  }) {
+    if (confidence < minConfidence) return null;
+    return MlPrediction(
+      categoryName: categoryName,
+      categoryId: categoryId,
+      confidence: confidence,
+    );
+  }
+
+  @override
+  double thresholdFor(String className, {required double defaultThreshold}) =>
+      defaultThreshold;
+
+  @override
+  void dispose() {}
+
+  @override
+  int get inputSize => 0;
 }

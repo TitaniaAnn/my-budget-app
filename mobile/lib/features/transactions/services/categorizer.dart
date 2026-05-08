@@ -88,9 +88,10 @@ class Categorizer {
   /// Lowest plausible auto-apply threshold across all classes. Below this,
   /// even a per-class learned threshold wouldn't auto-apply — the model
   /// is too uncertain to be useful. Used as the floor passed to
-  /// [MlCategoryClassifier.predict] so per-class thresholds in the
-  /// 0.30–0.55 band are still reachable.
-  static const double _autoApplyFloor = 0.30;
+  /// [MlCategoryClassifier.predict] in [categorize] AND as the default
+  /// `lowerBound` of the uncertain band in [categorizeWithUncertain] so
+  /// the two paths can't drift.
+  static const double defaultAutoApplyFloor = 0.30;
 
   /// Categorises a single transaction. Tries the ML classifier first
   /// (when available) and falls back to the keyword matcher when the
@@ -120,7 +121,7 @@ class Categorizer {
       amountCents: amountCents,
       categoriesByName: _categoriesByName,
       accountType: accountType,
-      minConfidence: _autoApplyFloor,
+      minConfidence: defaultAutoApplyFloor,
     );
     if (ml != null && ml.categoryId != null) {
       final threshold = _ml!.thresholdFor(
@@ -163,7 +164,7 @@ class Categorizer {
     String? merchant,
     required int amountCents,
     String? accountType,
-    double lowerBound = 0.30,
+    double lowerBound = defaultAutoApplyFloor,
   }) {
     // Run the ML once at the lower threshold so we always get its top
     // class when it has anything to say.

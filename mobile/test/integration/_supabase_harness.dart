@@ -41,6 +41,12 @@ class Harness {
   static const _url = String.fromEnvironment('SUPABASE_TEST_URL');
   static const _anonKey = String.fromEnvironment('SUPABASE_TEST_ANON_KEY');
 
+  /// Single source of truth for the password used when signing test
+  /// users up. If Supabase auth's password rules ever tighten (length,
+  /// character classes), update once here — every test re-signin path
+  /// reads from this const.
+  static const String testPassword = 'test-password-12345';
+
   /// True when both env vars are present. Test files should gate their
   /// `setUpAll` and individual tests on this so a vanilla `flutter test`
   /// run skips them cleanly.
@@ -102,7 +108,7 @@ class Harness {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final tag = testTag == null ? '' : '-$testTag';
     final email = 'mybudget-test$tag-$stamp@example.test';
-    const password = 'test-password-12345';
+    const password = Harness.testPassword;
 
     final signUp = await client.auth.signUp(
       email: email,
