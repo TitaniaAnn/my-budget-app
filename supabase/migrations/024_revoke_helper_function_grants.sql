@@ -1,0 +1,29 @@
+-- ============================================================
+-- Restrict PostgREST exposure of `account_household_id`.
+--
+-- Migration 023 introduced a SECURITY DEFINER helper that resolves
+-- an account's household_id without entering the user's RLS path —
+-- necessary to break the recursion between `accounts` and
+-- `account_visibility_grants`. By default, PostgREST exposes any
+-- function in the `public` schema as an RPC endpoint reachable by
+-- authenticated users. Combined with SECURITY DEFINER's RLS bypass,
+-- that means an authenticated user could call:
+--
+--   supabase.rpc('account_household_id', {p_account_id: '<uuid>'})
+--
+-- and learn which household any account UUID belongs to, regardless
+-- of whether they have rights to that account. Account UUIDs are
+-- unguessable so practical exploitation is bounded, but the function
+-- has no business being callable from outside an RLS policy.
+--
+-- This migration revokes EXECUTE from PUBLIC so PostgREST stops
+-- exposing it. RLS policies still call it fine — they execute as
+-- `postgres`, which retains its implicit privileges.
+--
+-- Older SECURITY DEFINER helpers (`get_household_role` from migration
+-- 001, the helpers in `008_household_invites.sql`) have the same
+-- exposure shape; sweeping those is intentionally deferred so this
+-- migration stays focused on the helper introduced in 023.
+-- ============================================================
+
+REVOKE EXECUTE ON FUNCTION public.account_household_id(UUID) FROM PUBLIC;
