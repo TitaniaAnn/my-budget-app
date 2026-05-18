@@ -104,9 +104,26 @@ class TransactionCard extends StatelessWidget {
                     color: isExpense ? colors.expense : colors.income,
                   ),
                 ),
-                Text(
-                  _dateFmt.format(transaction.transactionDate),
-                  style: TextStyle(fontSize: 12, color: colors.textSubtle),
+                // Paperclip + date. The paperclip surfaces whenever the
+                // row is linked to a receipt (via `transactions.receipt_id`)
+                // so users can scan a list and tell at a glance which
+                // expenses already have proof attached.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (transaction.receiptId != null) ...[
+                      Icon(
+                        Icons.attach_file_outlined,
+                        size: 12,
+                        color: colors.textSubtle,
+                      ),
+                      const SizedBox(width: 2),
+                    ],
+                    Text(
+                      _dateFmt.format(transaction.transactionDate),
+                      style: TextStyle(fontSize: 12, color: colors.textSubtle),
+                    ),
+                  ],
                 ),
               ],
             ),
