@@ -6,6 +6,7 @@ import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction.dart';
 import '../models/category.dart';
 import '../services/categorizer.dart';
+import 'transaction_tags_repository.dart';
 
 part 'transactions_repository.g.dart';
 
@@ -20,16 +21,32 @@ class TransactionsRepository {
   ///
   /// Joins the categories table so [Transaction.category] is populated.
   /// Results are paginated via [limit] and [offset]; ordered newest-first.
+  ///
+  /// When [tagId] is set, the result is narrowed to transactions
+  /// carrying that tag. Done as a pre-fetch on the assignment table
+  /// followed by `inFilter('id', …)` on the main query — two trips,
+  /// but the assignment table is small and PostgREST's embed-with-
+  /// filter ergonomics aren't worth the complexity for this v1
+  /// surface. If a tag has no assignments, this short-circuits and
+  /// returns an empty list without touching the main table.
   Future<List<Transaction>> fetchTransactions({
     required String householdId,
     String? accountId,
     String? categoryId,
+    String? tagId,
     String? search,
     DateTime? from,
     DateTime? to,
     int limit = 1000,
     int offset = 0,
   }) async {
+    List<String>? tagFilteredIds;
+    if (tagId != null) {
+      tagFilteredIds = await TransactionTagsRepository()
+          .fetchTransactionIdsForTag(tagId);
+      if (tagFilteredIds.isEmpty) return const [];
+    }
+
     var query = supabase
         .from('transactions')
         .select('*, category:categories(*)')
@@ -37,6 +54,9 @@ class TransactionsRepository {
 
     if (accountId != null) query = query.eq('account_id', accountId);
     if (categoryId != null) query = query.eq('category_id', categoryId);
+    if (tagFilteredIds != null) {
+      query = query.inFilter('id', tagFilteredIds);
+    }
     if (search != null && search.isNotEmpty) {
       // Match either the raw description or the cleaned merchant column.
       // The user's input goes into a SQL ILIKE pattern, so:

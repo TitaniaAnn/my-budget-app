@@ -6,6 +6,7 @@ import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../models/transaction.dart';
+import '../models/transaction_tag.dart';
 
 /// Displays one transaction with its category icon, description, amount,
 /// and date. Expenses are shown in red; income in green.
@@ -13,7 +14,19 @@ class TransactionCard extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback? onTap;
 
-  const TransactionCard({super.key, required this.transaction, this.onTap});
+  /// Tags assigned to this transaction. The list view resolves the
+  /// txId → tags mapping once via [transactionTagAssignmentsProvider]
+  /// and passes the result in per row, so the card never fetches.
+  /// Defaults to empty so cards rendered from screens that don't (yet)
+  /// surface tags simply render without them.
+  final List<TransactionTag> tags;
+
+  const TransactionCard({
+    super.key,
+    required this.transaction,
+    this.onTap,
+    this.tags = const [],
+  });
 
   static final _dateFmt = DateFormat('MMM d');
 
@@ -67,25 +80,32 @@ class TransactionCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (category != null)
-                    Container(
-                      margin: const EdgeInsets.only(top: 3),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (categoryColor ?? Theme.of(context).dividerColor)
-                            .withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: categoryColor ?? colors.textSubtle,
-                          fontWeight: FontWeight.w500,
-                        ),
+                  if (category != null || tags.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Wrap(
+                        spacing: 4,
+                        runSpacing: 2,
+                        children: [
+                          if (category != null)
+                            _Chip(
+                              label: category.name,
+                              color:
+                                  categoryColor ??
+                                  Theme.of(context).dividerColor,
+                              textColor: categoryColor ?? colors.textSubtle,
+                            ),
+                          for (final tag in tags)
+                            _Chip(
+                              label: '#${tag.name}',
+                              color: tag.color != null
+                                  ? colorFromHex(tag.color)
+                                  : Theme.of(context).dividerColor,
+                              textColor: tag.color != null
+                                  ? colorFromHex(tag.color)
+                                  : colors.textSubtle,
+                            ),
+                        ],
                       ),
                     ),
                 ],
@@ -128,6 +148,40 @@ class TransactionCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small text-only chip used inside [TransactionCard] for both the
+/// category and tag badges. Background is a 20%-alpha tint of [color]
+/// so the chip stays subdued; text uses the full color for contrast.
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.color,
+    required this.textColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: textColor,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

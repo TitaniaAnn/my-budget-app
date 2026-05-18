@@ -14,6 +14,8 @@ import '../../../shared/widgets/dialogs.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
+import '../models/transaction_tag.dart';
+import '../providers/transaction_tags_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
@@ -84,6 +86,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String? _selectedAccountId;
   String? _selectedCategoryId;
+  String? _selectedTagId;
   _DateFilter _dateFilter = _DateFilter.thisMonth;
   String _search = '';
   bool _showSearch = false;
@@ -173,11 +176,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       transactionsProvider(
         accountId: _selectedAccountId,
         categoryId: _selectedCategoryId,
+        tagId: _selectedTagId,
         search: _search.isEmpty ? null : _search,
         dateFrom: from,
         dateTo: to,
       ),
     );
+    final tagsAsync = ref.watch(transactionTagsProvider);
+    final assignmentsAsync = ref.watch(transactionTagAssignmentsProvider);
 
     return Column(
       children: [
@@ -209,6 +215,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ),
                 ) ??
             const SizedBox.shrink(),
+        // Tag filter chips — only renders when the household has at
+        // least one tag, so a fresh user without tags doesn't see an
+        // empty bar.
+        tagsAsync.whenOrNull(
+              data: (tags) => tags.isEmpty
+                  ? null
+                  : _TagFilterBar(
+                      tags: tags,
+                      selectedId: _selectedTagId,
+                      onSelected: (id) => setState(() => _selectedTagId = id),
+                    ),
+            ) ??
+            const SizedBox.shrink(),
         // Transaction list
         Expanded(
           child: txAsync.when(
@@ -217,12 +236,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               error: e,
               onRetry: () => ref.invalidate(transactionsProvider),
             ),
-            data: (transactions) => _TransactionList(
-              transactions: transactions,
-              startingBalance: widget.startingBalance,
-              onEdit: (tx) => _showEditSheet(context, tx),
-              onDelete: (tx) => _deleteTransaction(tx),
-            ),
+            data: (transactions) {
+              // Resolve per-tx tag lists once before passing down — the
+              // list view shouldn't have to know how to join two
+              // providers, and we want a single dictionary lookup
+              // per row rather than O(rows × tags) scans.
+              final tagsByName = {
+                for (final tag in tagsAsync.valueOrNull ?? const [])
+                  tag.id: tag,
+              };
+              final assignments =
+                  assignmentsAsync.valueOrNull ?? const <String, Set<String>>{};
+              final perTxTags = <String, List<TransactionTag>>{
+                for (final tx in transactions)
+                  tx.id: [
+                    for (final tagId in assignments[tx.id] ?? const <String>{})
+                      if (tagsByName[tagId] != null) tagsByName[tagId]!,
+                  ],
+              };
+              return _TransactionList(
+                transactions: transactions,
+                tagsByTransactionId: perTxTags,
+                startingBalance: widget.startingBalance,
+                onEdit: (tx) => _showEditSheet(context, tx),
+                onDelete: (tx) => _deleteTransaction(tx),
+              );
+            },
           ),
         ),
       ],
@@ -421,6 +460,77 @@ class _CategoryFilterBar extends StatelessWidget {
   }
 }
 
+/// Horizontal chip row of every tag in the household. Same pill
+/// style as [_CategoryFilterBar] for visual consistency. Selecting
+/// a tag narrows the transactions list to rows carrying that tag;
+/// the "All tags" pill clears the filter. Tag chips are prefixed
+/// with `#` so they can't be confused with category chips on a
+/// glance.
+class _TagFilterBar extends StatelessWidget {
+  final List<TransactionTag> tags;
+  final String? selectedId;
+  final ValueChanged<String?> onSelected;
+
+  const _TagFilterBar({
+    required this.tags,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _chip(context, null, 'All tags'),
+          ...tags.map((t) => _chip(context, t.id, '#${t.name}')),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context, String? id, String label) {
+    final selected = selectedId == id;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8, bottom: 4),
+      child: GestureDetector(
+        onTap: () => onSelected(id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).dividerColor,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: selected
+                    ? Colors.white
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DateFilterBar extends StatelessWidget {
   final _DateFilter selected;
   final ValueChanged<_DateFilter> onSelected;
@@ -456,12 +566,18 @@ class _DateFilterBar extends StatelessWidget {
 
 class _TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
+
+  /// Pre-resolved tags per transaction id, computed once in the
+  /// parent so the list view doesn't have to join two providers per
+  /// row. An absent key is treated the same as an empty list.
+  final Map<String, List<TransactionTag>> tagsByTransactionId;
   final int? startingBalance;
   final ValueChanged<Transaction> onEdit;
   final ValueChanged<Transaction> onDelete;
 
   const _TransactionList({
     required this.transactions,
+    this.tagsByTransactionId = const {},
     this.startingBalance,
     required this.onEdit,
     required this.onDelete,
@@ -546,6 +662,7 @@ class _TransactionList extends StatelessWidget {
                     },
                     child: TransactionCard(
                       transaction: tx,
+                      tags: tagsByTransactionId[tx.id] ?? const [],
                       onTap: () => onEdit(tx),
                     ),
                   );

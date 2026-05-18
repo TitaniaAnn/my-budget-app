@@ -16,6 +16,7 @@ Future<List<Transaction>> transactions(
   TransactionsRef ref, {
   String? accountId,
   String? categoryId,
+  String? tagId,
   String? search,
   DateTime? dateFrom,
   DateTime? dateTo,
@@ -28,6 +29,7 @@ Future<List<Transaction>> transactions(
     householdId: householdId,
     accountId: accountId,
     categoryId: categoryId,
+    tagId: tagId,
     search: search,
     from: dateFrom,
     to: dateTo,

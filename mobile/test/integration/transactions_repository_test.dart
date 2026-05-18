@@ -14,6 +14,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mybudget/features/transactions/models/category.dart';
+import 'package:mybudget/features/transactions/repositories/transaction_tags_repository.dart';
 import 'package:mybudget/features/transactions/repositories/transactions_repository.dart';
 import 'package:mybudget/features/transactions/services/categorizer.dart';
 import 'package:mybudget/features/transactions/services/category_matcher.dart';
@@ -643,6 +644,90 @@ void main() {
         final receiptId = await insertReceipt();
         final result = await repo.fetchByReceiptId(receiptId);
         expect(result, isEmpty);
+      }, skip: reason);
+    });
+
+    // ── fetchTransactions(tagId: ...) ───────────────────────────────────
+    //
+    // Powers the tag filter on the transactions screen. The repo does
+    // this in two trips (assignment-table lookup → inFilter on ids)
+    // rather than a join, so we want to confirm the wiring under
+    // realistic conditions.
+
+    group('fetchTransactions tag filter', () {
+      test('returns only transactions carrying the requested tag', () async {
+        // Two tags with distinct assignments — and a third tx with
+        // no tag at all to confirm the filter excludes untagged rows.
+        final tagsRepo = TransactionTagsRepository();
+        final stamp = DateTime.now().microsecondsSinceEpoch;
+        final tagA = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'contractor-$stamp',
+        );
+        final tagB = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'pottery-$stamp',
+        );
+
+        final aId = await harness.insertTransaction(description: 'TAG A TX');
+        final bId = await harness.insertTransaction(description: 'TAG B TX');
+        final untaggedId = await harness.insertTransaction(
+          description: 'UNTAGGED',
+        );
+
+        await tagsRepo.replaceAssignments(
+          transactionId: aId,
+          tagIds: [tagA.id],
+        );
+        await tagsRepo.replaceAssignments(
+          transactionId: bId,
+          tagIds: [tagB.id],
+        );
+
+        final filteredA = await repo.fetchTransactions(
+          householdId: harness.householdId,
+          tagId: tagA.id,
+        );
+        final filteredAIds = filteredA.map((t) => t.id).toSet();
+        expect(filteredAIds, contains(aId));
+        expect(
+          filteredAIds,
+          isNot(contains(bId)),
+          reason: 'tagB-only transaction must not surface under tagA filter.',
+        );
+        expect(
+          filteredAIds,
+          isNot(contains(untaggedId)),
+          reason: 'untagged transaction must not appear under any tag filter.',
+        );
+      }, skip: reason);
+
+      test('tag with no assignments short-circuits to empty without leaking '
+          'every transaction in the household', () async {
+        // A fresh tag nobody has used yet. The repo guards against
+        // the inFilter(empty list) trap that would otherwise behave
+        // like "no filter" and return every row.
+        final tagsRepo = TransactionTagsRepository();
+        final orphan = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'orphan-${DateTime.now().microsecondsSinceEpoch}',
+        );
+        // Seed at least one transaction so "empty" is meaningful.
+        await harness.insertTransaction(description: 'NOT TAGGED ORPHAN');
+
+        final result = await repo.fetchTransactions(
+          householdId: harness.householdId,
+          tagId: orphan.id,
+        );
+        expect(
+          result,
+          isEmpty,
+          reason:
+              'fetchTransactions with a tag that has no assignments '
+              'must NOT fall through to "return everything" — the '
+              'inFilter(empty) trap is what the short-circuit in the '
+              'repo prevents.',
+        );
       }, skip: reason);
     });
   });

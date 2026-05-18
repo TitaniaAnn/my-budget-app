@@ -198,5 +198,34 @@ class _TagIdsForTransactionProviderElement
       (origin as TagIdsForTransactionProvider).transactionId;
 }
 
+String _$transactionTagAssignmentsHash() =>
+    r'b1c31894f76d09f20c62cb2c6b16a7762a5f19cf';
+
+/// Every visible tag assignment, indexed by transaction id. The
+/// transactions list watches this once and looks up tags per card
+/// in O(1) — alternative would be a per-row provider that fires
+/// hundreds of requests on a long list.
+///
+/// RLS scopes the underlying fetch to the caller's household via
+/// the assignment table's "transaction_id IN (SELECT id FROM
+/// transactions)" policy (migration 020).
+///
+/// Copied from [transactionTagAssignments].
+@ProviderFor(transactionTagAssignments)
+final transactionTagAssignmentsProvider =
+    AutoDisposeFutureProvider<Map<String, Set<String>>>.internal(
+      transactionTagAssignments,
+      name: r'transactionTagAssignmentsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$transactionTagAssignmentsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TransactionTagAssignmentsRef =
+    AutoDisposeFutureProviderRef<Map<String, Set<String>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -68,6 +68,46 @@ class TransactionTagsRepository {
     await supabase.from('transaction_tags').delete().eq('id', tagId);
   }
 
+  /// Returns every (transaction_id, tag_id) pair the caller can see,
+  /// indexed by transaction_id. Used by the transactions list to
+  /// render tag chips inline without N+1 fetches per row.
+  ///
+  /// Returns a map (not a list) because the call site needs O(1)
+  /// lookup per transaction row. Empty inner sets are omitted: the
+  /// caller treats an absent key the same as "no tags".
+  ///
+  /// RLS scopes through the assignment table's "transaction_id IN
+  /// (SELECT id FROM transactions)" policy from migration 020, so
+  /// only assignments for transactions in the caller's household
+  /// come back. No householdId parameter — the policy is the
+  /// authority.
+  Future<Map<String, Set<String>>> fetchAllAssignments() async {
+    final data = await supabase
+        .from('transaction_tag_assignments')
+        .select('transaction_id, tag_id');
+    final result = <String, Set<String>>{};
+    for (final row in data) {
+      final txId = row['transaction_id'] as String;
+      final tagId = row['tag_id'] as String;
+      (result[txId] ??= <String>{}).add(tagId);
+    }
+    return result;
+  }
+
+  /// Returns the ids of every transaction in the household that
+  /// carries the given [tagId]. Used to filter the transactions list
+  /// by tag — the caller follows up with an `inFilter('id', …)`
+  /// on the transactions query. Done in two trips rather than a SQL
+  /// join because the assignment table is tiny and PostgREST's
+  /// embed-with-filter ergonomics aren't worth the complexity here.
+  Future<List<String>> fetchTransactionIdsForTag(String tagId) async {
+    final data = await supabase
+        .from('transaction_tag_assignments')
+        .select('transaction_id')
+        .eq('tag_id', tagId);
+    return data.map<String>((row) => row['transaction_id'] as String).toList();
+  }
+
   /// Returns the ids of tags currently assigned to [transactionId].
   /// Just ids — callers that need the full row look them up in the
   /// dictionary fetch which is cached separately, so we don't pay

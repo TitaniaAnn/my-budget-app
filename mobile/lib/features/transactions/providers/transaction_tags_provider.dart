@@ -31,3 +31,19 @@ Future<List<String>> tagIdsForTransaction(
   final repo = ref.watch(transactionTagsRepositoryProvider);
   return repo.fetchAssignedTagIds(transactionId);
 }
+
+/// Every visible tag assignment, indexed by transaction id. The
+/// transactions list watches this once and looks up tags per card
+/// in O(1) — alternative would be a per-row provider that fires
+/// hundreds of requests on a long list.
+///
+/// RLS scopes the underlying fetch to the caller's household via
+/// the assignment table's "transaction_id IN (SELECT id FROM
+/// transactions)" policy (migration 020).
+@riverpod
+Future<Map<String, Set<String>>> transactionTagAssignments(
+  TransactionTagAssignmentsRef ref,
+) async {
+  final repo = ref.watch(transactionTagsRepositoryProvider);
+  return repo.fetchAllAssignments();
+}
