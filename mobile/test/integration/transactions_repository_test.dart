@@ -538,6 +538,113 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── fetchByReceiptId ─────────────────────────────────────────────────
+    //
+    // Powers the receipt-detail "Paired Transactions" section. Pins three
+    // properties the UI relies on:
+    //   * only rows whose receipt_id equals the argument are returned
+    //   * results are ordered transaction_date DESC (matches main list)
+    //   * the joined `category` is populated so the receipt detail can
+    //     style the row like the global transactions list
+
+    group('fetchByReceiptId', () {
+      // Inserts a receipt directly (no storage upload). receipts_repository
+      // tests follow the same shape — fetchByReceiptId only reads the id.
+      Future<String> insertReceipt() async {
+        final row = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/test-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'pending',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      Future<void> pair(String txId, String receiptId) async {
+        await harness.client
+            .from('transactions')
+            .update({'receipt_id': receiptId})
+            .eq('id', txId);
+      }
+
+      test('returns only transactions paired to the given receipt, '
+          'newest first', () async {
+        final targetReceiptId = await insertReceipt();
+        final otherReceiptId = await insertReceipt();
+
+        // Two paired to target on different dates.
+        final newerId = await harness.insertTransaction(
+          description: 'TARGET NEWER',
+          transactionDate: DateTime.utc(2026, 5, 15),
+        );
+        final olderId = await harness.insertTransaction(
+          description: 'TARGET OLDER',
+          transactionDate: DateTime.utc(2026, 5, 10),
+        );
+        // One paired to a different receipt — must NOT surface.
+        final otherId = await harness.insertTransaction(
+          description: 'OTHER RECEIPT',
+          transactionDate: DateTime.utc(2026, 5, 12),
+        );
+        // One unpaired — must NOT surface either.
+        final unpairedId = await harness.insertTransaction(
+          description: 'UNPAIRED',
+          transactionDate: DateTime.utc(2026, 5, 13),
+        );
+
+        await pair(newerId, targetReceiptId);
+        await pair(olderId, targetReceiptId);
+        await pair(otherId, otherReceiptId);
+
+        final result = await repo.fetchByReceiptId(targetReceiptId);
+        final ids = result.map((t) => t.id).toList();
+
+        expect(
+          ids,
+          [newerId, olderId],
+          reason:
+              'fetchByReceiptId must return only rows whose receipt_id '
+              'matches, ordered by transaction_date DESC.',
+        );
+        expect(ids.contains(otherId), isFalse);
+        expect(ids.contains(unpairedId), isFalse);
+      }, skip: reason);
+
+      test('joined category row is populated', () async {
+        final receiptId = await insertReceipt();
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+        final txId = await harness.insertTransaction(
+          description: 'WITH CATEGORY',
+          categoryId: groceriesId,
+          categoryAssignedBy: 'user',
+        );
+        await pair(txId, receiptId);
+
+        final result = await repo.fetchByReceiptId(receiptId);
+        expect(result, hasLength(1));
+        expect(
+          result.single.category?.id,
+          groceriesId,
+          reason:
+              'fetchByReceiptId must select with the category join so the '
+              'receipt detail can render category chips without a second '
+              'round-trip.',
+        );
+      }, skip: reason);
+
+      test('returns empty when nothing is paired', () async {
+        // A fresh receipt with no transactions pointing at it.
+        final receiptId = await insertReceipt();
+        final result = await repo.fetchByReceiptId(receiptId);
+        expect(result, isEmpty);
+      }, skip: reason);
+    });
   });
 }
 

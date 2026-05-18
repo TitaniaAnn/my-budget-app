@@ -273,6 +273,163 @@ final categoriesProvider = AutoDisposeFutureProvider<List<Category>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CategoriesRef = AutoDisposeFutureProviderRef<List<Category>>;
+String _$transactionsForReceiptHash() =>
+    r'7a5650635af83ea0d7267abdf152b5c667ded86f';
+
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+///
+/// Copied from [transactionsForReceipt].
+@ProviderFor(transactionsForReceipt)
+const transactionsForReceiptProvider = TransactionsForReceiptFamily();
+
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+///
+/// Copied from [transactionsForReceipt].
+class TransactionsForReceiptFamily
+    extends Family<AsyncValue<List<Transaction>>> {
+  /// Transactions currently paired to a specific receipt. Powers the
+  /// receipt detail screen's "Paired Transactions" section so the user
+  /// can see and unpair existing links without re-querying the global
+  /// transactions list.
+  ///
+  /// Copied from [transactionsForReceipt].
+  const TransactionsForReceiptFamily();
+
+  /// Transactions currently paired to a specific receipt. Powers the
+  /// receipt detail screen's "Paired Transactions" section so the user
+  /// can see and unpair existing links without re-querying the global
+  /// transactions list.
+  ///
+  /// Copied from [transactionsForReceipt].
+  TransactionsForReceiptProvider call(String receiptId) {
+    return TransactionsForReceiptProvider(receiptId);
+  }
+
+  @override
+  TransactionsForReceiptProvider getProviderOverride(
+    covariant TransactionsForReceiptProvider provider,
+  ) {
+    return call(provider.receiptId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'transactionsForReceiptProvider';
+}
+
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+///
+/// Copied from [transactionsForReceipt].
+class TransactionsForReceiptProvider
+    extends AutoDisposeFutureProvider<List<Transaction>> {
+  /// Transactions currently paired to a specific receipt. Powers the
+  /// receipt detail screen's "Paired Transactions" section so the user
+  /// can see and unpair existing links without re-querying the global
+  /// transactions list.
+  ///
+  /// Copied from [transactionsForReceipt].
+  TransactionsForReceiptProvider(String receiptId)
+    : this._internal(
+        (ref) =>
+            transactionsForReceipt(ref as TransactionsForReceiptRef, receiptId),
+        from: transactionsForReceiptProvider,
+        name: r'transactionsForReceiptProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$transactionsForReceiptHash,
+        dependencies: TransactionsForReceiptFamily._dependencies,
+        allTransitiveDependencies:
+            TransactionsForReceiptFamily._allTransitiveDependencies,
+        receiptId: receiptId,
+      );
+
+  TransactionsForReceiptProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.receiptId,
+  }) : super.internal();
+
+  final String receiptId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<Transaction>> Function(TransactionsForReceiptRef provider)
+    create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: TransactionsForReceiptProvider._internal(
+        (ref) => create(ref as TransactionsForReceiptRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        receiptId: receiptId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<Transaction>> createElement() {
+    return _TransactionsForReceiptProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransactionsForReceiptProvider &&
+        other.receiptId == receiptId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, receiptId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin TransactionsForReceiptRef
+    on AutoDisposeFutureProviderRef<List<Transaction>> {
+  /// The parameter `receiptId` of this provider.
+  String get receiptId;
+}
+
+class _TransactionsForReceiptProviderElement
+    extends AutoDisposeFutureProviderElement<List<Transaction>>
+    with TransactionsForReceiptRef {
+  _TransactionsForReceiptProviderElement(super.provider);
+
+  @override
+  String get receiptId => (origin as TransactionsForReceiptProvider).receiptId;
+}
+
 String _$uncertainTransactionsHash() =>
     r'8cb7367a91b95bbcc764949be6f78e5ea279f87e';
 

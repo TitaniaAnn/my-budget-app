@@ -42,6 +42,19 @@ Future<List<Category>> categories(CategoriesRef ref) async {
   return repo.fetchCategories();
 }
 
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+@riverpod
+Future<List<Transaction>> transactionsForReceipt(
+  TransactionsForReceiptRef ref,
+  String receiptId,
+) async {
+  final repo = ref.watch(transactionsRepositoryProvider);
+  return repo.fetchByReceiptId(receiptId);
+}
+
 /// Fetches ML-categorised transactions whose confidence fell in the
 /// uncertain band. Backs the "Review categorisations" surface — the user
 /// confirms or corrects each row, which flips `category_assigned_by` to

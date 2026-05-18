@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/widgets/app_sheet.dart';
+import '../../transactions/models/transaction.dart';
+import '../../transactions/providers/transactions_provider.dart';
+import '../../transactions/repositories/transactions_repository.dart';
 import '../models/receipt.dart';
 import '../models/receipt_line_item.dart';
 import '../providers/receipts_provider.dart';
@@ -306,7 +309,16 @@ class _ReceiptDetailBody extends ConsumerWidget {
           ),
         ],
 
+        // ── Paired Transactions ─────────────────────────────────────────
+        // Shows transactions whose receipt_id points at this receipt, each
+        // with an unpair affordance. Hidden entirely when nothing is paired
+        // so an unpaired receipt only shows the "Pair to Transaction" CTA.
+        _PairedTransactionsSection(receiptId: receipt.id),
+
         // ── Pair to Transaction ─────────────────────────────────────────
+        // The schema allows many transactions per receipt (split bills,
+        // installments) so this stays visible even when something is
+        // already paired.
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => showAppSheet<void>(
@@ -448,6 +460,124 @@ class _LineItemsList extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Paired Transactions section
+// ---------------------------------------------------------------------------
+
+/// Lists transactions currently paired to [receiptId] (via
+/// `transactions.receipt_id`) and lets the user unpair each one.
+///
+/// Returns an empty `SizedBox` when nothing is paired so a fresh
+/// receipt doesn't render an empty header. Loading and error states
+/// are intentionally quiet — the section is supplementary, not the
+/// primary content, so a long spinner here would just look like a
+/// layout bug.
+class _PairedTransactionsSection extends ConsumerWidget {
+  const _PairedTransactionsSection({required this.receiptId});
+
+  final String receiptId;
+
+  Future<void> _unpair(
+    BuildContext context,
+    WidgetRef ref,
+    Transaction tx,
+  ) async {
+    final repo = ref.read(transactionsRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await repo.setReceiptId(transactionId: tx.id, receiptId: null);
+
+      ref.invalidate(transactionsForReceiptProvider(receiptId));
+      // Global transactions list re-reads so the row's receipt indicator
+      // (once we ship one) reflects the unpaired state immediately.
+      ref.invalidate(transactionsProvider);
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Receipt unpaired'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              // Re-pair using the same repo; the user can fat-finger
+              // unpair on a long list without losing the link.
+              await repo.setReceiptId(
+                transactionId: tx.id,
+                receiptId: receiptId,
+              );
+              ref.invalidate(transactionsForReceiptProvider(receiptId));
+              ref.invalidate(transactionsProvider);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Error unpairing: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final pairedAsync = ref.watch(transactionsForReceiptProvider(receiptId));
+    final fmt = NumberFormat.currency(symbol: r'$');
+    final dateFmt = DateFormat.yMMMd();
+
+    return pairedAsync.when(
+      // Quiet states: the section is optional, so we don't surface
+      // loading/error chrome that would look like a problem with the
+      // rest of the screen.
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (transactions) {
+        if (transactions.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionHeader('Paired Transactions'),
+              const SizedBox(height: 4),
+              for (final tx in transactions)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    tx.merchant ?? tx.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    dateFmt.format(tx.transactionDate),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        fmt.format(tx.amount.abs() / 100),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.link_off_outlined),
+                        tooltip: 'Unpair',
+                        onPressed: () => _unpair(context, ref, tx),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

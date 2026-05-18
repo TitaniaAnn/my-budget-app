@@ -272,6 +272,22 @@ class TransactionsRepository {
         .eq('id', transactionId);
   }
 
+  /// Fetches every transaction currently paired to [receiptId], ordered
+  /// by date (newest first). Joins the category row so the receipt detail
+  /// list can render the same chip styling as the main transactions list.
+  ///
+  /// The schema lets one receipt back multiple transactions (an
+  /// installment plan, a bill split across two charges) — see the
+  /// note on [setReceiptId] — so this returns a list, not a single row.
+  Future<List<Transaction>> fetchByReceiptId(String receiptId) async {
+    final data = await supabase
+        .from('transactions')
+        .select('*, category:categories(*)')
+        .eq('receipt_id', receiptId)
+        .order('transaction_date', ascending: false);
+    return data.map<Transaction>(Transaction.fromJson).toList();
+  }
+
   /// Pairs an existing transaction with a receipt by setting [receiptId],
   /// or unpairs when [receiptId] is null. The schema permits many
   /// transactions per receipt (an installment plan, a bill split across
