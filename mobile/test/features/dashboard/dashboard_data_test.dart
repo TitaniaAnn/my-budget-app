@@ -160,20 +160,21 @@ void main() {
     Category cat(String id, String name) =>
         Category(id: id, name: name, isIncome: false, sortOrder: 0);
 
-    test('groups by category and sorts by total descending', () {
+    test('reads server-aggregated spending and sorts by total desc', () {
+      // Under Option B (migration 026), category totals come from the
+      // get_category_spending RPC, not from in-Dart aggregation over
+      // tx.category. The provider seeds spendingByCategory +
+      // categoryLookup; the getter joins them.
       final groceries = cat('g', 'Groceries');
       final gas = cat('p', 'Gas');
-      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
-          _tx(amount: -2000, date: monthStart, category: groceries, id: '1'),
-          _tx(amount: -3000, date: monthStart, category: groceries, id: '2'),
-          _tx(amount: -1500, date: monthStart, category: gas, id: '3'),
-        ],
+        recentTransactions30d: const [],
         recentTransactions: const [],
+        spendingByCategory: const {'g': 5000, 'p': 1500},
+        categoryLookup: {'g': groceries, 'p': gas},
       );
+
       final top = data.topCategories;
       expect(top, hasLength(2));
       expect(top.first.name, 'Groceries');
@@ -182,7 +183,12 @@ void main() {
       expect(top.last.totalCents, 1500);
     });
 
-    test('groups uncategorised debits under "Uncategorized"', () {
+    test('still surfaces an Uncategorized bucket for unpaired txs with '
+        'no category', () {
+      // The RPC excludes category_id IS NULL rows; the getter adds an
+      // "Uncategorized" entry from in-memory 30-day data so the
+      // dashboard surface doesn't suddenly hide a user's largest
+      // bucket of spending the day they add line-item support.
       final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
       final data = DashboardData(
         accounts: const [],
@@ -190,25 +196,64 @@ void main() {
         recentTransactions: const [],
       );
       expect(data.topCategories.first.name, 'Uncategorized');
+      expect(data.topCategories.first.totalCents, 1234);
+    });
+
+    test('excludes paired-but-uncategorized txs from the Uncategorized '
+        'bucket', () {
+      // Under Option B, a transaction paired to a receipt has its
+      // budget impact at line-item level — the parent's category_id
+      // is "filing only". An empty receipt that has no line items
+      // contributes nothing to any budget (documented caveat), so
+      // attributing it to "Uncategorized" would silently surface a
+      // ghost number that disappears as soon as line items are added.
+      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
+      final tx = _tx(
+        amount: -7777,
+        date: monthStart,
+        id: '1',
+      ).copyWith(receiptId: 'r-1');
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions30d: [tx],
+        recentTransactions: const [],
+      );
+      expect(
+        data.topCategories,
+        isEmpty,
+        reason:
+            'paired-with-no-line-items contributes 0 to budgets, so it '
+            'must not appear under Uncategorized either — those two '
+            'views need to agree.',
+      );
     });
 
     test('limits result to 5 entries', () {
-      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-      final txs = List.generate(
-        7,
-        (i) => _tx(
-          amount: -((i + 1) * 100),
-          date: monthStart,
-          category: cat('c$i', 'Cat $i'),
-          id: 't$i',
-        ),
-      );
+      final lookup = {for (var i = 0; i < 7; i++) 'c$i': cat('c$i', 'Cat $i')};
+      final spending = {for (var i = 0; i < 7; i++) 'c$i': (i + 1) * 100};
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: txs,
+        recentTransactions30d: const [],
         recentTransactions: const [],
+        spendingByCategory: spending,
+        categoryLookup: lookup,
       );
       expect(data.topCategories, hasLength(5));
+    });
+
+    test('skips spendingByCategory ids missing from the lookup', () {
+      // A stale category id (e.g. a category deleted while the
+      // dashboard was loading) shouldn't render as an empty pill —
+      // the join must drop it rather than crash or surface a blank.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions30d: const [],
+        recentTransactions: const [],
+        spendingByCategory: const {'missing-id': 9999, 'g': 1000},
+        categoryLookup: {'g': cat('g', 'Groceries')},
+      );
+      expect(data.topCategories, hasLength(1));
+      expect(data.topCategories.single.name, 'Groceries');
     });
   });
 
