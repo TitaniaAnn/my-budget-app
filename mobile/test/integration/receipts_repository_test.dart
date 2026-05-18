@@ -203,5 +203,115 @@ void main() {
         );
       }, skip: reason);
     });
+
+    // ── fetchUnpaired ────────────────────────────────────────────────────
+    //
+    // Powers the "Attach Receipt" picker on the transaction edit sheet.
+    // The SQL function (migration 025) excludes any receipt that at
+    // least one transaction is pointing at, then orders by uploaded_at
+    // DESC under RLS so the result is scoped to the caller's household.
+
+    group('fetchUnpaired', () {
+      Future<String> insertReceipt() async {
+        final row = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/test-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'pending',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test('returns only receipts no transaction points at, '
+          'newest upload first', () async {
+        final unpairedA = await insertReceipt();
+        // Force a small upload-time gap so ordering is deterministic.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final unpairedB = await insertReceipt();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final pairedReceiptId = await insertReceipt();
+
+        // Pair a transaction to pairedReceiptId — that receipt must
+        // drop out of the unpaired set.
+        final txId = await harness.insertTransaction(description: 'PAIRED TX');
+        await harness.client
+            .from('transactions')
+            .update({'receipt_id': pairedReceiptId})
+            .eq('id', txId);
+
+        final result = await repo.fetchUnpaired();
+        final ids = result.map((r) => r.id).toList();
+
+        expect(
+          ids.contains(pairedReceiptId),
+          isFalse,
+          reason:
+              'a receipt that any transaction is pointing at must NOT '
+              'surface as unpaired.',
+        );
+        expect(ids.contains(unpairedA), isTrue);
+        expect(ids.contains(unpairedB), isTrue);
+
+        // Newest-first ordering. Compare via indexOf so unrelated rows
+        // from earlier tests in this group don't false-fail.
+        final idxA = ids.indexOf(unpairedA);
+        final idxB = ids.indexOf(unpairedB);
+        expect(
+          idxB,
+          lessThan(idxA),
+          reason:
+              'fetchUnpaired must order by uploaded_at DESC — the '
+              'later-uploaded receipt should come first.',
+        );
+      }, skip: reason);
+
+      test('respects the limit parameter', () async {
+        await insertReceipt();
+        await insertReceipt();
+        final result = await repo.fetchUnpaired(limit: 1);
+        expect(result.length, lessThanOrEqualTo(1));
+      }, skip: reason);
+
+      test(
+        'receipt re-enters the pool after its transaction unpairs',
+        () async {
+          final receiptId = await insertReceipt();
+          final txId = await harness.insertTransaction(
+            description: 'TEMPORARILY PAIRED',
+          );
+
+          // Pair, then verify it's gone from the unpaired set.
+          await harness.client
+              .from('transactions')
+              .update({'receipt_id': receiptId})
+              .eq('id', txId);
+          var ids = (await repo.fetchUnpaired()).map((r) => r.id).toSet();
+          expect(ids.contains(receiptId), isFalse);
+
+          // Unpair, then verify it's back. The NOT EXISTS subquery in
+          // migration 025 has no caching — flipping receipt_id back to
+          // NULL must be observable immediately.
+          await harness.client
+              .from('transactions')
+              .update({'receipt_id': null})
+              .eq('id', txId);
+          ids = (await repo.fetchUnpaired()).map((r) => r.id).toSet();
+          expect(
+            ids.contains(receiptId),
+            isTrue,
+            reason:
+                'unpairing a transaction must return its receipt to the '
+                'unpaired pool — the picker would otherwise hide a now-'
+                'available receipt.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }

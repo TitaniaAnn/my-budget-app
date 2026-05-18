@@ -38,6 +38,15 @@ Future<List<ReceiptLineItem>> receiptLineItems(
   return repo.fetchLineItems(receiptId);
 }
 
+/// Receipts in the current household with no transaction pointing at
+/// them. Powers the transaction edit sheet's "Attach Receipt" picker —
+/// the inverse direction of the existing pair-from-receipt flow.
+@riverpod
+Future<List<Receipt>> unpairedReceipts(UnpairedReceiptsRef ref) async {
+  final repo = ref.watch(receiptsRepositoryProvider);
+  return repo.fetchUnpaired();
+}
+
 /// Signed URL for displaying a private receipt image.
 /// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
 @riverpod

@@ -174,6 +174,26 @@ class ReceiptsRepository {
     ]);
   }
 
+  /// Returns receipts no transaction is currently pointing at, newest
+  /// upload first. Used by the transaction edit sheet's "Attach Receipt"
+  /// picker — the inverse of [findMatchCandidates].
+  ///
+  /// Backed by `fetch_unpaired_receipts` (migration 025) rather than a
+  /// PostgREST query: the underlying filter ("no row in transactions has
+  /// receipt_id = r.id") doesn't express cleanly in the URL grammar, and
+  /// pushing it into SQL means the wire payload is bounded by [limit]
+  /// instead of "every receipt in the household".
+  Future<List<Receipt>> fetchUnpaired({int limit = 20}) async {
+    final data = await supabase.rpc(
+      'fetch_unpaired_receipts',
+      params: {'p_limit': limit},
+    );
+    if (data == null) return [];
+    return (data as List)
+        .map<Receipt>((row) => Receipt.fromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Finds transactions that plausibly pair with [receiptId], ranked by
   /// the SQL `find_receipt_match_candidates` RPC (migration 019).
   ///

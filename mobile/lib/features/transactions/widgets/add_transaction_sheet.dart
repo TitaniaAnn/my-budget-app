@@ -16,6 +16,8 @@ import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/money_text_field.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
+import '../../receipts/providers/receipts_provider.dart';
+import '../../receipts/widgets/attach_receipt_sheet.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
@@ -53,6 +55,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   String? _selectedRateId;
   bool _loading = false;
 
+  /// Receipt currently paired with this transaction (edit mode only).
+  /// Attaching/unpairing writes through to Supabase immediately rather
+  /// than waiting for Save Changes — that matches the receipt-side
+  /// flow where pairing is also a standalone action. Local mirror so
+  /// the UI can swap between "attach" and "paired" without round-
+  /// tripping through the parent provider.
+  String? _receiptId;
+
   bool get _isEditMode => widget.transaction != null;
 
   static final _dateFmt = DateFormat('MMM d, yyyy');
@@ -71,6 +81,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       _selectedAccountId = tx.accountId;
       _selectedCategoryId = tx.categoryId;
       _selectedRateId = tx.rateId;
+      _receiptId = tx.receiptId;
     } else {
       _selectedAccountId = widget.preselectedAccountId;
     }
@@ -93,6 +104,67 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       lastDate: DateTime.now(),
     );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  /// Opens the attach-receipt picker. The picker writes
+  /// `transactions.receipt_id` itself and pops with the chosen receipt's
+  /// id, so this method only needs to mirror that into local state to
+  /// flip the UI from "Attach" to "Paired" without a round-trip.
+  Future<void> _pickReceiptToAttach() async {
+    final picked = await showAppSheet<String>(
+      context,
+      child: AttachReceiptSheet(transactionId: widget.transaction!.id),
+    );
+    if (picked != null && mounted) {
+      setState(() => _receiptId = picked);
+    }
+  }
+
+  /// Unpairs the currently-attached receipt. Writes through to Supabase
+  /// immediately and offers an undo so a fat-finger doesn't lose the
+  /// link. Mirrors the receipt-detail screen's unpair flow.
+  Future<void> _unpairReceipt() async {
+    final priorId = _receiptId;
+    if (priorId == null) return;
+    final repo = ref.read(transactionsRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await repo.setReceiptId(
+        transactionId: widget.transaction!.id,
+        receiptId: null,
+      );
+      setState(() => _receiptId = null);
+
+      // Providers downstream of receipt_id need to refresh:
+      //   * unpairedReceiptsProvider — receipt re-enters the pool
+      //   * transactionsProvider     — paperclip indicator drops off
+      //   * transactionsForReceipt   — receipt detail's paired list
+      ref.invalidate(unpairedReceiptsProvider);
+      ref.invalidate(transactionsProvider);
+      ref.invalidate(transactionsForReceiptProvider(priorId));
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Receipt unpaired'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              await repo.setReceiptId(
+                transactionId: widget.transaction!.id,
+                receiptId: priorId,
+              );
+              if (mounted) setState(() => _receiptId = priorId);
+              ref.invalidate(unpairedReceiptsProvider);
+              ref.invalidate(transactionsProvider);
+              ref.invalidate(transactionsForReceiptProvider(priorId));
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    }
   }
 
   Future<void> _delete() async {
@@ -404,6 +476,25 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 );
               },
             ),
+          // Receipt — edit mode only. You can't pair a receipt to a
+          // transaction that doesn't exist yet, so the section stays
+          // hidden in the create flow rather than offering an action
+          // that requires a deferred two-step write.
+          if (_isEditMode) ...[
+            const SizedBox(height: 14),
+            const FieldLabel('Receipt'),
+            if (_receiptId != null)
+              _PairedReceiptCard(
+                receiptId: _receiptId!,
+                onUnpair: _loading ? null : _unpairReceipt,
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _pickReceiptToAttach,
+                icon: const Icon(Icons.attach_file_outlined),
+                label: const Text('Attach Receipt'),
+              ),
+          ],
           const SizedBox(height: 24),
           LoadingButton(
             loading: _loading,
@@ -439,6 +530,123 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Paired-receipt summary card shown inside the transaction edit sheet
+// when receipt_id is already set.
+// ---------------------------------------------------------------------------
+
+/// Renders the currently-paired receipt's merchant / date / total
+/// inline in the transaction edit form, with a trailing unpair button.
+///
+/// Watches [receiptProvider] directly rather than threading the
+/// [Receipt] in from the parent — the parent only tracks the id and
+/// shouldn't have to know how to fetch a receipt.
+class _PairedReceiptCard extends ConsumerWidget {
+  const _PairedReceiptCard({required this.receiptId, required this.onUnpair});
+
+  final String receiptId;
+
+  /// Null disables the unpair button (used while the parent form is
+  /// mid-submit so a race can't fire two writes against the same row).
+  final VoidCallback? onUnpair;
+
+  static final _dateFmt = DateFormat('MMM d, yyyy');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final fmt = NumberFormat.currency(symbol: r'$');
+    final receiptAsync = ref.watch(receiptProvider(receiptId));
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.cs.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: receiptAsync.when(
+        // Quiet skeleton: a loading spinner here would flash on every
+        // open of an edit sheet whose tx already has a receipt.
+        loading: () => Row(
+          children: [
+            Icon(
+              Icons.attach_file_outlined,
+              size: 18,
+              color: colors.textSubtle,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Loading receipt…',
+              style: TextStyle(fontSize: 13, color: colors.textSubtle),
+            ),
+          ],
+        ),
+        error: (_, _) => Row(
+          children: [
+            Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Could not load attached receipt',
+                style: TextStyle(fontSize: 13, color: theme.colorScheme.error),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.link_off_outlined),
+              tooltip: 'Unpair',
+              onPressed: onUnpair,
+            ),
+          ],
+        ),
+        data: (receipt) {
+          final shownDate = receipt.receiptDate ?? receipt.uploadedAt;
+          return Row(
+            children: [
+              Icon(
+                Icons.attach_file_outlined,
+                size: 18,
+                color: colors.textSubtle,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      receipt.merchantName ?? 'Untitled receipt',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      receipt.totalAmount != null
+                          ? '${_dateFmt.format(shownDate)} · '
+                                '${fmt.format(receipt.totalAmount! / 100)}'
+                          : _dateFmt.format(shownDate),
+                      style: TextStyle(fontSize: 12, color: colors.textSubtle),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.link_off_outlined),
+                tooltip: 'Unpair',
+                onPressed: onUnpair,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

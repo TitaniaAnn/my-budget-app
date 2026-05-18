@@ -315,6 +315,28 @@ class _ReceiptLineItemsProviderElement
   String get receiptId => (origin as ReceiptLineItemsProvider).receiptId;
 }
 
+String _$unpairedReceiptsHash() => r'fa3b5d3649240c793e139cb066647409b2c77bda';
+
+/// Receipts in the current household with no transaction pointing at
+/// them. Powers the transaction edit sheet's "Attach Receipt" picker —
+/// the inverse direction of the existing pair-from-receipt flow.
+///
+/// Copied from [unpairedReceipts].
+@ProviderFor(unpairedReceipts)
+final unpairedReceiptsProvider =
+    AutoDisposeFutureProvider<List<Receipt>>.internal(
+      unpairedReceipts,
+      name: r'unpairedReceiptsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$unpairedReceiptsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef UnpairedReceiptsRef = AutoDisposeFutureProviderRef<List<Receipt>>;
 String _$receiptImageUrlHash() => r'5e0fadcdbd66da7241ab9b87b078a10c028b3341';
 
 /// Signed URL for displaying a private receipt image.
