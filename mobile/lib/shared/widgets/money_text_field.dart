@@ -20,8 +20,9 @@ class MoneyTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextStyle? style;
 
-  static final _moneyFormatter =
-      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'));
+  static final _moneyFormatter = FilteringTextInputFormatter.allow(
+    RegExp(r'^\d*\.?\d{0,2}'),
+  );
 
   @override
   Widget build(BuildContext context) {

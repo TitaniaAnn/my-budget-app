@@ -85,10 +85,12 @@ List<DateTime> _expandDates(ScenarioEvent event, DateTime windowEnd) {
   DateTime? until;
   if (untilStr.isNotEmpty && untilStr.length >= 8) {
     until = DateTime.tryParse(
-        '${untilStr.substring(0, 4)}-${untilStr.substring(4, 6)}-${untilStr.substring(6, 8)}');
+      '${untilStr.substring(0, 4)}-${untilStr.substring(4, 6)}-${untilStr.substring(6, 8)}',
+    );
   }
-  final effectiveEnd =
-      until != null && until.isBefore(windowEnd) ? until : windowEnd;
+  final effectiveEnd = until != null && until.isBefore(windowEnd)
+      ? until
+      : windowEnd;
 
   final dates = <DateTime>[];
   var current = start;
@@ -121,8 +123,7 @@ List<ProjectionPoint> _buildProjection({
   // Build a map: date → net delta in cents for that day.
   final deltas = <DateTime, int>{};
   for (final event in events) {
-    final int delta =
-        event.eventType.isPositive ? event.amount : -event.amount;
+    final int delta = event.eventType.isPositive ? event.amount : -event.amount;
     for (final date in _expandDates(event, windowEnd)) {
       final key = DateTime(date.year, date.month, date.day);
       deltas[key] = (deltas[key] ?? 0) + delta;
@@ -174,8 +175,7 @@ Future<ScenarioDetail> scenarioDetail(
     accountsRepo.fetchAccounts(householdId),
   ).wait;
 
-  final scenario =
-      scenariosList.firstWhere((s) => s.id == scenarioId);
+  final scenario = scenariosList.firstWhere((s) => s.id == scenarioId);
 
   // Net worth = assets − credit card debt.
   final netWorth = accounts.fold<int>(0, (sum, a) {
@@ -199,12 +199,14 @@ Future<ScenarioDetail> scenarioDetail(
       householdId: householdId,
       currentNetWorth: netWorth,
     ),
-    Future.value(_buildProjection(
-      startingBalance: netWorth,
-      events: events,
-      from: from,
-      windowDays: windowDays,
-    )),
+    Future.value(
+      _buildProjection(
+        startingBalance: netWorth,
+        events: events,
+        from: from,
+        windowDays: windowDays,
+      ),
+    ),
   ).wait;
 
   final historicalPoints = rawHistory

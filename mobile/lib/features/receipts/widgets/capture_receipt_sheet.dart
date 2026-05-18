@@ -110,8 +110,9 @@ class _CaptureReceiptSheetState extends ConsumerState<CaptureReceiptSheet> {
 
             Text(
               'Add Receipt',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -133,11 +134,7 @@ class _CaptureReceiptSheetState extends ConsumerState<CaptureReceiptSheet> {
               // Preview the selected image
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _pickedFile!,
-                  height: 200,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.file(_pickedFile!, height: 200, fit: BoxFit.cover),
               ),
               const SizedBox(height: 12),
               // Allow re-picking without losing the preview
@@ -154,7 +151,9 @@ class _CaptureReceiptSheetState extends ConsumerState<CaptureReceiptSheet> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.upload),
                 label: Text(_uploading ? 'Uploading…' : 'Upload Receipt'),
@@ -165,8 +164,9 @@ class _CaptureReceiptSheetState extends ConsumerState<CaptureReceiptSheet> {
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: colorScheme.error),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.error,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],

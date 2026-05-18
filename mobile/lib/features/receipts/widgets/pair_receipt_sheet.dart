@@ -44,7 +44,9 @@ class _PairReceiptSheetState extends ConsumerState<PairReceiptSheet> {
     setState(() => _pairingTransactionId = c.transactionId);
 
     try {
-      await ref.read(transactionsRepositoryProvider).setReceiptId(
+      await ref
+          .read(transactionsRepositoryProvider)
+          .setReceiptId(
             transactionId: c.transactionId,
             receiptId: widget.receiptId,
           );
@@ -63,9 +65,9 @@ class _PairReceiptSheetState extends ConsumerState<PairReceiptSheet> {
     } catch (e) {
       setState(() => _pairingTransactionId = null);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error pairing: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error pairing: $e')));
       }
     }
   }
@@ -130,17 +132,15 @@ class _EmptyState extends StatelessWidget {
               color: theme.colorScheme.outline,
             ),
             const SizedBox(height: 12),
-            Text(
-              'No matching transactions',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('No matching transactions', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             Text(
               'Confirm the merchant, date, and total on the receipt — '
               'an exact total widens the search.',
               textAlign: TextAlign.center,
-              style:
-                  theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -170,10 +170,7 @@ class _CandidateList extends StatelessWidget {
 
     return ListView.separated(
       itemCount: candidates.length,
-      separatorBuilder: (_, _) => Divider(
-        height: 1,
-        color: theme.dividerColor,
-      ),
+      separatorBuilder: (_, _) => Divider(height: 1, color: theme.dividerColor),
       itemBuilder: (context, i) {
         final c = candidates[i];
         final isPairingThis = pairingId == c.transactionId;
@@ -191,8 +188,9 @@ class _CandidateList extends StatelessWidget {
             c.merchant != null
                 ? '${dateFmt.format(c.transactionDate)} · ${c.merchant}'
                 : dateFmt.format(c.transactionDate),
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
           trailing: isPairingThis
               ? const SizedBox(
@@ -206,13 +204,15 @@ class _CandidateList extends StatelessWidget {
                   children: [
                     Text(
                       fmt.format(c.amountCents.abs() / 100),
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       _scoreLabel(c.score),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.outline),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
                     ),
                   ],
                 ),

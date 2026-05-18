@@ -15,8 +15,10 @@ class AccountCard extends StatelessWidget {
   const AccountCard({super.key, required this.account, this.onTap});
 
   /// Returns the account's custom color if set, otherwise the group default.
-  Color get _typeColor =>
-      colorFromHex(account.color, fallback: account.accountType.group.defaultColor);
+  Color get _typeColor => colorFromHex(
+    account.color,
+    fallback: account.accountType.group.defaultColor,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +56,11 @@ class AccountCard extends StatelessWidget {
                       color: _typeColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(account.accountType.icon,
-                        color: _typeColor, size: 20),
+                    child: Icon(
+                      account.accountType.icon,
+                      color: _typeColor,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -91,8 +96,8 @@ class AccountCard extends StatelessWidget {
                           color: isLiability
                               ? colors.expense
                               : balance >= 0
-                                  ? context.cs.onSurface
-                                  : colors.expense,
+                              ? context.cs.onSurface
+                              : colors.expense,
                         ),
                       ),
                       if (account.lastFour != null)
@@ -122,8 +127,8 @@ class AccountCard extends StatelessWidget {
                             utilization > 80
                                 ? colors.expense
                                 : utilization > 50
-                                    ? colors.warning
-                                    : colors.income,
+                                ? colors.warning
+                                : colors.income,
                           ),
                         ),
                       ),
@@ -131,10 +136,7 @@ class AccountCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '${utilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colors.textSubtle,
-                      ),
+                      style: TextStyle(fontSize: 11, color: colors.textSubtle),
                     ),
                   ],
                 ),

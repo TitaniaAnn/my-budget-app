@@ -35,7 +35,9 @@ class LoadingButton extends StatelessWidget {
             height: 20,
             width: 20,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white),
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
           )
         : child;
     final tap = loading ? null : onPressed;

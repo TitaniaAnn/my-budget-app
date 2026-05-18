@@ -11,6 +11,7 @@ import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../widgets/account_card.dart';
 import '../widgets/add_account_sheet.dart';
+
 /// Displays accounts grouped into Banking / Credit Cards / Investments sections
 /// with a net-worth header. The + FAB opens [AddAccountSheet].
 class AccountsScreen extends ConsumerWidget {
@@ -36,8 +37,10 @@ class AccountsScreen extends ConsumerWidget {
       ),
       body: accountsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            ErrorView(error: e, onRetry: () => ref.invalidate(accountsProvider)),
+        error: (e, _) => ErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(accountsProvider),
+        ),
         data: (accounts) => _AccountsList(accounts: accounts),
       ),
     );
@@ -84,10 +87,12 @@ class _AccountsList extends StatelessWidget {
           if (grouped.containsKey(group)) ...[
             _GroupHeader(group: group, accounts: grouped[group]!),
             const SizedBox(height: 8),
-            ...grouped[group]!.map((a) => AccountCard(
-                  account: a,
-                  onTap: () => context.go('/accounts/${a.id}'),
-                )),
+            ...grouped[group]!.map(
+              (a) => AccountCard(
+                account: a,
+                onTap: () => context.go('/accounts/${a.id}'),
+              ),
+            ),
             const SizedBox(height: 16),
           ],
       ],
@@ -116,17 +121,17 @@ class _NetWorthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Net Worth',
-              style: TextStyle(fontSize: 13, color: colors.textMuted)),
+          Text(
+            'Net Worth',
+            style: TextStyle(fontSize: 13, color: colors.textMuted),
+          ),
           const SizedBox(height: 6),
           Text(
             formatCurrency(netWorthCents),
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
-              color: netWorthCents >= 0
-                  ? context.cs.onSurface
-                  : colors.expense,
+              color: netWorthCents >= 0 ? context.cs.onSurface : colors.expense,
             ),
           ),
         ],

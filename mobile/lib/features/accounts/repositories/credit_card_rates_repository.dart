@@ -6,7 +6,8 @@ part 'credit_card_rates_repository.g.dart';
 
 @riverpod
 CreditCardRatesRepository creditCardRatesRepository(
-    CreditCardRatesRepositoryRef ref) {
+  CreditCardRatesRepositoryRef ref,
+) {
   return CreditCardRatesRepository();
 }
 
@@ -78,6 +79,7 @@ class CreditCardRatesRepository {
   }) async {
     await supabase
         .from('transactions')
-        .update({'rate_id': rateId}).eq('id', transactionId);
+        .update({'rate_id': rateId})
+        .eq('id', transactionId);
   }
 }

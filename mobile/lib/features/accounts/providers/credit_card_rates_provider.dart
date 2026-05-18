@@ -6,8 +6,8 @@ part 'credit_card_rates_provider.g.dart';
 
 @riverpod
 Future<List<CreditCardRate>> creditCardRates(
-    CreditCardRatesRef ref, String accountId) async {
-  return ref
-      .watch(creditCardRatesRepositoryProvider)
-      .fetchRates(accountId);
+  CreditCardRatesRef ref,
+  String accountId,
+) async {
+  return ref.watch(creditCardRatesRepositoryProvider).fetchRates(accountId);
 }

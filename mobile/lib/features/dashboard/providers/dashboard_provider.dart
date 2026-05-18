@@ -37,16 +37,16 @@ class DashboardData {
     return DateTime(now.year, now.month, 1);
   }
 
-  List<Transaction> get _monthTransactions =>
-      recentTransactions30d.where((t) => !t.transactionDate.isBefore(_monthStart)).toList();
+  List<Transaction> get _monthTransactions => recentTransactions30d
+      .where((t) => !t.transactionDate.isBefore(_monthStart))
+      .toList();
 
   /// Net worth = sum of every account's signed balance.
   ///
   /// All balances are stored signed: assets are positive, liabilities
   /// (credit_card, mortgage) are negative — so a plain sum is correct
   /// without any per-type special-casing.
-  int get netWorth =>
-      accounts.fold<int>(0, (sum, a) => sum + a.currentBalance);
+  int get netWorth => accounts.fold<int>(0, (sum, a) => sum + a.currentBalance);
 
   /// Total spending this month (expenses only, as positive cents).
   int get monthlySpending => _monthTransactions
@@ -84,8 +84,13 @@ class DashboardData {
     final result = List<int>.filled(30, 0);
     for (final tx in recentTransactions30d.where((t) => t.amount < 0)) {
       final daysAgo = today
-          .difference(DateTime(tx.transactionDate.year,
-              tx.transactionDate.month, tx.transactionDate.day))
+          .difference(
+            DateTime(
+              tx.transactionDate.year,
+              tx.transactionDate.month,
+              tx.transactionDate.day,
+            ),
+          )
           .inDays;
       if (daysAgo >= 0 && daysAgo < 30) {
         result[29 - daysAgo] += tx.amount.abs();
@@ -112,8 +117,11 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final txRepo = ref.read(transactionsRepositoryProvider);
 
   final now = DateTime.now();
-  final thirtyDaysAgo = DateTime(now.year, now.month, now.day)
-      .subtract(const Duration(days: 29));
+  final thirtyDaysAgo = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(const Duration(days: 29));
   final today = DateTime(now.year, now.month, now.day);
 
   final (accounts, recent30d, recent5) = await (

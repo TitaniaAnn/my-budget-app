@@ -23,9 +23,8 @@ class ScenarioDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       body: detailAsync.when(
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        loading: () =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
         error: (e, _) => Scaffold(
           appBar: AppBar(),
           body: Center(child: Text('Error: $e')),
@@ -114,9 +113,12 @@ class _DetailBody extends ConsumerWidget {
 
           // ── Events ────────────────────────────────────────────────────
           const SizedBox(height: 24),
-          Text('Events',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Events',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           if (detail.events.isEmpty)
             Padding(
@@ -129,10 +131,9 @@ class _DetailBody extends ConsumerWidget {
               ),
             )
           else
-            ...detail.events.map((e) => _EventTile(
-                  event: e,
-                  scenarioId: scenarioId,
-                )),
+            ...detail.events.map(
+              (e) => _EventTile(event: e, scenarioId: scenarioId),
+            ),
         ],
       ),
     );
@@ -146,8 +147,11 @@ class _DetailBody extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _SummaryTile extends StatelessWidget {
-  const _SummaryTile(
-      {required this.label, required this.value, required this.color});
+  const _SummaryTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -165,13 +169,18 @@ class _SummaryTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: color)),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(color: color),
+            ),
             const SizedBox(height: 4),
-            Text(value,
-                style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700, color: color)),
+            Text(
+              value,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -217,13 +226,15 @@ class _GoalProgress extends StatelessWidget {
                     strokeWidth: 7,
                     backgroundColor: cs.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation(
-                        progress >= 1 ? Colors.green : accent),
+                      progress >= 1 ? Colors.green : accent,
+                    ),
                   ),
                   Center(
                     child: Text(
                       '${(progress * 100).round()}%',
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -234,9 +245,12 @@ class _GoalProgress extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Goal Progress',
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    'Goal Progress',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${fmt.format(current / 100)} of ${fmt.format(target / 100)}',
@@ -307,14 +321,11 @@ class _ProjectionChart extends StatelessWidget {
     }
 
     // Y-axis range across both lines + target.
-    final allY = [
-      ...histSpots.map((s) => s.y),
-      ...projSpots.map((s) => s.y),
-    ];
+    final allY = [...histSpots.map((s) => s.y), ...projSpots.map((s) => s.y)];
     if (allY.isEmpty) return const SizedBox.shrink();
 
-    final targetY = detail.scenario.isGoal &&
-            detail.scenario.targetAmount != null
+    final targetY =
+        detail.scenario.isGoal && detail.scenario.targetAmount != null
         ? detail.scenario.targetAmount! / 100
         : null;
 
@@ -329,16 +340,11 @@ class _ProjectionChart extends StatelessWidget {
 
     // Build a lookup for bottom axis labels — sample ~4 dates.
     List<DateTime> sampleDates() {
-      final all = [
-        ...hist.map((p) => p.date),
-        ...proj.map((p) => p.date),
-      ]..sort((a, b) => a.compareTo(b));
+      final all = [...hist.map((p) => p.date), ...proj.map((p) => p.date)]
+        ..sort((a, b) => a.compareTo(b));
       if (all.isEmpty) return [];
       final step = (all.length / 4).ceil();
-      return [
-        for (var i = 0; i < all.length; i += step) all[i],
-        all.last,
-      ];
+      return [for (var i = 0; i < all.length; i += step) all[i], all.last];
     }
 
     final labelDates = sampleDates();
@@ -403,10 +409,12 @@ class _ProjectionChart extends StatelessWidget {
                 interval: (maxX - minX) / 4,
               ),
             ),
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           extraLinesData: ExtraLinesData(
             // "Today" vertical marker label
@@ -466,18 +474,19 @@ class _ProjectionChart extends StatelessWidget {
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) =>
-                  touchedSpots.map((s) {
+              getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
                 final label = s.barIndex == 0
                     ? 'Actual'
                     : s.barIndex == 1
-                        ? 'Projected'
-                        : 'Target';
+                    ? 'Projected'
+                    : 'Target';
                 return LineTooltipItem(
                   '$label\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
                   const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600,
-                      fontSize: 12),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 );
               }).toList(),
             ),
@@ -519,9 +528,10 @@ class _EventTile extends ConsumerWidget {
             ),
           ),
         ),
-        title: Text(event.label,
-            style:
-                const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(
+          event.label,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(
           '${event.eventType.label} · '
           '${event.eventDate.year}-'
@@ -554,15 +564,12 @@ class _EventTile extends ConsumerWidget {
                   await ref
                       .read(scenariosRepositoryProvider)
                       .deleteEvent(event.id);
-                  ref.invalidate(
-                      scenarioDetailProvider(scenarioId));
+                  ref.invalidate(scenarioDetailProvider(scenarioId));
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(
-                    value: 'edit', child: Text('Edit')),
-                const PopupMenuItem(
-                    value: 'delete', child: Text('Delete')),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
             ),
           ],

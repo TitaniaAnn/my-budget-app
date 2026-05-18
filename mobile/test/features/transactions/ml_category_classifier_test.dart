@@ -47,11 +47,7 @@ void main() {
       //   n=4: " ab " (single slice, then offset==0 → break out of n-loop)
       // So n=5 is never tried — sklearn's `break` exits the entire n-loop
       // for short words, not just the inner while.
-      expect(v.charWbNgrams('ab'), [
-        ' ab',
-        'ab ',
-        ' ab ',
-      ]);
+      expect(v.charWbNgrams('ab'), [' ab', 'ab ', ' ab ']);
     });
 
     test('lowercases before tokenising', () {
@@ -70,8 +66,13 @@ void main() {
       // n=3: " ab", "abc", "bcd", "cd "
       // n=4: " abc", "abcd", "bcd "
       expect(v.charWbNgrams('abcd'), [
-        ' ab', 'abc', 'bcd', 'cd ',
-        ' abc', 'abcd', 'bcd ',
+        ' ab',
+        'abc',
+        'bcd',
+        'cd ',
+        ' abc',
+        'abcd',
+        'bcd ',
       ]);
     });
 
@@ -130,13 +131,15 @@ void main() {
       final vocabJson =
           jsonDecode(vocabFile.readAsStringSync()) as Map<String, dynamic>;
       final v = TfidfVectoriser.fromJson(vocabJson);
-      final fixtures =
-          (jsonDecode(fixture.readAsStringSync()) as List).cast<Map>();
+      final fixtures = (jsonDecode(fixture.readAsStringSync()) as List)
+          .cast<Map>();
 
       for (final f in fixtures) {
         final input = f['input'] as String;
-        final expectedIndices =
-            (f['indices'] as List).cast<num>().map((n) => n.toInt()).toList();
+        final expectedIndices = (f['indices'] as List)
+            .cast<num>()
+            .map((n) => n.toInt())
+            .toList();
         final expectedWeights = (f['weights'] as List)
             .cast<num>()
             .map((n) => n.toDouble())
@@ -153,12 +156,19 @@ void main() {
           }
         }
 
-        expect(actualIndices, expectedIndices,
-            reason: 'index set mismatch for input "$input"');
+        expect(
+          actualIndices,
+          expectedIndices,
+          reason: 'index set mismatch for input "$input"',
+        );
         for (var i = 0; i < expectedWeights.length; i++) {
-          expect(actualWeights[i], closeTo(expectedWeights[i], 1e-5),
-              reason: 'weight mismatch at idx ${expectedIndices[i]} '
-                  'for input "$input"');
+          expect(
+            actualWeights[i],
+            closeTo(expectedWeights[i], 1e-5),
+            reason:
+                'weight mismatch at idx ${expectedIndices[i]} '
+                'for input "$input"',
+          );
         }
       }
     });

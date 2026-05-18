@@ -130,16 +130,18 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
                 items: [
-                  ...expense.map((c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Row(
-                          children: [
-                            Icon(categoryIconData(c.icon), size: 16),
-                            const SizedBox(width: 8),
-                            Text(c.name),
-                          ],
-                        ),
-                      )),
+                  ...expense.map(
+                    (c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Row(
+                        children: [
+                          Icon(categoryIconData(c.icon), size: 16),
+                          const SizedBox(width: 8),
+                          Text(c.name),
+                        ],
+                      ),
+                    ),
+                  ),
                   DropdownMenuItem(
                     value: '__new__',
                     child: Row(
@@ -155,8 +157,10 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
                     ? null
                     : (v) {
                         if (v == '__new__') {
-                          showAppSheet<void>(context,
-                              child: const AddCategorySheet());
+                          showAppSheet<void>(
+                            context,
+                            child: const AddCategorySheet(),
+                          );
                         } else {
                           setState(() => _selectedCategoryId = v);
                         }
@@ -179,10 +183,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
               prefixIcon: Icon(Icons.calendar_today_outlined),
             ),
             items: BudgetPeriod.values
-                .map((p) => DropdownMenuItem(
-                      value: p,
-                      child: Text(p.label),
-                    ))
+                .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
                 .toList(),
             onChanged: (v) {
               if (v != null) setState(() => _period = v);
@@ -193,8 +194,9 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
             const SizedBox(height: 12),
             Text(
               _error!,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.error),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -210,4 +212,3 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
     );
   }
 }
-

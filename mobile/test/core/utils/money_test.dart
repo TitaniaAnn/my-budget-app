@@ -72,8 +72,7 @@ void main() {
     });
 
     test('clamps to a sensible upper bound when over-limit', () {
-      expect(money.creditUtilization(2000000, 100000),
-          lessThanOrEqualTo(999));
+      expect(money.creditUtilization(2000000, 100000), lessThanOrEqualTo(999));
     });
   });
 

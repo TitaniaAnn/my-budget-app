@@ -68,7 +68,8 @@ class _ScenariosScreenState extends ConsumerState<ScenariosScreen>
             children: [
               _ScenarioList(
                 scenarios: plans,
-                emptyMessage: 'No plans yet.\nTap + to create a what-if scenario.',
+                emptyMessage:
+                    'No plans yet.\nTap + to create a what-if scenario.',
                 onRefresh: () => ref.refresh(scenariosProvider.future),
               ),
               _ScenarioList(
@@ -166,14 +167,16 @@ class _ScenarioCard extends ConsumerWidget {
                           children: [
                             Text(
                               scenario.name,
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             if (scenario.description != null)
                               Text(
                                 scenario.description!,
-                                style: theme.textTheme.bodySmall
-                                    ?.copyWith(color: cs.outline),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: cs.outline,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -204,9 +207,13 @@ class _ScenarioCard extends ConsumerWidget {
                         },
                         itemBuilder: (_) => [
                           const PopupMenuItem(
-                              value: 'edit', child: Text('Edit')),
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
                           const PopupMenuItem(
-                              value: 'delete', child: Text('Delete')),
+                            value: 'delete',
+                            child: Text('Delete'),
+                          ),
                         ],
                       ),
                     ],
@@ -217,8 +224,10 @@ class _ScenarioCard extends ConsumerWidget {
                   // Projection summary
                   detailAsync.when(
                     loading: () => const LinearProgressIndicator(),
-                    error: (err, st) => Text('Could not load projection',
-                        style: TextStyle(color: cs.outline, fontSize: 12)),
+                    error: (err, st) => Text(
+                      'Could not load projection',
+                      style: TextStyle(color: cs.outline, fontSize: 12),
+                    ),
                     data: (detail) => Row(
                       children: [
                         _MiniStat(
@@ -240,8 +249,7 @@ class _ScenarioCard extends ConsumerWidget {
                           const SizedBox(width: 16),
                           _MiniStat(
                             label: 'Target',
-                            value: fmt.format(
-                                scenario.targetAmount! / 100),
+                            value: fmt.format(scenario.targetAmount! / 100),
                             color: cs.outline,
                           ),
                         ],
@@ -254,15 +262,15 @@ class _ScenarioCard extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.flag_outlined,
-                            size: 14, color: cs.outline),
+                        Icon(Icons.flag_outlined, size: 14, color: cs.outline),
                         const SizedBox(width: 4),
                         Text(
                           'By ${scenario.targetDate!.year}-'
                           '${scenario.targetDate!.month.toString().padLeft(2, '0')}-'
                           '${scenario.targetDate!.day.toString().padLeft(2, '0')}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: cs.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: cs.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -278,8 +286,11 @@ class _ScenarioCard extends ConsumerWidget {
 }
 
 class _MiniStat extends StatelessWidget {
-  const _MiniStat(
-      {required this.label, required this.value, required this.color});
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -290,12 +301,20 @@ class _MiniStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: color, fontSize: 11)),
-        Text(value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700, color: color)),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color,
+            fontSize: 11,
+          ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
       ],
     );
   }

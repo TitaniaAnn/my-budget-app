@@ -15,15 +15,20 @@ part 'category.g.dart';
 class Category with _$Category {
   const factory Category({
     required String id,
+
     /// Null for system-default categories visible to all households.
     String? householdId,
     required String name,
+
     /// Parent category id for sub-categories (one level of nesting only).
     String? parentId,
+
     /// Emoji or icon identifier shown in the UI.
     String? icon,
+
     /// Hex color string (e.g. "#22C55E") for the category badge.
     String? color,
+
     /// True for income categories (e.g. Salary, Interest).
     required bool isIncome,
     required int sortOrder,

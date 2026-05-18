@@ -103,19 +103,18 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? surfaceRaised,
     Color? gradientStart,
     Color? gradientEnd,
-  }) =>
-      AppColors(
-        success: success ?? this.success,
-        warning: warning ?? this.warning,
-        income: income ?? this.income,
-        expense: expense ?? this.expense,
-        textMuted: textMuted ?? this.textMuted,
-        textSubtle: textSubtle ?? this.textSubtle,
-        surfaceDeep: surfaceDeep ?? this.surfaceDeep,
-        surfaceRaised: surfaceRaised ?? this.surfaceRaised,
-        gradientStart: gradientStart ?? this.gradientStart,
-        gradientEnd: gradientEnd ?? this.gradientEnd,
-      );
+  }) => AppColors(
+    success: success ?? this.success,
+    warning: warning ?? this.warning,
+    income: income ?? this.income,
+    expense: expense ?? this.expense,
+    textMuted: textMuted ?? this.textMuted,
+    textSubtle: textSubtle ?? this.textSubtle,
+    surfaceDeep: surfaceDeep ?? this.surfaceDeep,
+    surfaceRaised: surfaceRaised ?? this.surfaceRaised,
+    gradientStart: gradientStart ?? this.gradientStart,
+    gradientEnd: gradientEnd ?? this.gradientEnd,
+  );
 
   @override
   AppColors lerp(ThemeExtension<AppColors>? other, double t) {
@@ -160,162 +159,156 @@ class AppTheme {
   static const _lightMuted = Color(0xFF64748B); // slate-500
 
   static ThemeData get dark => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: _primary,
-          surface: _darkSurface,
-          error: _error,
-          onPrimary: Colors.white,
-          onSurface: _darkOnSurface,
-          outline: _darkMuted,
-          outlineVariant: _darkBorder,
-        ),
-        scaffoldBackgroundColor: _darkBackground,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _darkBackground,
-          foregroundColor: _darkOnSurface,
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: _darkOnSurface,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: _darkBackground,
-          selectedItemColor: _primary,
-          unselectedItemColor: _darkMuted,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: _darkSurface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: _darkBorder),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: _darkSurface,
-          hintStyle: const TextStyle(color: _darkMuted),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _darkBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _darkBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _primary, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _error),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 52),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: _primary),
-        ),
-        dividerTheme: const DividerThemeData(color: _darkBorder, space: 1),
-        extensions: const [AppColors._dark],
-      );
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: const ColorScheme.dark(
+      primary: _primary,
+      surface: _darkSurface,
+      error: _error,
+      onPrimary: Colors.white,
+      onSurface: _darkOnSurface,
+      outline: _darkMuted,
+      outlineVariant: _darkBorder,
+    ),
+    scaffoldBackgroundColor: _darkBackground,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: _darkBackground,
+      foregroundColor: _darkOnSurface,
+      elevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: _darkOnSurface,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: _darkBackground,
+      selectedItemColor: _primary,
+      unselectedItemColor: _darkMuted,
+      type: BottomNavigationBarType.fixed,
+      elevation: 0,
+    ),
+    cardTheme: CardThemeData(
+      color: _darkSurface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _darkBorder),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: _darkSurface,
+      hintStyle: const TextStyle(color: _darkMuted),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _darkBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _darkBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _error),
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: _primary),
+    ),
+    dividerTheme: const DividerThemeData(color: _darkBorder, space: 1),
+    extensions: const [AppColors._dark],
+  );
 
   static ThemeData get light => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        colorScheme: const ColorScheme.light(
-          primary: _primary,
-          surface: _lightSurface,
-          error: _error,
-          onPrimary: Colors.white,
-          onSurface: _lightOnSurface,
-          outline: _lightMuted,
-          outlineVariant: _lightBorder,
-        ),
-        scaffoldBackgroundColor: _lightBackground,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _lightBackground,
-          foregroundColor: _lightOnSurface,
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: _lightOnSurface,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: _lightSurface,
-          selectedItemColor: _primary,
-          unselectedItemColor: _lightMuted,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: _lightSurface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: _lightBorder),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: _lightSurface,
-          hintStyle: const TextStyle(color: _lightMuted),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _lightBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _lightBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _primary, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _error),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 52),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: _primary),
-        ),
-        dividerTheme: const DividerThemeData(color: _lightBorder, space: 1),
-        extensions: const [AppColors._light],
-      );
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorScheme: const ColorScheme.light(
+      primary: _primary,
+      surface: _lightSurface,
+      error: _error,
+      onPrimary: Colors.white,
+      onSurface: _lightOnSurface,
+      outline: _lightMuted,
+      outlineVariant: _lightBorder,
+    ),
+    scaffoldBackgroundColor: _lightBackground,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: _lightBackground,
+      foregroundColor: _lightOnSurface,
+      elevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: _lightOnSurface,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: _lightSurface,
+      selectedItemColor: _primary,
+      unselectedItemColor: _lightMuted,
+      type: BottomNavigationBarType.fixed,
+      elevation: 0,
+    ),
+    cardTheme: CardThemeData(
+      color: _lightSurface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _lightBorder),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: _lightSurface,
+      hintStyle: const TextStyle(color: _lightMuted),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _lightBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _lightBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _error),
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: _primary),
+    ),
+    dividerTheme: const DividerThemeData(color: _lightBorder, space: 1),
+    extensions: const [AppColors._light],
+  );
 }

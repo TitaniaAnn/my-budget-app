@@ -50,9 +50,7 @@ class BudgetWithSpending {
 
   /// Fraction of budget the projection fills, clamped to [0, 1].
   double get projectedProgress =>
-      budget.amount == 0
-          ? 0
-          : (projectedCents / budget.amount).clamp(0.0, 1.0);
+      budget.amount == 0 ? 0 : (projectedCents / budget.amount).clamp(0.0, 1.0);
 
   bool get isOverBudget => spentCents > budget.amount;
   bool get isProjectedOver => projectedCents > budget.amount;
@@ -120,8 +118,11 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
     // floor at zero so the UI doesn't show "-$10 spent".
     final raw = spendingMaps[i][b.categoryId] ?? 0;
     final spent = raw < 0 ? 0 : raw;
-    final projected =
-        projectEndOfPeriodSpend(spentCents: spent, from: from, to: to);
+    final projected = projectEndOfPeriodSpend(
+      spentCents: spent,
+      from: from,
+      to: to,
+    );
     final cat = catMap[b.categoryId];
 
     return BudgetWithSpending(

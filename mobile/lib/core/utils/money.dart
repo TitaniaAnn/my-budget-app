@@ -8,8 +8,16 @@ import 'package:intl/intl.dart';
 
 /// Formats integer cents as a locale-aware currency string.
 /// Example: 1234 → "$12.34"
-String formatCurrency(int cents, {String currency = 'USD', String locale = 'en_US'}) {
-  final formatter = NumberFormat.currency(locale: locale, symbol: r'$', decimalDigits: 2);
+String formatCurrency(
+  int cents, {
+  String currency = 'USD',
+  String locale = 'en_US',
+}) {
+  final formatter = NumberFormat.currency(
+    locale: locale,
+    symbol: r'$',
+    decimalDigits: 2,
+  );
   return formatter.format(cents / 100);
 }
 
@@ -31,8 +39,10 @@ int parseToCents(String value) {
   if (cleaned.isEmpty) return 0;
   // Multiply by 100 using Decimal to avoid floating-point rounding, then
   // convert to BigInt before toInt() because Decimal doesn't expose toInt().
-  final magnitude =
-      (Decimal.parse(cleaned) * Decimal.fromInt(100)).round().toBigInt().toInt();
+  final magnitude = (Decimal.parse(cleaned) * Decimal.fromInt(100))
+      .round()
+      .toBigInt()
+      .toInt();
   return negative ? -magnitude : magnitude;
 }
 

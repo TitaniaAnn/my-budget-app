@@ -24,8 +24,9 @@ class TransactionCard extends StatelessWidget {
     final cs = context.cs;
     final colors = context.appColors;
 
-    final categoryColor =
-        category?.color == null ? null : colorFromHex(category!.color);
+    final categoryColor = category?.color == null
+        ? null
+        : colorFromHex(category!.color);
 
     return GestureDetector(
       onTap: onTap,
@@ -60,7 +61,9 @@ class TransactionCard extends StatelessWidget {
                   Text(
                     transaction.merchant ?? transaction.description,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -68,7 +71,9 @@ class TransactionCard extends StatelessWidget {
                     Container(
                       margin: const EdgeInsets.only(top: 3),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: (categoryColor ?? Theme.of(context).dividerColor)
                             .withValues(alpha: 0.2),
@@ -101,8 +106,7 @@ class TransactionCard extends StatelessWidget {
                 ),
                 Text(
                   _dateFmt.format(transaction.transactionDate),
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textSubtle),
+                  style: TextStyle(fontSize: 12, color: colors.textSubtle),
                 ),
               ],
             ),

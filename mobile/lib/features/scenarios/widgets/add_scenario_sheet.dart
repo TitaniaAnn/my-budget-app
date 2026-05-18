@@ -74,8 +74,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate:
-          _targetDate ?? DateTime.now().add(const Duration(days: 365)),
+      initialDate: _targetDate ?? DateTime.now().add(const Duration(days: 365)),
       firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 30)),
     );
@@ -100,8 +99,7 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
     try {
       final repo = ref.read(scenariosRepositoryProvider);
       final hexColor = colorToHex(_color);
-      final rawTarget =
-          _targetCtrl.text.replaceAll(RegExp(r'[^\d.]'), '');
+      final rawTarget = _targetCtrl.text.replaceAll(RegExp(r'[^\d.]'), '');
       final targetCents = rawTarget.isNotEmpty
           ? ((double.tryParse(rawTarget) ?? 0) * 100).round()
           : null;
@@ -199,8 +197,9 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
                 labelText: 'Target Amount (\$)',
                 prefixIcon: Icon(Icons.flag_outlined),
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: false),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: false,
+              ),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -226,7 +225,8 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
               return GestureDetector(
                 onTap: () => setState(() => _color = c),
                 child: Container(
-                  width: 32, height: 32,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: c,
                     shape: BoxShape.circle,
@@ -244,10 +244,11 @@ class _AddScenarioSheetState extends ConsumerState<AddScenarioSheet> {
 
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.error),
-                textAlign: TextAlign.center),
+            Text(
+              _error!,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+              textAlign: TextAlign.center,
+            ),
           ],
 
           const SizedBox(height: 20),

@@ -29,15 +29,16 @@ class ReceiptsScreen extends ConsumerWidget {
       ),
       body: receiptsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            ErrorView(error: e, onRetry: () => ref.invalidate(receiptsProvider)),
+        error: (e, _) => ErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(receiptsProvider),
+        ),
         data: (receipts) {
           if (receipts.isEmpty) {
             return const EmptyView(
               icon: Icons.receipt_long_outlined,
               title: 'No Receipts Yet',
-              subtitle:
-                  'Tap the camera button to capture\nyour first receipt.',
+              subtitle: 'Tap the camera button to capture\nyour first receipt.',
             );
           }
           return RefreshIndicator(
@@ -73,8 +74,7 @@ class _ReceiptCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imageAsync =
-        ref.watch(receiptImageUrlProvider(receipt.storagePath));
+    final imageAsync = ref.watch(receiptImageUrlProvider(receipt.storagePath));
 
     return GestureDetector(
       onTap: () => context.push('/receipts/${receipt.id}'),
@@ -122,8 +122,9 @@ class _ReceiptCard extends ConsumerWidget {
                 children: [
                   Text(
                     receipt.merchantName ?? 'Unknown',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -132,14 +133,16 @@ class _ReceiptCard extends ConsumerWidget {
                     receipt.receiptDate != null
                         ? DateFormat.yMMMd().format(receipt.receiptDate!)
                         : DateFormat.yMMMd().format(receipt.uploadedAt),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.outline),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
                   ),
                   if (receipt.totalAmount != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      NumberFormat.currency(symbol: '\$')
-                          .format(receipt.totalAmount! / 100),
+                      NumberFormat.currency(
+                        symbol: '\$',
+                      ).format(receipt.totalAmount! / 100),
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: theme.colorScheme.primary,
@@ -164,4 +167,3 @@ class _ReceiptCard extends ConsumerWidget {
     );
   }
 }
-

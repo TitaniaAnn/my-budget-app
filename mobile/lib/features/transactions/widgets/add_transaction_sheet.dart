@@ -19,6 +19,7 @@ import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/transaction.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
+
 class AddTransactionSheet extends ConsumerStatefulWidget {
   /// Pre-select an account when opened from an account's transaction list.
   final String? preselectedAccountId;
@@ -62,8 +63,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final tx = widget.transaction;
     if (tx != null) {
       _isExpense = tx.amount < 0;
-      _amountController.text =
-          (tx.amount.abs() / 100).toStringAsFixed(2);
+      _amountController.text = (tx.amount.abs() / 100).toStringAsFixed(2);
       _descriptionController.text = tx.description;
       _merchantController.text = tx.merchant ?? '';
       _notesController.text = tx.notes ?? '';
@@ -122,9 +122,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedAccountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an account')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select an account')));
       return;
     }
     setState(() => _loading = true);
@@ -156,7 +156,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       } else {
         final householdId = await ref.read(householdIdProvider.future);
         final user = ref.read(currentUserProvider);
-        if (householdId == null || user == null) throw Exception('Not logged in');
+        if (householdId == null || user == null)
+          throw Exception('Not logged in');
 
         await repo.createTransaction(
           householdId: householdId,
@@ -200,8 +201,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       actions: [
         if (_isEditMode)
           IconButton(
-            icon: Icon(Icons.delete_outline,
-                color: Theme.of(context).colorScheme.error),
+            icon: Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
             tooltip: 'Delete transaction',
             onPressed: _loading ? null : _delete,
           ),
@@ -231,175 +234,176 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             validator: (v) => v == null || v.isEmpty ? 'Required' : null,
           ),
-              const SizedBox(height: 14),
-              // Account selector
-              const FieldLabel('Account'),
-              accountsAsync.when(
-                loading: () =>
-                    const LinearProgressIndicator(),
-                error: (_, _) =>
-                    const Text('Failed to load accounts'),
-                data: (accounts) => DropdownButtonFormField<String>(
-                  initialValue: _selectedAccountId,
-                  hint: const Text('Select account'),
-                  decoration: const InputDecoration(),
-                  items: accounts
-                      .map((a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text(a.name),
-                          ))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedAccountId = v),
-                ),
-              ),
-              const SizedBox(height: 14),
-              // Description
-              const FieldLabel('Description'),
-              TextFormField(
-                controller: _descriptionController,
-                decoration:
-                    const InputDecoration(hintText: 'What was this for?'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const FieldLabel('Merchant (optional)'),
-                        TextFormField(
-                          controller: _merchantController,
-                          decoration: const InputDecoration(
-                              hintText: 'e.g. Amazon'),
-                        ),
-                      ],
+          const SizedBox(height: 14),
+          // Account selector
+          const FieldLabel('Account'),
+          accountsAsync.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (_, _) => const Text('Failed to load accounts'),
+            data: (accounts) => DropdownButtonFormField<String>(
+              initialValue: _selectedAccountId,
+              hint: const Text('Select account'),
+              decoration: const InputDecoration(),
+              items: accounts
+                  .map(
+                    (a) => DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedAccountId = v),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Description
+          const FieldLabel('Description'),
+          TextFormField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(hintText: 'What was this for?'),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('Merchant (optional)'),
+                    TextFormField(
+                      controller: _merchantController,
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. Amazon',
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const FieldLabel('Date'),
-                        GestureDetector(
-                          onTap: _pickDate,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: context.cs.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: Theme.of(context).dividerColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.calendar_today_outlined,
-                                    size: 16,
-                                    color: context.appColors.textSubtle),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _dateFmt.format(_date),
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              // Category
-              const FieldLabel('Category (optional)'),
-              categoriesAsync.when(
-                loading: () => const LinearProgressIndicator(),
-                error: (_, _) => const SizedBox.shrink(),
-                data: (cats) => DropdownButtonFormField<String>(
-                  initialValue: _selectedCategoryId,
-                  hint: const Text('None'),
-                  decoration: const InputDecoration(),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('None'),
-                    ),
-                    ...cats.where((c) => c.parentId == null).map((c) =>
-                        DropdownMenuItem(
-                          value: c.id,
-                          child: Row(
-                            children: [
-                              Icon(categoryIconData(c.icon), size: 16),
-                              const SizedBox(width: 8),
-                              Text(c.name),
-                            ],
-                          ),
-                        )),
                   ],
-                  onChanged: (v) => setState(() => _selectedCategoryId = v),
                 ),
               ),
-              // Rate picker — only for credit card accounts
-              if (_selectedAccountId != null)
-                accountsAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, _) => const SizedBox.shrink(),
-                  data: (accounts) {
-                    final acct = accounts
-                        .where((a) => a.id == _selectedAccountId)
-                        .firstOrNull;
-                    if (acct == null ||
-                        acct.accountType != AccountType.creditCard) {
-                      return const SizedBox.shrink();
-                    }
-                    final ratesAsync = ref
-                        .watch(creditCardRatesProvider(_selectedAccountId!));
-                    return ratesAsync.when(
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, _) => const SizedBox.shrink(),
-                      data: (rates) {
-                        final active =
-                            rates.where((r) => r.isActive).toList();
-                        if (active.isEmpty) return const SizedBox.shrink();
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('Date'),
+                    GestureDetector(
+                      onTap: _pickDate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.cs.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: Row(
                           children: [
-                            const SizedBox(height: 14),
-                            const FieldLabel('Interest Rate (optional)'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedRateId,
-                              hint: const Text('Default (purchase rate)'),
-                              decoration: const InputDecoration(),
-                              items: [
-                                const DropdownMenuItem(
-                                  value: null,
-                                  child: Text('Default (purchase rate)'),
-                                ),
-                                ...active.map((r) => DropdownMenuItem(
-                                      value: r.id,
-                                      child: Text(
-                                        '${r.label ?? r.rateType.displayName}'
-                                        ' — ${(r.rate * 100).toStringAsFixed(2)}%'
-                                        '${r.isIntro ? ' (intro)' : ''}',
-                                      ),
-                                    )),
-                              ],
-                              onChanged: (v) =>
-                                  setState(() => _selectedRateId = v),
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 16,
+                              color: context.appColors.textSubtle,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _dateFmt.format(_date),
+                              style: const TextStyle(fontSize: 13),
                             ),
                           ],
-                        );
-                      },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Category
+          const FieldLabel('Category (optional)'),
+          categoriesAsync.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (cats) => DropdownButtonFormField<String>(
+              initialValue: _selectedCategoryId,
+              hint: const Text('None'),
+              decoration: const InputDecoration(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                ...cats
+                    .where((c) => c.parentId == null)
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Row(
+                          children: [
+                            Icon(categoryIconData(c.icon), size: 16),
+                            const SizedBox(width: 8),
+                            Text(c.name),
+                          ],
+                        ),
+                      ),
+                    ),
+              ],
+              onChanged: (v) => setState(() => _selectedCategoryId = v),
+            ),
+          ),
+          // Rate picker — only for credit card accounts
+          if (_selectedAccountId != null)
+            accountsAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (accounts) {
+                final acct = accounts
+                    .where((a) => a.id == _selectedAccountId)
+                    .firstOrNull;
+                if (acct == null ||
+                    acct.accountType != AccountType.creditCard) {
+                  return const SizedBox.shrink();
+                }
+                final ratesAsync = ref.watch(
+                  creditCardRatesProvider(_selectedAccountId!),
+                );
+                return ratesAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (rates) {
+                    final active = rates.where((r) => r.isActive).toList();
+                    if (active.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 14),
+                        const FieldLabel('Interest Rate (optional)'),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedRateId,
+                          hint: const Text('Default (purchase rate)'),
+                          decoration: const InputDecoration(),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Default (purchase rate)'),
+                            ),
+                            ...active.map(
+                              (r) => DropdownMenuItem(
+                                value: r.id,
+                                child: Text(
+                                  '${r.label ?? r.rateType.displayName}'
+                                  ' — ${(r.rate * 100).toStringAsFixed(2)}%'
+                                  '${r.isIntro ? ' (intro)' : ''}',
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => _selectedRateId = v),
+                        ),
+                      ],
                     );
                   },
-                ),
+                );
+              },
+            ),
           const SizedBox(height: 24),
           LoadingButton(
             loading: _loading,

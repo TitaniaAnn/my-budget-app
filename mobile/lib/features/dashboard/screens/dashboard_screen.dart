@@ -116,10 +116,11 @@ class _DashboardBody extends ConsumerWidget {
           loading: () => const SizedBox.shrink(),
           error: (_, _) => const SizedBox.shrink(),
           data: (budgets) {
-            final alerts = budgets
-                .where((b) => b.isOverBudget || b.progress >= 0.8)
-                .toList()
-              ..sort((a, b) => b.progress.compareTo(a.progress));
+            final alerts =
+                budgets
+                    .where((b) => b.isOverBudget || b.progress >= 0.8)
+                    .toList()
+                  ..sort((a, b) => b.progress.compareTo(a.progress));
             if (alerts.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,8 +165,7 @@ class _DashboardBody extends ConsumerWidget {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Theme.of(context).dividerColor),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             clipBehavior: Clip.hardEdge,
             child: Column(
@@ -216,17 +216,17 @@ class _NetWorthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Net Worth',
-              style: TextStyle(fontSize: 13, color: colors.textMuted)),
+          Text(
+            'Net Worth',
+            style: TextStyle(fontSize: 13, color: colors.textMuted),
+          ),
           const SizedBox(height: 6),
           Text(
             formatCurrency(netWorthCents),
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w800,
-              color: netWorthCents >= 0
-                  ? context.cs.onSurface
-                  : colors.expense,
+              color: netWorthCents >= 0 ? context.cs.onSurface : colors.expense,
             ),
           ),
         ],
@@ -255,8 +255,9 @@ class _AccountsRow extends StatelessWidget {
           final a = accounts[i];
           final color = _typeColor(a);
           final isLiability = a.accountType.isLiability;
-          final displayCents =
-              isLiability ? a.currentBalance.abs() : a.currentBalance;
+          final displayCents = isLiability
+              ? a.currentBalance.abs()
+              : a.currentBalance;
           return Container(
             width: 148,
             padding: const EdgeInsets.all(12),
@@ -276,7 +277,9 @@ class _AccountsRow extends StatelessWidget {
                       child: Text(
                         a.name,
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -298,7 +301,9 @@ class _AccountsRow extends StatelessWidget {
                   Text(
                     a.institution!,
                     style: TextStyle(
-                        fontSize: 10, color: context.appColors.textSubtle),
+                      fontSize: 10,
+                      color: context.appColors.textSubtle,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -340,9 +345,13 @@ class _SummaryTile extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 12, color: context.appColors.textMuted)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: context.appColors.textMuted,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -380,10 +389,13 @@ class _SpendingSparkline extends StatelessWidget {
       ),
       child: maxVal == 0
           ? Center(
-              child: Text('No spending in the last 30 days',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontSize: 13)),
+              child: Text(
+                'No spending in the last 30 days',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.outline,
+                  fontSize: 13,
+                ),
+              ),
             )
           : BarChart(
               BarChartData(
@@ -392,11 +404,14 @@ class _SpendingSparkline extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -405,13 +420,16 @@ class _SpendingSparkline extends StatelessWidget {
                         final muted = context.appColors.textSubtle;
                         // Show label every 7 days + today
                         if (idx == 29) {
-                          return Text('Today',
-                              style: TextStyle(
-                                  fontSize: 9, color: muted));
+                          return Text(
+                            'Today',
+                            style: TextStyle(fontSize: 9, color: muted),
+                          );
                         }
                         if ((29 - idx) % 7 == 0 && idx != 29) {
-                          return Text('${29 - idx}d',
-                              style: TextStyle(fontSize: 9, color: muted));
+                          return Text(
+                            '${29 - idx}d',
+                            style: TextStyle(fontSize: 9, color: muted),
+                          );
                         }
                         return const SizedBox.shrink();
                       },
@@ -431,7 +449,8 @@ class _SpendingSparkline extends StatelessWidget {
                             : BrandColors.primary.withValues(alpha: 0.4),
                         width: 6,
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(3)),
+                          top: Radius.circular(3),
+                        ),
                       ),
                     ],
                   );
@@ -441,9 +460,10 @@ class _SpendingSparkline extends StatelessWidget {
                     getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
                       formatCurrency(rod.toY.round()),
                       const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -461,8 +481,9 @@ class _BudgetAlertTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOver = budget.isOverBudget;
-    final color =
-        isOver ? context.appColors.expense : context.appColors.warning;
+    final color = isOver
+        ? context.appColors.expense
+        : context.appColors.warning;
     final pct = (budget.progress * 100).round();
 
     return Container(
@@ -488,7 +509,9 @@ class _BudgetAlertTile extends StatelessWidget {
                 Text(
                   budget.categoryName,
                   style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   isOver
@@ -502,14 +525,21 @@ class _BudgetAlertTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(formatCurrency(budget.spentCents),
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: color)),
-              Text('of ${formatCurrency(budget.budget.amount)}',
-                  style: TextStyle(
-                      fontSize: 11, color: context.appColors.textSubtle)),
+              Text(
+                formatCurrency(budget.spentCents),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              Text(
+                'of ${formatCurrency(budget.budget.amount)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: context.appColors.textSubtle,
+                ),
+              ),
             ],
           ),
         ],
@@ -539,9 +569,13 @@ class _TopCategoriesCard extends StatelessWidget {
       ),
       child: Column(
         children: categories.map((cat) {
-          final fraction =
-              totalSpending > 0 ? cat.totalCents / totalSpending : 0.0;
-          final barColor = colorFromHex(cat.color, fallback: context.cs.primary);
+          final fraction = totalSpending > 0
+              ? cat.totalCents / totalSpending
+              : 0.0;
+          final barColor = colorFromHex(
+            cat.color,
+            fallback: context.cs.primary,
+          );
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
@@ -549,20 +583,28 @@ class _TopCategoriesCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(cat.name,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500)),
+                      child: Text(
+                        cat.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     Text(
                       formatCurrency(cat.totalCents),
                       style: TextStyle(
-                          fontSize: 13, color: context.appColors.textMuted),
+                        fontSize: 13,
+                        color: context.appColors.textMuted,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       '${(fraction * 100).toStringAsFixed(0)}%',
                       style: TextStyle(
-                          fontSize: 12, color: context.appColors.textSubtle),
+                        fontSize: 12,
+                        color: context.appColors.textSubtle,
+                      ),
                     ),
                   ],
                 ),
@@ -612,13 +654,13 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               actionLabel!,
               style: TextStyle(
-                  fontSize: 12,
-                  color: context.cs.primary,
-                  fontWeight: FontWeight.w500),
+                fontSize: 12,
+                color: context.cs.primary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
       ],
     );
   }
 }
-

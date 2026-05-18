@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mybudget/features/budget/models/budget.dart';
 import 'package:mybudget/features/budget/providers/budget_provider.dart';
 
-Budget _budget({required int amount, BudgetPeriod period = BudgetPeriod.monthly}) {
+Budget _budget({
+  required int amount,
+  BudgetPeriod period = BudgetPeriod.monthly,
+}) {
   return Budget(
     id: 'b',
     householdId: 'h',

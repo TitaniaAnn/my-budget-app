@@ -14,17 +14,23 @@ class ReceiptLineItem with _$ReceiptLineItem {
     required String id,
     required String receiptId,
     required String description,
+
     /// Amount in cents (always positive; sign determined by [isDiscount]).
     required int amount,
+
     /// Optional quantity for unit-priced items (e.g. 2.0 lbs of produce).
     double? quantity,
+
     /// Unit price in cents (amount / quantity, when available from OCR).
     int? unitPrice,
     String? categoryId,
+
     /// True if this line represents sales tax.
     required bool isTax,
+
     /// True if this line represents a tip/gratuity.
     required bool isTip,
+
     /// True if this line is a discount (coupon, promo, etc.) — negative value.
     required bool isDiscount,
     required int sortOrder,

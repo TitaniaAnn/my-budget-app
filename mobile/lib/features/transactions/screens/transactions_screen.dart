@@ -36,18 +36,26 @@ enum _DateFilter {
     final now = DateTime.now();
     return switch (this) {
       _DateFilter.all => (null, null),
-      _DateFilter.thisMonth =>
-        (DateTime(now.year, now.month, 1), DateTime(now.year, now.month + 1, 0)),
+      _DateFilter.thisMonth => (
+        DateTime(now.year, now.month, 1),
+        DateTime(now.year, now.month + 1, 0),
+      ),
       _DateFilter.lastMonth => (
-          DateTime(now.year, now.month - 1, 1),
-          DateTime(now.year, now.month, 0),
-        ),
+        DateTime(now.year, now.month - 1, 1),
+        DateTime(now.year, now.month, 0),
+      ),
       _DateFilter.last90 => (
-          DateTime(now.year, now.month, now.day)
-              .subtract(const Duration(days: 89)),
-          DateTime(now.year, now.month, now.day),
-        ),
-      _DateFilter.thisYear => (DateTime(now.year, 1, 1), DateTime(now.year, 12, 31)),
+        DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 89)),
+        DateTime(now.year, now.month, now.day),
+      ),
+      _DateFilter.thisYear => (
+        DateTime(now.year, 1, 1),
+        DateTime(now.year, 12, 31),
+      ),
     };
   }
 }
@@ -63,7 +71,11 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   /// a running balance is shown on each day header.
   final int? startingBalance;
 
-  const TransactionsScreen({super.key, this.lockedAccountId, this.startingBalance});
+  const TransactionsScreen({
+    super.key,
+    this.lockedAccountId,
+    this.startingBalance,
+  });
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -157,13 +169,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget _buildBody() {
     final accountsAsync = ref.watch(accountsProvider);
     final (from, to) = _dateRange;
-    final txAsync = ref.watch(transactionsProvider(
-      accountId: _selectedAccountId,
-      categoryId: _selectedCategoryId,
-      search: _search.isEmpty ? null : _search,
-      dateFrom: from,
-      dateTo: to,
-    ));
+    final txAsync = ref.watch(
+      transactionsProvider(
+        accountId: _selectedAccountId,
+        categoryId: _selectedCategoryId,
+        search: _search.isEmpty ? null : _search,
+        dateFrom: from,
+        dateTo: to,
+      ),
+    );
 
     return Column(
       children: [
@@ -184,14 +198,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           onSelected: (f) => setState(() => _dateFilter = f),
         ),
         // Category filter chips
-        ref.watch(categoriesProvider).whenOrNull(
-              data: (cats) => _CategoryFilterBar(
-                categories: cats.where((c) => c.parentId == null).toList(),
-                selectedId: _selectedCategoryId,
-                onSelected: (id) =>
-                    setState(() => _selectedCategoryId = id),
-              ),
-            ) ??
+        ref
+                .watch(categoriesProvider)
+                .whenOrNull(
+                  data: (cats) => _CategoryFilterBar(
+                    categories: cats.where((c) => c.parentId == null).toList(),
+                    selectedId: _selectedCategoryId,
+                    onSelected: (id) =>
+                        setState(() => _selectedCategoryId = id),
+                  ),
+                ) ??
             const SizedBox.shrink(),
         // Transaction list
         Expanded(
@@ -214,7 +230,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _showAddSheet(BuildContext context) {
-    showAppSheet<void>(context, child: AddTransactionSheet(preselectedAccountId: _selectedAccountId));
+    showAppSheet<void>(
+      context,
+      child: AddTransactionSheet(preselectedAccountId: _selectedAccountId),
+    );
   }
 
   void _showEditSheet(BuildContext context, Transaction tx) {
@@ -237,7 +256,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ref.invalidate(transactionsProvider);
       if (mounted) {
         context.showSnackBar(
-            'Categorized $count transaction${count == 1 ? '' : 's'}');
+          'Categorized $count transaction${count == 1 ? '' : 's'}',
+        );
       }
     } catch (e) {
       if (mounted) context.showErrorSnackBar(e);
@@ -259,7 +279,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
     if (confirmed) {
       await ref.read(transactionsRepositoryProvider).deleteTransaction(tx.id);
-      await ref.read(accountsRepositoryProvider).recalculateBalance(tx.accountId);
+      await ref
+          .read(accountsRepositoryProvider)
+          .recalculateBalance(tx.accountId);
       ref.invalidate(accountsProvider);
       ref.invalidate(transactionsProvider);
     }
@@ -321,7 +343,9 @@ class _AccountFilterBar extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 color: selected
                     ? Colors.white
-                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -385,10 +409,9 @@ class _CategoryFilterBar extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 color: selected
                     ? Colors.white
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -412,16 +435,17 @@ class _DateFilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: _DateFilter.values
-            .map((f) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(f.label,
-                        style: const TextStyle(fontSize: 12)),
-                    selected: selected == f,
-                    onSelected: (_) => onSelected(f),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ))
+            .map(
+              (f) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(f.label, style: const TextStyle(fontSize: 12)),
+                  selected: selected == f,
+                  onSelected: (_) => onSelected(f),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            )
             .toList(),
       ),
     );
@@ -456,8 +480,11 @@ class _TransactionList extends StatelessWidget {
     // Group by calendar day
     final groups = <DateTime, List<Transaction>>{};
     for (final tx in transactions) {
-      final day = DateTime(tx.transactionDate.year,
-          tx.transactionDate.month, tx.transactionDate.day);
+      final day = DateTime(
+        tx.transactionDate.year,
+        tx.transactionDate.month,
+        tx.transactionDate.day,
+      );
       groups.putIfAbsent(day, () => []).add(tx);
     }
     final sortedDays = groups.keys.toList()..sort((a, b) => b.compareTo(a));
@@ -508,8 +535,10 @@ class _TransactionList extends StatelessWidget {
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 20),
                       color: context.cs.error,
-                      child: const Icon(Icons.delete_outline,
-                          color: Colors.white),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                      ),
                     ),
                     confirmDismiss: (_) async {
                       onDelete(tx);

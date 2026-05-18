@@ -52,8 +52,7 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
       _merchantCtrl.text = receipt.merchantName!;
     }
     if (_dateCtrl.text.isEmpty && receipt.receiptDate != null) {
-      _dateCtrl.text =
-          DateFormat('yyyy-MM-dd').format(receipt.receiptDate!);
+      _dateCtrl.text = DateFormat('yyyy-MM-dd').format(receipt.receiptDate!);
     }
     if (_totalCtrl.text.isEmpty && receipt.totalAmount != null) {
       // Display as decimal dollars for editing (stored as cents).
@@ -74,8 +73,9 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
 
       await repo.updateReceipt(
         receiptId: receipt.id,
-        merchantName:
-            _merchantCtrl.text.trim().isNotEmpty ? _merchantCtrl.text.trim() : null,
+        merchantName: _merchantCtrl.text.trim().isNotEmpty
+            ? _merchantCtrl.text.trim()
+            : null,
         receiptDate: _dateCtrl.text.isNotEmpty
             ? DateTime.tryParse(_dateCtrl.text)
             : null,
@@ -92,16 +92,16 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Receipt updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Receipt updated')));
       }
     } catch (e) {
       setState(() => _savingMeta = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -111,8 +111,9 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete Receipt?'),
-        content:
-            const Text('This will permanently remove the image and all data.'),
+        content: const Text(
+          'This will permanently remove the image and all data.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -148,13 +149,15 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
       appBar: AppBar(
         title: const Text('Receipt'),
         actions: [
-          receiptAsync.whenData(
-            (r) => IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => _deleteReceipt(r),
-              tooltip: 'Delete',
-            ),
-          ).valueOrNull ??
+          receiptAsync
+                  .whenData(
+                    (r) => IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _deleteReceipt(r),
+                      tooltip: 'Delete',
+                    ),
+                  )
+                  .valueOrNull ??
               const SizedBox.shrink(),
         ],
       ),
@@ -209,8 +212,7 @@ class _ReceiptDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final imageAsync = ref.watch(receiptImageUrlProvider(receipt.storagePath));
-    final lineItemsAsync =
-        ref.watch(receiptLineItemsProvider(receipt.id));
+    final lineItemsAsync = ref.watch(receiptLineItemsProvider(receipt.id));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -229,8 +231,11 @@ class _ReceiptDetailBody extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.broken_image_outlined,
-                        size: 48, color: theme.colorScheme.outline),
+                    Icon(
+                      Icons.broken_image_outlined,
+                      size: 48,
+                      color: theme.colorScheme.outline,
+                    ),
                     const SizedBox(height: 8),
                     const Text('Could not load image'),
                   ],
@@ -280,8 +285,7 @@ class _ReceiptDetailBody extends ConsumerWidget {
             labelText: 'Total (\$)',
             prefixIcon: Icon(Icons.attach_money),
           ),
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (_) => onMetaChanged(),
         ),
         if (metaDirty) ...[
@@ -293,7 +297,9 @@ class _ReceiptDetailBody extends ConsumerWidget {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.save_outlined),
             label: Text(savingMeta ? 'Saving…' : 'Save Changes'),
@@ -359,11 +365,11 @@ class _OcrStatusChip extends StatelessWidget {
   }
 
   IconData get _icon => switch (status) {
-        OcrStatus.pending => Icons.hourglass_empty,
-        OcrStatus.processing => Icons.autorenew,
-        OcrStatus.complete => Icons.check_circle_outline,
-        OcrStatus.failed => Icons.error_outline,
-      };
+    OcrStatus.pending => Icons.hourglass_empty,
+    OcrStatus.processing => Icons.autorenew,
+    OcrStatus.complete => Icons.check_circle_outline,
+    OcrStatus.failed => Icons.error_outline,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -411,17 +417,14 @@ class _LineItemsList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.description,
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                      Text(item.description, style: theme.textTheme.bodyMedium),
                       if (item.isTax || item.isTip || item.isDiscount)
                         Text(
                           item.isTax
                               ? 'Tax'
                               : item.isTip
-                                  ? 'Tip'
-                                  : 'Discount',
+                              ? 'Tip'
+                              : 'Discount',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -462,9 +465,9 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }

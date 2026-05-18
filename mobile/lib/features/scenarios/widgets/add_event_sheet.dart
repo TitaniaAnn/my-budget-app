@@ -11,11 +11,7 @@ import '../repositories/scenarios_repository.dart';
 final _isoDateFmt = DateFormat('yyyy-MM-dd');
 
 class AddEventSheet extends ConsumerStatefulWidget {
-  const AddEventSheet({
-    super.key,
-    required this.scenarioId,
-    this.existing,
-  });
+  const AddEventSheet({super.key, required this.scenarioId, this.existing});
 
   final String scenarioId;
   final ScenarioEvent? existing;
@@ -152,92 +148,92 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Event type chips
-            Wrap(
-              spacing: 8,
-              children: EventType.values.map((t) {
-                final selected = t == _eventType;
-                return ChoiceChip(
-                  label: Text(t.label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _eventType = t),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: EventType.values.map((t) {
+              final selected = t == _eventType;
+              return ChoiceChip(
+                label: Text(t.label),
+                selected: selected,
+                onSelected: (_) => setState(() => _eventType = t),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
 
-            // Label
+          // Label
+          TextField(
+            controller: _labelCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Label',
+              prefixIcon: Icon(Icons.edit_outlined),
+            ),
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 12),
+
+          // Amount
+          TextField(
+            controller: _amountCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Amount (\$)',
+              prefixIcon: Icon(Icons.attach_money),
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 12),
+
+          // Date picker
+          OutlinedButton.icon(
+            onPressed: _pickDate,
+            icon: const Icon(Icons.calendar_today_outlined),
+            label: Text(_isoDateFmt.format(_eventDate)),
+          ),
+          const SizedBox(height: 12),
+
+          // Recurring toggle
+          SwitchListTile(
+            value: _isRecurring,
+            onChanged: (v) => setState(() => _isRecurring = v),
+            title: const Text('Recurring'),
+            contentPadding: EdgeInsets.zero,
+          ),
+
+          if (_isRecurring) ...[
+            // Frequency picker
+            DropdownButtonFormField<String>(
+              initialValue: _freq,
+              decoration: const InputDecoration(labelText: 'Frequency'),
+              items: const [
+                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
+                DropdownMenuItem(value: 'YEARLY', child: Text('Yearly')),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => _freq = v);
+              },
+            ),
+            const SizedBox(height: 12),
+            // Optional count
             TextField(
-              controller: _labelCtrl,
+              controller: _countCtrl,
               decoration: const InputDecoration(
-                labelText: 'Label',
-                prefixIcon: Icon(Icons.edit_outlined),
+                labelText: 'Number of times (leave blank for indefinite)',
+                prefixIcon: Icon(Icons.repeat),
               ),
-              textCapitalization: TextCapitalization.sentences,
+              keyboardType: TextInputType.number,
             ),
+          ],
+
+          if (_error != null) ...[
             const SizedBox(height: 12),
-
-            // Amount
-            TextField(
-              controller: _amountCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Amount (\$)',
-                prefixIcon: Icon(Icons.attach_money),
-              ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+            Text(
+              _error!,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
-
-            // Date picker
-            OutlinedButton.icon(
-              onPressed: _pickDate,
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(_isoDateFmt.format(_eventDate)),
-            ),
-            const SizedBox(height: 12),
-
-            // Recurring toggle
-            SwitchListTile(
-              value: _isRecurring,
-              onChanged: (v) => setState(() => _isRecurring = v),
-              title: const Text('Recurring'),
-              contentPadding: EdgeInsets.zero,
-            ),
-
-            if (_isRecurring) ...[
-              // Frequency picker
-              DropdownButtonFormField<String>(
-                initialValue: _freq,
-                decoration: const InputDecoration(labelText: 'Frequency'),
-                items: const [
-                  DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
-                  DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
-                  DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
-                  DropdownMenuItem(value: 'YEARLY', child: Text('Yearly')),
-                ],
-                onChanged: (v) {
-                  if (v != null) setState(() => _freq = v);
-                },
-              ),
-              const SizedBox(height: 12),
-              // Optional count
-              TextField(
-                controller: _countCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Number of times (leave blank for indefinite)',
-                  prefixIcon: Icon(Icons.repeat),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.error),
-                  textAlign: TextAlign.center),
-            ],
+          ],
 
           const SizedBox(height: 20),
           LoadingButton.filled(

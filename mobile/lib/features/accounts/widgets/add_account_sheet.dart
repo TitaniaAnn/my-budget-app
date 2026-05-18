@@ -40,17 +40,17 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
   // Account types that can carry an interest rate
   bool get _hasInterestRate => const {
-        AccountType.creditCard,
-        AccountType.savings,
-        AccountType.checking,
-        AccountType.brokerage,
-        AccountType.iraTraditional,
-        AccountType.iraRoth,
-        AccountType.retirement401k,
-        AccountType.retirement403b,
-        AccountType.hsa,
-        AccountType.college529,
-      }.contains(_selectedType);
+    AccountType.creditCard,
+    AccountType.savings,
+    AccountType.checking,
+    AccountType.brokerage,
+    AccountType.iraTraditional,
+    AccountType.iraRoth,
+    AccountType.retirement401k,
+    AccountType.retirement403b,
+    AccountType.hsa,
+    AccountType.college529,
+  }.contains(_selectedType);
 
   @override
   void initState() {
@@ -65,15 +65,14 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       // For liability accounts (credit_card, mortgage) we always present
       // the magnitude — internally stored as negative, displayed as the
       // amount owed so the user types "500" for a $500 balance.
-      _balanceController.text =
-          (a.startingBalance.abs() / 100).toStringAsFixed(2);
+      _balanceController.text = (a.startingBalance.abs() / 100).toStringAsFixed(
+        2,
+      );
       if (a.creditLimit != null) {
-        _limitController.text =
-            (a.creditLimit! / 100).toStringAsFixed(2);
+        _limitController.text = (a.creditLimit! / 100).toStringAsFixed(2);
       }
       if (a.interestRate != null) {
-        _rateController.text =
-            (a.interestRate! * 100).toStringAsFixed(2);
+        _rateController.text = (a.interestRate! * 100).toStringAsFixed(2);
       }
     }
   }
@@ -99,8 +98,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       // SUM(starting_balance + transactions) yields the right balance and
       // SUM(current_balance) gives net worth without special-casing.
       final magnitudeCents = parseToCents(_balanceController.text).abs();
-      final balanceCents =
-          _selectedType.isLiability ? -magnitudeCents : magnitudeCents;
+      final balanceCents = _selectedType.isLiability
+          ? -magnitudeCents
+          : magnitudeCents;
 
       int? limitCents;
       if (_selectedType == AccountType.creditCard &&
@@ -110,8 +110,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
       double? interestRate;
       if (_hasInterestRate && _rateController.text.isNotEmpty) {
-        interestRate = double.parse(
-                _rateController.text.replaceAll(RegExp(r'[^\d.]'), '')) /
+        interestRate =
+            double.parse(
+              _rateController.text.replaceAll(RegExp(r'[^\d.]'), ''),
+            ) /
             100;
       }
 
@@ -185,8 +187,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             decoration: InputDecoration(
               hintText: '${_selectedType.displayName} account name',
             ),
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Required' : null,
+            validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
           ),
           const SizedBox(height: 14),
           const FieldLabel('Institution (optional)'),
@@ -233,26 +234,28 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               controller: _limitController,
               validator: (v) =>
                   _selectedType == AccountType.creditCard &&
-                          (v == null || v.isEmpty)
-                      ? 'Enter credit limit'
-                      : null,
+                      (v == null || v.isEmpty)
+                  ? 'Enter credit limit'
+                  : null,
             ),
           ],
           if (_hasInterestRate) ...[
             const SizedBox(height: 14),
-            FieldLabel(_selectedType == AccountType.creditCard
-                ? 'Interest Rate (APR)'
-                : _selectedType == AccountType.savings ||
+            FieldLabel(
+              _selectedType == AccountType.creditCard
+                  ? 'Interest Rate (APR)'
+                  : _selectedType == AccountType.savings ||
                         _selectedType == AccountType.checking
-                    ? 'Interest Rate (APY)'
-                    : 'Expected Return Rate'),
+                  ? 'Interest Rate (APY)'
+                  : 'Expected Return Rate',
+            ),
             TextFormField(
               controller: _rateController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'^\d*\.?\d{0,2}')),
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
               decoration: const InputDecoration(
                 suffixText: '%',
@@ -276,30 +279,27 @@ class _AccountTypeSelector extends StatelessWidget {
   final AccountType selected;
   final ValueChanged<AccountType> onChanged;
 
-  const _AccountTypeSelector(
-      {required this.selected, required this.onChanged});
+  const _AccountTypeSelector({required this.selected, required this.onChanged});
 
   static const _groups = [
-    (label: 'Banking', types: [
-      AccountType.checking,
-      AccountType.savings,
-      AccountType.cash,
-    ]),
-    (label: 'Credit', types: [
-      AccountType.creditCard,
-    ]),
-    (label: 'Loans', types: [
-      AccountType.mortgage,
-    ]),
-    (label: 'Investment & Retirement', types: [
-      AccountType.brokerage,
-      AccountType.iraTraditional,
-      AccountType.iraRoth,
-      AccountType.retirement401k,
-      AccountType.retirement403b,
-      AccountType.hsa,
-      AccountType.college529,
-    ]),
+    (
+      label: 'Banking',
+      types: [AccountType.checking, AccountType.savings, AccountType.cash],
+    ),
+    (label: 'Credit', types: [AccountType.creditCard]),
+    (label: 'Loans', types: [AccountType.mortgage]),
+    (
+      label: 'Investment & Retirement',
+      types: [
+        AccountType.brokerage,
+        AccountType.iraTraditional,
+        AccountType.iraRoth,
+        AccountType.retirement401k,
+        AccountType.retirement403b,
+        AccountType.hsa,
+        AccountType.college529,
+      ],
+    ),
   ];
 
   @override
@@ -314,12 +314,15 @@ class _AccountTypeSelector extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 4),
-              child: Text(group.label,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSubtle,
-                      letterSpacing: 0.5)),
+              child: Text(
+                group.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSubtle,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
             Wrap(
               spacing: 8,
@@ -330,7 +333,9 @@ class _AccountTypeSelector extends StatelessWidget {
                   onTap: () => onChanged(type),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? cs.primary.withValues(alpha: 0.15)

@@ -13,6 +13,7 @@ import '../providers/accounts_provider.dart';
 import '../repositories/accounts_repository.dart';
 import '../widgets/add_account_sheet.dart';
 import '../widgets/credit_card_rates_sheet.dart';
+
 class AccountDetailScreen extends ConsumerWidget {
   final String accountId;
   const AccountDetailScreen({super.key, required this.accountId});
@@ -22,7 +23,8 @@ class AccountDetailScreen extends ConsumerWidget {
     final accountsAsync = ref.watch(accountsProvider);
 
     return accountsAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
         body: Center(child: Text(e.toString())),
@@ -45,8 +47,10 @@ class _AccountDetailBody extends ConsumerWidget {
   final Account account;
   const _AccountDetailBody({required this.account});
 
-  Color get _typeColor =>
-      colorFromHex(account.color, fallback: account.accountType.group.defaultColor);
+  Color get _typeColor => colorFromHex(
+    account.color,
+    fallback: account.accountType.group.defaultColor,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,8 +84,10 @@ class _AccountDetailBody extends ConsumerWidget {
             onPressed: () => _showEditSheet(context, ref),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline,
-                color: Theme.of(context).colorScheme.error),
+            icon: Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => _confirmDelete(context, ref),
           ),
         ],
@@ -110,37 +116,51 @@ class _AccountDetailBody extends ConsumerWidget {
                         color: _typeColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(account.accountType.icon,
-                          color: _typeColor, size: 22),
+                      child: Icon(
+                        account.accountType.icon,
+                        color: _typeColor,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(account.accountType.displayName,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.outline)),
+                        Text(
+                          account.accountType.displayName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                        ),
                         if (account.institution != null)
-                          Text(account.institution!,
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500)),
+                          Text(
+                            account.institution!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                       ],
                     ),
                     const Spacer(),
                     if (account.lastFour != null)
-                      Text('••••${account.lastFour}',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context).colorScheme.outline)),
+                      Text(
+                        '••••${account.lastFour}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Text(
                   isLiability ? 'Balance (owed)' : 'Current Balance',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.outline),
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -151,8 +171,8 @@ class _AccountDetailBody extends ConsumerWidget {
                     color: isLiability
                         ? context.appColors.expense
                         : account.currentBalance >= 0
-                            ? Theme.of(context).colorScheme.onSurface
-                            : context.appColors.expense,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : context.appColors.expense,
                   ),
                 ),
                 if (utilization != null) ...[
@@ -170,8 +190,8 @@ class _AccountDetailBody extends ConsumerWidget {
                               utilization > 80
                                   ? context.appColors.expense
                                   : utilization > 50
-                                      ? context.appColors.warning
-                                      : context.appColors.income,
+                                  ? context.appColors.warning
+                                  : context.appColors.income,
                             ),
                           ),
                         ),
@@ -180,8 +200,9 @@ class _AccountDetailBody extends ConsumerWidget {
                       Text(
                         '${utilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.outline),
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
@@ -204,9 +225,9 @@ class _AccountDetailBody extends ConsumerWidget {
                         isCreditCard
                             ? '${(account.interestRate! * 100).toStringAsFixed(2)}% APR'
                             : account.accountType == AccountType.savings ||
-                                    account.accountType == AccountType.checking
-                                ? '${(account.interestRate! * 100).toStringAsFixed(2)}% APY'
-                                : '${(account.interestRate! * 100).toStringAsFixed(2)}% expected return',
+                                  account.accountType == AccountType.checking
+                            ? '${(account.interestRate! * 100).toStringAsFixed(2)}% APY'
+                            : '${(account.interestRate! * 100).toStringAsFixed(2)}% expected return',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -219,8 +240,9 @@ class _AccountDetailBody extends ConsumerWidget {
                       Text(
                         'Monthly: ${formatCurrency(((account.currentBalance.abs() * account.interestRate!) / 12).round())}',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.outline),
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
@@ -265,7 +287,8 @@ class _AccountDetailBody extends ConsumerWidget {
     final confirmed = await confirmDestructive(
       context,
       title: 'Archive Account?',
-      message: 'This will hide "${account.name}" and its transactions. '
+      message:
+          'This will hide "${account.name}" and its transactions. '
           'Your transaction history is preserved.',
       confirmLabel: 'Archive',
     );

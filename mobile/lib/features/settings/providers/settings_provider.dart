@@ -65,20 +65,26 @@ class SettingsRepository {
     required String email,
     required String role,
   }) async {
-    final result = await supabase.rpc('create_invite', params: {
-      'p_household_id': householdId,
-      'p_email': email.trim().toLowerCase(),
-      'p_role': role,
-    });
+    final result = await supabase.rpc(
+      'create_invite',
+      params: {
+        'p_household_id': householdId,
+        'p_email': email.trim().toLowerCase(),
+        'p_role': role,
+      },
+    );
     return result as String;
   }
 
   /// Accepts an invite using the given [code].
   /// Returns null on success, or an error message string.
   Future<String?> acceptInvite(String code) async {
-    final result = await supabase.rpc('accept_invite', params: {
-      'p_code': code.trim().toUpperCase(),
-    }) as Map<String, dynamic>;
+    final result =
+        await supabase.rpc(
+              'accept_invite',
+              params: {'p_code': code.trim().toUpperCase()},
+            )
+            as Map<String, dynamic>;
 
     if (result['error'] != null) return result['error'] as String;
     return null;

@@ -29,8 +29,11 @@ void main() {
 
     test('every variant maps to the expected DB string', () {
       for (final entry in expected.entries) {
-        expect(entry.key.dbValue, entry.value,
-            reason: '${entry.key} should serialise as ${entry.value}');
+        expect(
+          entry.key.dbValue,
+          entry.value,
+          reason: '${entry.key} should serialise as ${entry.value}',
+        );
       }
     });
 
@@ -51,16 +54,21 @@ void main() {
 
     test('every variant maps to the snake_case DB string', () {
       for (final entry in expected.entries) {
-        expect(entry.key.dbValue, entry.value,
-            reason: '${entry.key} should serialise as ${entry.value}');
+        expect(
+          entry.key.dbValue,
+          entry.value,
+          reason: '${entry.key} should serialise as ${entry.value}',
+        );
       }
     });
 
     test('cashAdvance is NOT serialised as the Dart identifier', () {
       // Regression guard: .name returns "cashAdvance" but the column is
       // "cash_advance"; using .name silently broke INSERTs.
-      expect(CreditRateType.cashAdvance.dbValue,
-          isNot(CreditRateType.cashAdvance.name));
+      expect(
+        CreditRateType.cashAdvance.dbValue,
+        isNot(CreditRateType.cashAdvance.name),
+      );
     });
 
     test('every enum variant has a mapping', () {

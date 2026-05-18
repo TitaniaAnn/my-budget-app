@@ -14,13 +14,37 @@ class MainScaffold extends StatelessWidget {
 
   // Tab definitions in display order. Path must match a GoRoute path.
   static const _tabs = [
-    _TabItem(icon: Icons.dashboard_outlined, label: 'Dashboard', path: '/dashboard'),
-    _TabItem(icon: Icons.account_balance_outlined, label: 'Accounts', path: '/accounts'),
-    _TabItem(icon: Icons.receipt_long_outlined, label: 'Transactions', path: '/transactions'),
-    _TabItem(icon: Icons.photo_camera_outlined, label: 'Receipts', path: '/receipts'),
+    _TabItem(
+      icon: Icons.dashboard_outlined,
+      label: 'Dashboard',
+      path: '/dashboard',
+    ),
+    _TabItem(
+      icon: Icons.account_balance_outlined,
+      label: 'Accounts',
+      path: '/accounts',
+    ),
+    _TabItem(
+      icon: Icons.receipt_long_outlined,
+      label: 'Transactions',
+      path: '/transactions',
+    ),
+    _TabItem(
+      icon: Icons.photo_camera_outlined,
+      label: 'Receipts',
+      path: '/receipts',
+    ),
     _TabItem(icon: Icons.pie_chart_outline, label: 'Budget', path: '/budget'),
-    _TabItem(icon: Icons.trending_up_outlined, label: 'Scenarios', path: '/scenarios'),
-    _TabItem(icon: Icons.settings_outlined, label: 'Settings', path: '/settings'),
+    _TabItem(
+      icon: Icons.trending_up_outlined,
+      label: 'Scenarios',
+      path: '/scenarios',
+    ),
+    _TabItem(
+      icon: Icons.settings_outlined,
+      label: 'Settings',
+      path: '/settings',
+    ),
   ];
 
   /// Derives the selected tab index from the current route location.
@@ -45,12 +69,13 @@ class MainScaffold extends StatelessWidget {
         onDestinationSelected: (i) => context.go(_tabs[i].path),
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: _tabs
-            .map((t) => NavigationDestination(
-                  icon: Icon(t.icon, color: context.cs.outline),
-                  selectedIcon:
-                      Icon(t.icon, color: BrandColors.primary),
-                  label: t.label,
-                ))
+            .map(
+              (t) => NavigationDestination(
+                icon: Icon(t.icon, color: context.cs.outline),
+                selectedIcon: Icon(t.icon, color: BrandColors.primary),
+                label: t.label,
+              ),
+            )
             .toList(),
       ),
     );

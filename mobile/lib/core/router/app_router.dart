@@ -39,10 +39,11 @@ GoRouter appRouter(AppRouterRef ref) {
       // On cold start the auth stream may not have fired yet, so fall back
       // to the persisted session from supabase.auth.currentSession. This
       // prevents already-logged-in users from briefly seeing /login.
-      final isLoggedIn = (authState.valueOrNull?.session ??
-              supabase.auth.currentSession) !=
+      final isLoggedIn =
+          (authState.valueOrNull?.session ?? supabase.auth.currentSession) !=
           null;
-      final isAuthRoute = state.matchedLocation.startsWith('/login') ||
+      final isAuthRoute =
+          state.matchedLocation.startsWith('/login') ||
           state.matchedLocation.startsWith('/register');
 
       if (!isLoggedIn && !isAuthRoute) return '/login';
@@ -56,29 +57,33 @@ GoRouter appRouter(AppRouterRef ref) {
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (_, _) => const DashboardScreen()),
+          GoRoute(
+            path: '/dashboard',
+            builder: (_, _) => const DashboardScreen(),
+          ),
           GoRoute(
             path: '/accounts',
             builder: (_, _) => const AccountsScreen(),
             routes: [
               GoRoute(
                 path: ':id',
-                builder: (_, s) => AccountDetailScreen(
-                  accountId: s.pathParameters['id']!,
-                ),
+                builder: (_, s) =>
+                    AccountDetailScreen(accountId: s.pathParameters['id']!),
               ),
             ],
           ),
-          GoRoute(path: '/transactions', builder: (_, _) => const TransactionsScreen()),
+          GoRoute(
+            path: '/transactions',
+            builder: (_, _) => const TransactionsScreen(),
+          ),
           GoRoute(
             path: '/receipts',
             builder: (_, _) => const ReceiptsScreen(),
             routes: [
               GoRoute(
                 path: ':id',
-                builder: (_, s) => ReceiptDetailScreen(
-                  receiptId: s.pathParameters['id']!,
-                ),
+                builder: (_, s) =>
+                    ReceiptDetailScreen(receiptId: s.pathParameters['id']!),
               ),
             ],
           ),
@@ -89,9 +94,8 @@ GoRouter appRouter(AppRouterRef ref) {
             routes: [
               GoRoute(
                 path: ':id',
-                builder: (_, s) => ScenarioDetailScreen(
-                  scenarioId: s.pathParameters['id']!,
-                ),
+                builder: (_, s) =>
+                    ScenarioDetailScreen(scenarioId: s.pathParameters['id']!),
               ),
             ],
           ),

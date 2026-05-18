@@ -23,10 +23,7 @@ void main() async {
     'Missing Supabase credentials. Run with --dart-define-from-file=.env.json',
   );
 
-  await Supabase.initialize(
-    url: _supabaseUrl,
-    anonKey: _supabaseAnonKey,
-  );
+  await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
 
   // ONNX Runtime is a singleton — must be initialised before any
   // OrtSession is constructed. Safe to call even when the ML model

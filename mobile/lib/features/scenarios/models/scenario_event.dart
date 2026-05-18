@@ -8,21 +8,27 @@ part 'scenario_event.g.dart';
 
 /// The broad category of a scenario event, used for icons and grouping.
 enum EventType {
-  @JsonValue('income') income,
-  @JsonValue('expense') expense,
-  @JsonValue('transfer') transfer,
-  @JsonValue('purchase') purchase,
-  @JsonValue('debt') debt,
-  @JsonValue('savings') savings;
+  @JsonValue('income')
+  income,
+  @JsonValue('expense')
+  expense,
+  @JsonValue('transfer')
+  transfer,
+  @JsonValue('purchase')
+  purchase,
+  @JsonValue('debt')
+  debt,
+  @JsonValue('savings')
+  savings;
 
   String get label => switch (this) {
-        EventType.income => 'Income',
-        EventType.expense => 'Expense',
-        EventType.transfer => 'Transfer',
-        EventType.purchase => 'Purchase',
-        EventType.debt => 'Debt',
-        EventType.savings => 'Savings',
-      };
+    EventType.income => 'Income',
+    EventType.expense => 'Expense',
+    EventType.transfer => 'Transfer',
+    EventType.purchase => 'Purchase',
+    EventType.debt => 'Debt',
+    EventType.savings => 'Savings',
+  };
 
   /// Positive event types add to net worth; negative ones subtract.
   bool get isPositive =>
@@ -46,12 +52,15 @@ class ScenarioEvent with _$ScenarioEvent {
     required EventType eventType,
     required String label,
     required DateTime eventDate,
+
     /// Amount in cents (always positive; direction set by [eventType]).
     required int amount,
     String? accountId,
     required bool isRecurring,
+
     /// iCal RRULE string when [isRecurring] is true (e.g. "FREQ=MONTHLY").
     String? recurrenceRule,
+
     /// Free-form JSON for extra parameters (unused for now, future-proofing).
     Map<String, dynamic>? parameters,
     required int sortOrder,

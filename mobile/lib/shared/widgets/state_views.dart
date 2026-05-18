@@ -9,11 +9,7 @@ import '../../core/theme/app_theme.dart';
 
 /// Centered error column with an icon, the error message, and a Retry button.
 class ErrorView extends StatelessWidget {
-  const ErrorView({
-    super.key,
-    required this.error,
-    this.onRetry,
-  });
+  const ErrorView({super.key, required this.error, this.onRetry});
 
   final Object error;
   final VoidCallback? onRetry;
@@ -89,10 +85,7 @@ class EmptyView extends StatelessWidget {
             ),
             if (actionLabel != null) ...[
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
+              ElevatedButton(onPressed: onAction, child: Text(actionLabel!)),
             ],
           ],
         ),

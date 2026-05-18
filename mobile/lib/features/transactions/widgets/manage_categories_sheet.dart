@@ -29,9 +29,10 @@ class ManageCategoriesSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
             child: Row(
               children: [
-                const Text('Categories',
-                    style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text(
+                  'Categories',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.add),
@@ -51,14 +52,15 @@ class ManageCategoriesSheet extends ConsumerWidget {
           const Divider(height: 1),
           Expanded(
             child: categoriesAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text(e.toString())),
               data: (categories) {
-                final custom =
-                    categories.where((c) => c.householdId != null).toList();
-                final system =
-                    categories.where((c) => c.householdId == null).toList();
+                final custom = categories
+                    .where((c) => c.householdId != null)
+                    .toList();
+                final system = categories
+                    .where((c) => c.householdId == null)
+                    .toList();
 
                 return ListView(
                   controller: controller,
@@ -66,19 +68,22 @@ class ManageCategoriesSheet extends ConsumerWidget {
                   children: [
                     if (custom.isNotEmpty) ...[
                       _sectionHeader('Custom (tap to delete)'),
-                      ...custom.map((c) => _CategoryTile(
-                            category: c,
-                            canDelete: true,
-                            onDelete: () =>
-                                _confirmDelete(context, ref, c),
-                          )),
+                      ...custom.map(
+                        (c) => _CategoryTile(
+                          category: c,
+                          canDelete: true,
+                          onDelete: () => _confirmDelete(context, ref, c),
+                        ),
+                      ),
                     ],
                     _sectionHeader('System'),
-                    ...system.map((c) => _CategoryTile(
-                          category: c,
-                          canDelete: false,
-                          onDelete: null,
-                        )),
+                    ...system.map(
+                      (c) => _CategoryTile(
+                        category: c,
+                        canDelete: false,
+                        onDelete: null,
+                      ),
+                    ),
                   ],
                 );
               },
@@ -90,22 +95,25 @@ class ManageCategoriesSheet extends ConsumerWidget {
   }
 
   Widget _sectionHeader(String label) => Builder(
-        builder: (ctx) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: ctx.appColors.textSubtle,
-            ),
-          ),
+    builder: (ctx) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: ctx.appColors.textSubtle,
         ),
-      );
+      ),
+    ),
+  );
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Category category) async {
+    BuildContext context,
+    WidgetRef ref,
+    Category category,
+  ) async {
     final confirmed = await confirmDestructive(
       context,
       title: 'Delete Category?',
@@ -114,9 +122,7 @@ class ManageCategoriesSheet extends ConsumerWidget {
           'will become uncategorized.',
     );
     if (!confirmed) return;
-    await ref
-        .read(transactionsRepositoryProvider)
-        .deleteCategory(category.id);
+    await ref.read(transactionsRepositoryProvider).deleteCategory(category.id);
     ref.invalidate(categoriesProvider);
   }
 }
@@ -157,12 +163,13 @@ class _CategoryTile extends StatelessWidget {
       ),
       trailing: canDelete
           ? IconButton(
-              icon: Icon(Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.error),
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
               onPressed: onDelete,
             )
-          : Icon(Icons.lock_outline,
-              size: 16, color: colors.textSubtle),
+          : Icon(Icons.lock_outline, size: 16, color: colors.textSubtle),
     );
   }
 }

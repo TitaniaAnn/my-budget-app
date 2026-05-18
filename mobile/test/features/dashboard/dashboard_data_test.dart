@@ -77,8 +77,7 @@ void main() {
       final data = DashboardData(
         accounts: [
           _account(id: 'checking', type: AccountType.checking, balance: 100000),
-          _account(
-              id: 'card', type: AccountType.creditCard, balance: -50000),
+          _account(id: 'card', type: AccountType.creditCard, balance: -50000),
         ],
         recentTransactions30d: const [],
         recentTransactions: const [],
@@ -93,9 +92,10 @@ void main() {
         accounts: [
           _account(id: 'checking', type: AccountType.checking, balance: 200000),
           _account(
-              id: 'mortgage',
-              type: AccountType.mortgage,
-              balance: -30000000),
+            id: 'mortgage',
+            type: AccountType.mortgage,
+            balance: -30000000,
+          ),
         ],
         recentTransactions30d: const [],
         recentTransactions: const [],
@@ -157,18 +157,13 @@ void main() {
   });
 
   group('topCategories', () {
-    Category cat(String id, String name) => Category(
-          id: id,
-          name: name,
-          isIncome: false,
-          sortOrder: 0,
-        );
+    Category cat(String id, String name) =>
+        Category(id: id, name: name, isIncome: false, sortOrder: 0);
 
     test('groups by category and sorts by total descending', () {
       final groceries = cat('g', 'Groceries');
       final gas = cat('p', 'Gas');
-      final monthStart =
-          DateTime(DateTime.now().year, DateTime.now().month, 1);
+      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
       final data = DashboardData(
         accounts: const [],
@@ -188,21 +183,17 @@ void main() {
     });
 
     test('groups uncategorised debits under "Uncategorized"', () {
-      final monthStart =
-          DateTime(DateTime.now().year, DateTime.now().month, 1);
+      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
-          _tx(amount: -1234, date: monthStart, id: '1'),
-        ],
+        recentTransactions30d: [_tx(amount: -1234, date: monthStart, id: '1')],
         recentTransactions: const [],
       );
       expect(data.topCategories.first.name, 'Uncategorized');
     });
 
     test('limits result to 5 entries', () {
-      final monthStart =
-          DateTime(DateTime.now().year, DateTime.now().month, 1);
+      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
       final txs = List.generate(
         7,
         (i) => _tx(
@@ -228,14 +219,19 @@ void main() {
         accounts: const [],
         recentTransactions30d: [
           _tx(
-              amount: -1000,
-              date: DateTime(today.year, today.month, today.day),
-              id: 'today'),
+            amount: -1000,
+            date: DateTime(today.year, today.month, today.day),
+            id: 'today',
+          ),
           _tx(
-              amount: -500,
-              date: DateTime(today.year, today.month, today.day)
-                  .subtract(const Duration(days: 5)),
-              id: '5d'),
+            amount: -500,
+            date: DateTime(
+              today.year,
+              today.month,
+              today.day,
+            ).subtract(const Duration(days: 5)),
+            id: '5d',
+          ),
         ],
         recentTransactions: const [],
       );
@@ -251,9 +247,10 @@ void main() {
         accounts: const [],
         recentTransactions30d: [
           _tx(
-              amount: 50000,
-              date: DateTime(today.year, today.month, today.day),
-              id: 'income'),
+            amount: 50000,
+            date: DateTime(today.year, today.month, today.day),
+            id: 'income',
+          ),
         ],
         recentTransactions: const [],
       );
@@ -266,10 +263,14 @@ void main() {
         accounts: const [],
         recentTransactions30d: [
           _tx(
-              amount: -1000,
-              date: DateTime(today.year, today.month, today.day)
-                  .subtract(const Duration(days: 45)),
-              id: 'old'),
+            amount: -1000,
+            date: DateTime(
+              today.year,
+              today.month,
+              today.day,
+            ).subtract(const Duration(days: 45)),
+            id: 'old',
+          ),
         ],
         recentTransactions: const [],
       );

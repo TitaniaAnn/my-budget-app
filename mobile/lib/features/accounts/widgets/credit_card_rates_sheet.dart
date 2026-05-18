@@ -12,6 +12,7 @@ import '../../../shared/widgets/sheet_scaffold.dart';
 import '../models/credit_card_rate.dart';
 import '../providers/credit_card_rates_provider.dart';
 import '../repositories/credit_card_rates_repository.dart';
+
 class CreditCardRatesSheet extends ConsumerWidget {
   final String accountId;
   const CreditCardRatesSheet({super.key, required this.accountId});
@@ -37,25 +38,29 @@ class CreditCardRatesSheet extends ConsumerWidget {
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text(e.toString(),
-                style: TextStyle(color: context.cs.error)),
+            error: (e, _) =>
+                Text(e.toString(), style: TextStyle(color: context.cs.error)),
             data: (rates) {
               if (rates.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
-                    child: Text('No rates added yet. Tap + to add one.',
-                        style: TextStyle(color: context.appColors.textSubtle)),
+                    child: Text(
+                      'No rates added yet. Tap + to add one.',
+                      style: TextStyle(color: context.appColors.textSubtle),
+                    ),
                   ),
                 );
               }
               return Column(
                 children: rates
-                    .map((r) => _RateTile(
-                          rate: r,
-                          onEdit: () => _showAddEdit(context, ref, r),
-                          onDelete: () => _delete(context, ref, r),
-                        ))
+                    .map(
+                      (r) => _RateTile(
+                        rate: r,
+                        onEdit: () => _showAddEdit(context, ref, r),
+                        onDelete: () => _delete(context, ref, r),
+                      ),
+                    )
                     .toList(),
               );
             },
@@ -77,16 +82,17 @@ class CreditCardRatesSheet extends ConsumerWidget {
   }
 
   Future<void> _delete(
-      BuildContext context, WidgetRef ref, CreditCardRate rate) async {
+    BuildContext context,
+    WidgetRef ref,
+    CreditCardRate rate,
+  ) async {
     final confirmed = await confirmDestructive(
       context,
       title: 'Delete Rate?',
       message: 'Remove "${rate.label ?? rate.rateType.displayName}"?',
     );
     if (confirmed) {
-      await ref
-          .read(creditCardRatesRepositoryProvider)
-          .deleteRate(rate.id);
+      await ref.read(creditCardRatesRepositoryProvider).deleteRate(rate.id);
       ref.invalidate(creditCardRatesProvider(accountId));
     }
   }
@@ -97,15 +103,19 @@ class _RateTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _RateTile(
-      {required this.rate, required this.onEdit, required this.onDelete});
+  const _RateTile({
+    required this.rate,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   static final _dateFmt = DateFormat('MMM d, yyyy');
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final expired = rate.introEndsOn != null &&
+    final expired =
+        rate.introEndsOn != null &&
         rate.introEndsOn!.isBefore(DateTime(now.year, now.month, now.day));
     final colors = context.appColors;
     final mutedColor = colors.textSubtle;
@@ -129,13 +139,17 @@ class _RateTile extends StatelessWidget {
                     Text(
                       rate.label ?? rate.rateType.displayName,
                       style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (rate.isIntro) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: (expired ? mutedColor : colors.income)
                               .withValues(alpha: 0.15),
@@ -155,16 +169,21 @@ class _RateTile extends StatelessWidget {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: mutedColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text('INACTIVE',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: mutedColor)),
+                        child: Text(
+                          'INACTIVE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: mutedColor,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -193,22 +212,29 @@ class _RateTile extends StatelessWidget {
               Text(
                 '${(rate.rate * 100).toStringAsFixed(2)}%',
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: colors.expense),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: colors.expense,
+                ),
               ),
               Row(
                 children: [
                   GestureDetector(
                     onTap: onEdit,
-                    child: Icon(Icons.edit_outlined,
-                        size: 18, color: mutedColor),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: mutedColor,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: onDelete,
-                    child: Icon(Icons.delete_outline,
-                        size: 18, color: colors.expense),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: colors.expense,
+                    ),
                   ),
                 ],
               ),
@@ -290,11 +316,12 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
     setState(() => _loading = true);
 
     try {
-      final rate = double.parse(
-              _rateController.text.replaceAll(RegExp(r'[^\d.]'), '')) /
+      final rate =
+          double.parse(_rateController.text.replaceAll(RegExp(r'[^\d.]'), '')) /
           100;
-      final label =
-          _labelController.text.trim().isEmpty ? null : _labelController.text.trim();
+      final label = _labelController.text.trim().isEmpty
+          ? null
+          : _labelController.text.trim();
       final repo = ref.read(creditCardRatesRepositoryProvider);
 
       if (_isEditMode) {
@@ -338,99 +365,99 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
         children: [
           // Rate type (locked on edit)
           const FieldLabel('Rate Type'),
-              DropdownButtonFormField<CreditRateType>(
-                initialValue: _rateType,
-                decoration: const InputDecoration(),
-                items: CreditRateType.values
-                    .map((t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t.displayName),
-                        ))
-                    .toList(),
-                onChanged: _isEditMode
-                    ? null
-                    : (v) => setState(() => _rateType = v!),
-              ),
-              const SizedBox(height: 14),
-              // APR value
-              const FieldLabel('Annual Rate (APR)'),
-              TextFormField(
-                controller: _rateController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                decoration: const InputDecoration(
-                    suffixText: '%', hintText: '24.99'),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 14),
-              // Optional custom label
-              const FieldLabel('Label (optional)'),
-              TextFormField(
-                controller: _labelController,
-                decoration: const InputDecoration(
-                    hintText: 'e.g. Intro 0% offer'),
-              ),
-              const SizedBox(height: 14),
-              // Intro toggle
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Introductory rate'),
-                subtitle: const Text('Has an expiry date'),
-                value: _isIntro,
-                onChanged: (v) => setState(() {
-                  _isIntro = v;
-                  if (!v) _introEndsOn = null;
-                }),
-              ),
-              if (_isIntro) ...[
-                const FieldLabel('Intro Ends On'),
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Theme.of(context).dividerColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 16, color: context.appColors.textSubtle),
-                        const SizedBox(width: 8),
-                        Text(
-                          _introEndsOn != null
-                              ? _dateFmt.format(_introEndsOn!)
-                              : 'Select date',
-                          style: TextStyle(
-                            color: _introEndsOn != null
-                                ? null
-                                : context.appColors.textSubtle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          DropdownButtonFormField<CreditRateType>(
+            initialValue: _rateType,
+            decoration: const InputDecoration(),
+            items: CreditRateType.values
+                .map(
+                  (t) => DropdownMenuItem(value: t, child: Text(t.displayName)),
+                )
+                .toList(),
+            onChanged: _isEditMode
+                ? null
+                : (v) => setState(() => _rateType = v!),
+          ),
+          const SizedBox(height: 14),
+          // APR value
+          const FieldLabel('Annual Rate (APR)'),
+          TextFormField(
+            controller: _rateController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            decoration: const InputDecoration(
+              suffixText: '%',
+              hintText: '24.99',
+            ),
+            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+          ),
+          const SizedBox(height: 14),
+          // Optional custom label
+          const FieldLabel('Label (optional)'),
+          TextFormField(
+            controller: _labelController,
+            decoration: const InputDecoration(hintText: 'e.g. Intro 0% offer'),
+          ),
+          const SizedBox(height: 14),
+          // Intro toggle
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Introductory rate'),
+            subtitle: const Text('Has an expiry date'),
+            value: _isIntro,
+            onChanged: (v) => setState(() {
+              _isIntro = v;
+              if (!v) _introEndsOn = null;
+            }),
+          ),
+          if (_isIntro) ...[
+            const FieldLabel('Intro Ends On'),
+            GestureDetector(
+              onTap: _pickDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
                 ),
-                const SizedBox(height: 14),
-              ],
-              // Active toggle (edit only)
-              if (_isEditMode)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
-                  subtitle:
-                      const Text('Inactive rates are hidden from pickers'),
-                  value: _isActive,
-                  onChanged: (v) => setState(() => _isActive = v),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: context.appColors.textSubtle,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _introEndsOn != null
+                          ? _dateFmt.format(_introEndsOn!)
+                          : 'Select date',
+                      style: TextStyle(
+                        color: _introEndsOn != null
+                            ? null
+                            : context.appColors.textSubtle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          // Active toggle (edit only)
+          if (_isEditMode)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Active'),
+              subtitle: const Text('Inactive rates are hidden from pickers'),
+              value: _isActive,
+              onChanged: (v) => setState(() => _isActive = v),
+            ),
           const SizedBox(height: 24),
           LoadingButton(
             loading: _loading,

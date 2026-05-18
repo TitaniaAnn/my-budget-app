@@ -70,7 +70,10 @@ class BudgetScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Budget budget) async {
+    BuildContext context,
+    WidgetRef ref,
+    Budget budget,
+  ) async {
     final confirmed = await confirmDestructive(
       context,
       title: 'Delete Budget?',
@@ -143,13 +146,15 @@ class _BudgetCard extends StatelessWidget {
                       children: [
                         Text(
                           item.categoryName,
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         Text(
                           item.budget.period.label,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: cs.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: cs.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -163,7 +168,9 @@ class _BudgetCard extends StatelessWidget {
                     itemBuilder: (_) => [
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(
-                          value: 'delete', child: Text('Delete')),
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
                     ],
                     child: const Icon(Icons.more_vert),
                   ),
@@ -216,14 +223,16 @@ class _BudgetCard extends StatelessWidget {
                     '${fmt.format(item.spentCents / 100)} spent',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: overBudget ? cs.error : cs.onSurface,
-                      fontWeight:
-                          overBudget ? FontWeight.w700 : FontWeight.normal,
+                      fontWeight: overBudget
+                          ? FontWeight.w700
+                          : FontWeight.normal,
                     ),
                   ),
                   Text(
                     'of ${fmt.format(item.budget.amount / 100)}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: cs.outline),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.outline,
+                    ),
                   ),
                 ],
               ),
@@ -255,8 +264,10 @@ class _BudgetCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Over by ${fmt.format((-item.remainingCents) / 100)}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.error, fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.error,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ],
@@ -281,13 +292,17 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.savings_outlined,
-              size: 64, color: theme.colorScheme.outline),
+          Icon(
+            Icons.savings_outlined,
+            size: 64,
+            color: theme.colorScheme.outline,
+          ),
           const SizedBox(height: 16),
           Text(
             'No Budgets Yet',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(

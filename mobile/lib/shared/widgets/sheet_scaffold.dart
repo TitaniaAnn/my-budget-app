@@ -41,9 +41,10 @@ class AppSheetScaffold extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const Spacer(),
             ...actions,
             IconButton(

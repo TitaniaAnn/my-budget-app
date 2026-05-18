@@ -7,29 +7,34 @@ part 'budget.g.dart';
 
 /// Maps to the `budget_period` Postgres enum.
 enum BudgetPeriod {
-  @JsonValue('weekly') weekly,
-  @JsonValue('biweekly') biweekly,
-  @JsonValue('monthly') monthly,
-  @JsonValue('semiannual') semiannual,
-  @JsonValue('annual') annual;
+  @JsonValue('weekly')
+  weekly,
+  @JsonValue('biweekly')
+  biweekly,
+  @JsonValue('monthly')
+  monthly,
+  @JsonValue('semiannual')
+  semiannual,
+  @JsonValue('annual')
+  annual;
 
   String get label => switch (this) {
-        BudgetPeriod.weekly => '1 Week',
-        BudgetPeriod.biweekly => '2 Weeks',
-        BudgetPeriod.monthly => 'Monthly',
-        BudgetPeriod.semiannual => '6 Months',
-        BudgetPeriod.annual => 'Annual',
-      };
+    BudgetPeriod.weekly => '1 Week',
+    BudgetPeriod.biweekly => '2 Weeks',
+    BudgetPeriod.monthly => 'Monthly',
+    BudgetPeriod.semiannual => '6 Months',
+    BudgetPeriod.annual => 'Annual',
+  };
 
   /// Exact string stored in the Postgres `budget_period` enum.
   /// Used when building INSERT/UPDATE payloads manually.
   String get dbValue => switch (this) {
-        BudgetPeriod.weekly => 'weekly',
-        BudgetPeriod.biweekly => 'biweekly',
-        BudgetPeriod.monthly => 'monthly',
-        BudgetPeriod.semiannual => 'semiannual',
-        BudgetPeriod.annual => 'annual',
-      };
+    BudgetPeriod.weekly => 'weekly',
+    BudgetPeriod.biweekly => 'biweekly',
+    BudgetPeriod.monthly => 'monthly',
+    BudgetPeriod.semiannual => 'semiannual',
+    BudgetPeriod.annual => 'annual',
+  };
 
   /// Returns the [from, to] date range for the current cycle of this period.
   ///
@@ -77,10 +82,7 @@ enum BudgetPeriod {
         );
 
       case BudgetPeriod.annual:
-        return (
-          DateTime(today.year, 1, 1),
-          DateTime(today.year, 12, 31),
-        );
+        return (DateTime(today.year, 1, 1), DateTime(today.year, 12, 31));
     }
   }
 }
@@ -108,15 +110,16 @@ class Budget with _$Budget {
     required String id,
     required String householdId,
     required String categoryId,
+
     /// Spending limit in cents for the given [period].
     required int amount,
     required BudgetPeriod period,
     required DateTime startDate,
+
     /// Null means the budget repeats indefinitely.
     DateTime? endDate,
     required String createdBy,
   }) = _Budget;
 
-  factory Budget.fromJson(Map<String, dynamic> json) =>
-      _$BudgetFromJson(json);
+  factory Budget.fromJson(Map<String, dynamic> json) => _$BudgetFromJson(json);
 }

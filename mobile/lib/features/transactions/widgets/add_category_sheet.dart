@@ -10,6 +10,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
+
 class AddCategorySheet extends ConsumerStatefulWidget {
   const AddCategorySheet({super.key});
 
@@ -25,8 +26,16 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
   bool _loading = false;
 
   static const _colorOptions = [
-    '#3B82F6', '#22C55E', '#EF4444', '#F97316', '#8B5CF6',
-    '#EC4899', '#06B6D4', '#F59E0B', '#10B981', '#6B7280',
+    '#3B82F6',
+    '#22C55E',
+    '#EF4444',
+    '#F97316',
+    '#8B5CF6',
+    '#EC4899',
+    '#06B6D4',
+    '#F59E0B',
+    '#10B981',
+    '#6B7280',
   ];
 
   @override
@@ -43,7 +52,9 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
       final householdId = await ref.read(householdIdProvider.future);
       if (householdId == null) throw Exception('Not logged in');
 
-      await ref.read(transactionsRepositoryProvider).createCategory(
+      await ref
+          .read(transactionsRepositoryProvider)
+          .createCategory(
             householdId: householdId,
             name: name,
             isIncome: _isIncome,
@@ -82,11 +93,14 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
           // Income toggle
           Row(
             children: [
-              Text('Type',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: context.appColors.textMuted)),
+              Text(
+                'Type',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: context.appColors.textMuted,
+                ),
+              ),
               const Spacer(),
               _typeChip('Expense', false),
               const SizedBox(width: 8),
@@ -173,6 +187,7 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
       ),
     );
   }
+
   Widget _typeChip(String label, bool value) {
     final selected = _isIncome == value;
     final cs = context.cs;
@@ -182,20 +197,20 @@ class _AddCategorySheetState extends ConsumerState<AddCategorySheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected
-              ? cs.primary.withValues(alpha: 0.15)
-              : cs.surface,
+          color: selected ? cs.primary.withValues(alpha: 0.15) : cs.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? cs.primary : Theme.of(context).dividerColor,
           ),
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: selected ? cs.primary : colors.textMuted,
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? cs.primary : colors.textMuted,
+          ),
+        ),
       ),
     );
   }
