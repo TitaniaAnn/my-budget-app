@@ -17,6 +17,7 @@ import '../models/receipt_line_item.dart';
 import '../providers/receipts_provider.dart';
 import '../repositories/receipts_repository.dart';
 import '../widgets/pair_receipt_sheet.dart';
+import 'line_items_editor_screen.dart';
 
 /// Displays the full receipt: image, merchant/date/total fields, and line items.
 ///
@@ -331,7 +332,27 @@ class _ReceiptDetailBody extends ConsumerWidget {
 
         // ── Line items ──────────────────────────────────────────────────
         const SizedBox(height: 24),
-        _SectionHeader('Line Items'),
+        Row(
+          children: [
+            const Expanded(child: _SectionHeader('Line Items')),
+            TextButton.icon(
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Edit'),
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        LineItemsEditorScreen(receiptId: receipt.id),
+                  ),
+                );
+                // Editor pops back here after Save. The line items
+                // provider invalidates inside the editor, so the
+                // refreshed list flows in automatically — no manual
+                // invalidate needed.
+              },
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         lineItemsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
