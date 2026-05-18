@@ -19,7 +19,9 @@ import '../../../shared/widgets/sheet_scaffold.dart';
 import '../../receipts/providers/receipts_provider.dart';
 import '../../receipts/widgets/attach_receipt_sheet.dart';
 import '../models/transaction.dart';
+import '../providers/transaction_tags_provider.dart';
 import '../providers/transactions_provider.dart';
+import '../repositories/transaction_tags_repository.dart';
 import '../repositories/transactions_repository.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -62,6 +64,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   /// the UI can swap between "attach" and "paired" without round-
   /// tripping through the parent provider.
   String? _receiptId;
+
+  /// Tag ids currently selected in the picker (edit mode only). Null
+  /// until the first load of [tagIdsForTransactionProvider] completes
+  /// — `null` and `{}` mean different things here, so we can't pre-
+  /// initialize with an empty set.
+  Set<String>? _assignedTagIds;
+
+  /// Snapshot of the assignments as loaded from the server. Compared
+  /// against [_assignedTagIds] on save so we only re-write when the
+  /// user actually changed something, avoiding a no-op delete-and-
+  /// re-insert pair (and the brief window where the row has no tags).
+  Set<String> _initialAssignedTagIds = const {};
 
   bool get _isEditMode => widget.transaction != null;
 
@@ -167,6 +181,64 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     }
   }
 
+  /// Opens a small dialog to capture a new tag's name, creates it in
+  /// the household dictionary, and assigns it to the current
+  /// transaction in the picker. Refreshes [transactionTagsProvider]
+  /// so the new chip appears immediately.
+  Future<void> _createTag() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Tag'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'e.g. contractor'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+
+    final householdId = await ref.read(householdIdProvider.future);
+    if (householdId == null || !mounted) return;
+    try {
+      final tag = await ref
+          .read(transactionTagsRepositoryProvider)
+          .createTag(householdId: householdId, name: name);
+      // Surface the new tag in the picker chip row immediately, and
+      // pre-select it (the user just confirmed they want it on this
+      // transaction by creating it from this context).
+      ref.invalidate(transactionTagsProvider);
+      setState(() => _assignedTagIds = {...?_assignedTagIds, tag.id});
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    }
+  }
+
+  /// True iff the two sets have the same elements. Used in _submit
+  /// to decide whether tag assignments actually need re-writing.
+  static bool _setsEqual(Set<String> a, Set<String> b) {
+    if (a.length != b.length) return false;
+    for (final e in a) {
+      if (!b.contains(e)) return false;
+    }
+    return true;
+  }
+
   Future<void> _delete() async {
     final confirmed = await confirmDestructive(
       context,
@@ -225,6 +297,20 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               : _notesController.text.trim(),
         );
         affectedAccountId = widget.transaction!.accountId;
+
+        // Persist tag changes only when the user actually moved
+        // chips — otherwise an idempotent delete-then-insert would
+        // briefly leave the row with zero tags for no reason.
+        final selected = _assignedTagIds;
+        if (selected != null && !_setsEqual(selected, _initialAssignedTagIds)) {
+          await ref
+              .read(transactionTagsRepositoryProvider)
+              .replaceAssignments(
+                transactionId: widget.transaction!.id,
+                tagIds: selected.toList(),
+              );
+          ref.invalidate(tagIdsForTransactionProvider(widget.transaction!.id));
+        }
       } else {
         final householdId = await ref.read(householdIdProvider.future);
         final user = ref.read(currentUserProvider);
@@ -495,6 +581,41 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 label: const Text('Attach Receipt'),
               ),
           ],
+          // Tags — edit mode only, same rationale as Receipt: assigning
+          // tags to a transaction that doesn't exist yet would mean a
+          // deferred multi-write on submit. Tags are also additive (no
+          // budget consequence), so attaching them as a separate
+          // action after creation is fine.
+          if (_isEditMode) ...[
+            const SizedBox(height: 14),
+            const FieldLabel('Tags (optional)'),
+            _TagPicker(
+              transactionId: widget.transaction!.id,
+              selected: _assignedTagIds,
+              onInitialLoaded: (ids) {
+                // Captured once on first server load. Subsequent
+                // provider refreshes leave the user's in-progress
+                // selection alone.
+                setState(() {
+                  _assignedTagIds = {...ids};
+                  _initialAssignedTagIds = {...ids};
+                });
+              },
+              onToggle: (tagId, isOn) {
+                setState(() {
+                  final s = _assignedTagIds ?? <String>{};
+                  if (isOn) {
+                    s.add(tagId);
+                  } else {
+                    s.remove(tagId);
+                  }
+                  _assignedTagIds = s;
+                });
+              },
+              onNewTag: _loading ? null : _createTag,
+              enabled: !_loading,
+            ),
+          ],
           const SizedBox(height: 24),
           LoadingButton(
             loading: _loading,
@@ -648,6 +769,116 @@ class _PairedReceiptCard extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tag picker — multi-select chip row used inside the transaction edit sheet.
+// ---------------------------------------------------------------------------
+
+/// FilterChip row over [transactionTagsProvider]. Self-contained
+/// loading state — when the dictionary or the per-tx assignments
+/// haven't loaded yet, the picker renders a slim placeholder so the
+/// rest of the form isn't blocked.
+///
+/// State (the selected set and the load-once initial set) lives in
+/// the parent sheet because Save Changes batches the tag write with
+/// the rest of the form. The widget gets [selected] as a snapshot
+/// and reports edits via [onToggle] / [onInitialLoaded].
+class _TagPicker extends ConsumerWidget {
+  const _TagPicker({
+    required this.transactionId,
+    required this.selected,
+    required this.onInitialLoaded,
+    required this.onToggle,
+    required this.onNewTag,
+    required this.enabled,
+  });
+
+  final String transactionId;
+
+  /// Currently-selected tag ids. Null until the first server load
+  /// completes (the parent state initialises this from
+  /// [onInitialLoaded]).
+  final Set<String>? selected;
+
+  /// Fired exactly once when the per-transaction assignment list
+  /// loads from the server. Lets the parent take ownership of the
+  /// "selected" set and capture an initial snapshot for diffing.
+  final ValueChanged<List<String>> onInitialLoaded;
+
+  /// Fired when the user taps a chip. (tagId, newSelectedState).
+  final void Function(String tagId, bool isOn) onToggle;
+
+  /// Opens the new-tag dialog. Null disables the "+ New" affordance
+  /// while the form is mid-submit.
+  final VoidCallback? onNewTag;
+
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tagsAsync = ref.watch(transactionTagsProvider);
+    final assignedAsync = ref.watch(
+      tagIdsForTransactionProvider(transactionId),
+    );
+
+    // Capture the first server-side load of assignments into the
+    // parent state. The check on `selected == null` makes this fire
+    // exactly once per editor open — subsequent provider refreshes
+    // (e.g. another tab created a new tag) don't overwrite the
+    // user's in-progress chip selections.
+    assignedAsync.whenData((ids) {
+      if (selected == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onInitialLoaded(ids);
+        });
+      }
+    });
+
+    return tagsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: SizedBox(
+          height: 32,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+      ),
+      error: (e, _) => Text(
+        'Could not load tags: $e',
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.error,
+        ),
+      ),
+      data: (tags) {
+        final selectedSet = selected ?? const <String>{};
+        return Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            for (final tag in tags)
+              FilterChip(
+                label: Text(tag.name),
+                selected: selectedSet.contains(tag.id),
+                onSelected: enabled ? (isOn) => onToggle(tag.id, isOn) : null,
+              ),
+            ActionChip(
+              avatar: const Icon(Icons.add, size: 16),
+              label: const Text('New'),
+              onPressed: onNewTag,
+            ),
+          ],
+        );
+      },
     );
   }
 }
