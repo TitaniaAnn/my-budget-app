@@ -15,6 +15,7 @@ import '../../budget/providers/budget_provider.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
+import '../services/growth_advisor.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -78,6 +79,24 @@ class _DashboardBody extends ConsumerWidget {
           _AccountsRow(accounts: data.accounts),
           const SizedBox(height: 24),
         ],
+
+        // ── Suggestions ────────────────────────────────────────────────────
+        // Runs the rules-based growth advisor over [data]. Hidden
+        // entirely when no rule triggers — an empty header would look
+        // like the dashboard's broken.
+        ...(() {
+          final suggestions = const GrowthAdvisor().evaluate(data);
+          if (suggestions.isEmpty) return const <Widget>[];
+          return [
+            const _SectionHeader(title: 'Suggestions'),
+            const SizedBox(height: 10),
+            for (final s in suggestions) ...[
+              _SuggestionCard(suggestion: s),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 16),
+          ];
+        })(),
 
         // ── Monthly Summary ────────────────────────────────────────────────
         _SectionHeader(title: '$monthName Summary'),
@@ -661,6 +680,70 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One row in the Suggestions section. Tint + icon are picked from
+/// [GrowthSuggestion.severity] so the user can tell at a glance
+/// whether a row is a warning (red), an opportunity (income green),
+/// or pure observation (muted).
+class _SuggestionCard extends StatelessWidget {
+  final GrowthSuggestion suggestion;
+
+  const _SuggestionCard({required this.suggestion});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final accent = switch (suggestion.severity) {
+      SuggestionSeverity.warning => colors.expense,
+      SuggestionSeverity.opportunity => colors.income,
+      SuggestionSeverity.info => context.cs.primary,
+    };
+    final icon = switch (suggestion.severity) {
+      SuggestionSeverity.warning => Icons.warning_amber_outlined,
+      SuggestionSeverity.opportunity => Icons.trending_up_outlined,
+      SuggestionSeverity.info => Icons.info_outline,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: accent, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  suggestion.title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  suggestion.detail,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textSubtle,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
