@@ -17,6 +17,7 @@ import '../../../shared/widgets/state_views.dart';
 import '../models/transaction_tag.dart';
 import '../providers/transaction_tags_provider.dart';
 import '../repositories/transaction_tags_repository.dart';
+import '../services/tag_name_validator.dart';
 
 class ManageTagsScreen extends ConsumerWidget {
   const ManageTagsScreen({super.key});
@@ -270,6 +271,21 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Existing tags drive the collision check. valueOrNull keeps
+    // the dialog usable if the dictionary hasn't loaded yet — the
+    // first save still hits the DB constraint, so worst case is a
+    // brief lag before the inline hint catches up.
+    final existing =
+        ref.watch(transactionTagsProvider).valueOrNull ??
+        const <TransactionTag>[];
+    final nameError = validateTagName(
+      _nameCtrl.text,
+      existing: existing,
+      excludeId: widget.tag?.id,
+    );
+    final canSave =
+        !_saving && _nameCtrl.text.trim().isNotEmpty && nameError == null;
+
     return AlertDialog(
       title: Text(_isEdit ? 'Edit Tag' : 'New Tag'),
       content: Column(
@@ -279,9 +295,21 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
           TextField(
             controller: _nameCtrl,
             autofocus: true,
-            decoration: const InputDecoration(hintText: 'e.g. contractor'),
+            decoration: InputDecoration(
+              hintText: 'e.g. contractor',
+              // Render the validator's message inline. Cleared
+              // automatically when the user types something
+              // non-colliding, since the next build re-runs the
+              // check.
+              errorText: nameError,
+            ),
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _save(),
+            // Rebuild on every keystroke so the error text and the
+            // Save-button state track the input in real time.
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) {
+              if (canSave) _save();
+            },
           ),
           const SizedBox(height: 16),
           Text(
@@ -328,7 +356,7 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _saving ? null : _save,
+          onPressed: canSave ? _save : null,
           child: Text(_isEdit ? 'Save' : 'Create'),
         ),
       ],
