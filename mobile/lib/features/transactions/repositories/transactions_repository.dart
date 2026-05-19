@@ -339,6 +339,24 @@ class TransactionsRepository {
     await supabase.from('transactions').delete().eq('id', id);
   }
 
+  /// Deletes both legs of a transfer (migration 030) in one round-trip.
+  /// Returns the account ids that were affected so the caller can
+  /// recompute balances. Deleting a single leg in isolation would
+  /// orphan the other side and skew net worth — this is the only
+  /// blessed way to remove a transfer.
+  ///
+  /// Uses PostgREST's "delete returning" form so we learn the affected
+  /// account ids in the same trip; a follow-up SELECT would race
+  /// against the cascade.
+  Future<List<String>> deleteTransfer(String transferId) async {
+    final rows = await supabase
+        .from('transactions')
+        .delete()
+        .eq('transfer_id', transferId)
+        .select('account_id');
+    return [for (final r in rows as List) r['account_id'] as String];
+  }
+
   /// Confirms or corrects an ML-assigned category, flipping provenance to
   /// 'user' so the row joins the next training dump. Clears the stored
   /// ML confidence — the value is only meaningful while the row is still

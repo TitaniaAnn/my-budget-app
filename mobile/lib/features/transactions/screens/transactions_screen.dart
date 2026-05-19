@@ -280,8 +280,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 transactions: transactions,
                 tagsByTransactionId: perTxTags,
                 startingBalance: widget.startingBalance,
-                onEdit: (tx) => _showEditSheet(context, tx),
-                onDelete: (tx) => _deleteTransaction(tx),
+                onEdit: (tx) => _handleTap(context, tx),
+                onDelete: (tx) => _handleDelete(tx),
               );
             },
           ),
@@ -339,6 +339,89 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   void _showEditSheet(BuildContext context, Transaction tx) {
     showAppSheet<void>(context, child: AddTransactionSheet(transaction: tx));
+  }
+
+  /// Routes a tap on a ledger row. Ordinary transactions open the edit
+  /// sheet as before; transfer legs (migration 030) open a dialog
+  /// because editing one leg in isolation would silently break the
+  /// pairing — amount/account changes on one side don't propagate to
+  /// the other. The dialog offers the only safe action: delete the
+  /// whole transfer.
+  void _handleTap(BuildContext context, Transaction tx) {
+    if (tx.transferId == null) {
+      _showEditSheet(context, tx);
+      return;
+    }
+    _showTransferActionsDialog(context, tx);
+  }
+
+  /// Routes a swipe-delete. Same reasoning as [_handleTap]: deleting
+  /// one leg of a transfer would leak a phantom debit/credit on the
+  /// other account. The transfer branch confirms with a transfer-
+  /// specific message and calls [deleteTransfer], which removes both
+  /// legs atomically.
+  Future<void> _handleDelete(Transaction tx) async {
+    if (tx.transferId == null) {
+      await _deleteTransaction(tx);
+      return;
+    }
+    await _deleteTransferConfirmed(tx);
+  }
+
+  Future<void> _showTransferActionsDialog(
+    BuildContext context,
+    Transaction tx,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Transfer leg'),
+        content: const Text(
+          'This row is one leg of an account-to-account transfer. '
+          'Editing it on its own would break the pairing — the other '
+          'leg would still hold the old amount, account, or date.\n\n'
+          'Delete the entire transfer instead?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete transfer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _deleteTransferConfirmed(tx);
+    }
+  }
+
+  Future<void> _deleteTransferConfirmed(Transaction tx) async {
+    final transferId = tx.transferId;
+    if (transferId == null) return;
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete Transfer?',
+      message:
+          'This removes both legs of the transfer '
+          '(${formatCurrency(tx.amount.abs())}, '
+          '${DateFormat('MMM d, y').format(tx.transactionDate)}).',
+    );
+    if (!confirmed) return;
+    final repo = ref.read(transactionsRepositoryProvider);
+    final accountsRepo = ref.read(accountsRepositoryProvider);
+    final affected = await repo.deleteTransfer(transferId);
+    for (final accountId in affected) {
+      await accountsRepo.recalculateBalance(accountId);
+    }
+    ref.invalidate(accountsProvider);
+    ref.invalidate(transactionsProvider);
   }
 
   Future<void> _recategorize() async {

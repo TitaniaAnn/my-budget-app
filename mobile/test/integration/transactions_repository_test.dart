@@ -921,6 +921,46 @@ void main() {
       );
 
       test(
+        'deleteTransfer removes both legs and reports both affected accounts',
+        () async {
+          final savingsId = await insertSavingsAccount();
+          final transferId = await repo.createTransfer(
+            householdId: harness.householdId,
+            fromAccountId: harness.accountId,
+            toAccountId: savingsId,
+            amountCents: 7500,
+            transactionDate: DateTime.utc(2026, 5, 14),
+            description: 'remove me',
+            enteredBy: harness.userId,
+          );
+
+          final affected = await repo.deleteTransfer(transferId);
+
+          expect(
+            affected.toSet(),
+            {harness.accountId, savingsId},
+            reason:
+                'deleteTransfer must return both account ids so the caller '
+                'can recalculate balances on each — returning only one would '
+                'leave the other account\'s current_balance stale.',
+          );
+
+          final remaining = await harness.client
+              .from('transactions')
+              .select('id')
+              .eq('transfer_id', transferId);
+          expect(
+            remaining,
+            isEmpty,
+            reason:
+                'both legs must be gone — a surviving leg would orphan as a '
+                'phantom debit or credit on whichever account it sat on.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
         'atomicity: a mid-call failure leaves no orphan leg behind',
         () async {
           // Engineer a deliberate failure of the SECOND insert: pass a
