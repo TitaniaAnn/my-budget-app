@@ -80,13 +80,26 @@ class TransactionCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (category != null || tags.isNotEmpty)
+                  if (category != null ||
+                      tags.isNotEmpty ||
+                      transaction.transferId != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: Wrap(
                         spacing: 4,
                         runSpacing: 2,
                         children: [
+                          // Transfer leg badge (migration 030). Sits in
+                          // the chip row because transfers carry no
+                          // category, so this slot is otherwise empty
+                          // and the row would look indistinguishable
+                          // from an ordinary uncategorised expense.
+                          if (transaction.transferId != null)
+                            _Chip(
+                              label: '↔ Transfer',
+                              color: Theme.of(context).dividerColor,
+                              textColor: colors.textSubtle,
+                            ),
                           if (category != null)
                             _Chip(
                               label: category.name,
