@@ -18,6 +18,7 @@ import '../../holdings/screens/holdings_by_class_screen.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
+import '../services/budget_alerts.dart';
 import '../services/growth_advisor.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -138,11 +139,7 @@ class _DashboardBody extends ConsumerWidget {
           loading: () => const SizedBox.shrink(),
           error: (_, _) => const SizedBox.shrink(),
           data: (budgets) {
-            final alerts =
-                budgets
-                    .where((b) => b.isOverBudget || b.progress >= 0.8)
-                    .toList()
-                  ..sort((a, b) => b.progress.compareTo(a.progress));
+            final alerts = classifyBudgetAlerts(budgets);
             if (alerts.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +150,7 @@ class _DashboardBody extends ConsumerWidget {
                   onAction: (ctx) => ctx.go('/budget'),
                 ),
                 const SizedBox(height: 10),
-                ...alerts.take(3).map((b) => _BudgetAlertTile(budget: b)),
+                ...alerts.take(3).map((a) => _BudgetAlertTile(alert: a)),
                 const SizedBox(height: 24),
               ],
             );
@@ -503,16 +500,38 @@ class _SpendingSparkline extends StatelessWidget {
 
 /// Alert row for a budget that is over or nearing its limit.
 class _BudgetAlertTile extends StatelessWidget {
-  final BudgetWithSpending budget;
-  const _BudgetAlertTile({required this.budget});
+  final BudgetAlert alert;
+  const _BudgetAlertTile({required this.alert});
 
   @override
   Widget build(BuildContext context) {
-    final isOver = budget.isOverBudget;
+    final budget = alert.budget;
+    // Two-colour palette: red for already-over, yellow for the two
+    // not-yet-over states. The body text below carries the actual
+    // distinction between projected-over and approaching-limit, so a
+    // third hue would just add noise.
+    final isOver = alert.state == BudgetAlertState.overBudget;
     final color = isOver
         ? context.appColors.expense
         : context.appColors.warning;
     final pct = (budget.progress * 100).round();
+    final projectedPct = budget.budget.amount == 0
+        ? 0
+        : (budget.projectedCents / budget.budget.amount * 100).round();
+
+    final bodyText = switch (alert.state) {
+      BudgetAlertState.overBudget =>
+        '${formatCurrency(budget.spentCents - budget.budget.amount)} '
+            'over budget',
+      BudgetAlertState.projectedOver =>
+        'On pace for ${formatCurrency(budget.projectedCents)} '
+            '($projectedPct%) — '
+            '${formatCurrency(budget.projectedCents - budget.budget.amount)} '
+            'over by period end',
+      BudgetAlertState.approachingLimit =>
+        '${formatCurrency(budget.budget.amount - budget.spentCents)} '
+            'remaining ($pct% used)',
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -542,9 +561,7 @@ class _BudgetAlertTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isOver
-                      ? '${formatCurrency(budget.spentCents - budget.budget.amount)} over budget'
-                      : '${formatCurrency(budget.budget.amount - budget.spentCents)} remaining ($pct% used)',
+                  bodyText,
                   style: TextStyle(fontSize: 11, color: color),
                 ),
               ],
