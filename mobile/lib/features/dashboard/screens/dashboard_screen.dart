@@ -14,6 +14,7 @@ import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
 import '../../holdings/models/holding.dart';
 import '../../holdings/providers/holdings_provider.dart';
+import '../../holdings/screens/holdings_by_class_screen.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -799,6 +800,14 @@ class _AssetAllocationCard extends StatelessWidget {
 
   const _AssetAllocationCard({required this.slices, required this.totalCents});
 
+  void _drillInto(BuildContext context, AssetClass cls) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HoldingsByClassScreen(assetClass: cls),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -813,6 +822,12 @@ class _AssetAllocationCard extends StatelessWidget {
           // Donut — fl_chart is already a dependency (sparkline +
           // budget chart use it). 32 of radius keeps the dashboard
           // compact; the legend carries the labels.
+          //
+          // touchCallback gives us section index on tap; we push the
+          // by-class drill-down screen, mirroring the legend-row tap
+          // below. fl_chart fires the callback for every gesture
+          // phase (down / move / up / cancel); filter to the
+          // tap-up event (FlTapUpEvent) so we only push once per tap.
           SizedBox(
             width: 92,
             height: 92,
@@ -821,6 +836,14 @@ class _AssetAllocationCard extends StatelessWidget {
                 sectionsSpace: 2,
                 centerSpaceRadius: 24,
                 startDegreeOffset: -90,
+                pieTouchData: PieTouchData(
+                  touchCallback: (event, response) {
+                    if (event is! FlTapUpEvent) return;
+                    final idx = response?.touchedSection?.touchedSectionIndex;
+                    if (idx == null || idx < 0 || idx >= slices.length) return;
+                    _drillInto(context, slices[idx].assetClass);
+                  },
+                ),
                 sections: [
                   for (final s in slices)
                     PieChartSectionData(
@@ -844,6 +867,7 @@ class _AssetAllocationCard extends StatelessWidget {
                     color: s.assetClass.sliceColor,
                     pct: (s.totalCents / totalCents * 100),
                     cents: s.totalCents,
+                    onTap: () => _drillInto(context, s.assetClass),
                   ),
                   if (s != slices.last) const SizedBox(height: 4),
                 ],
@@ -862,17 +886,25 @@ class _LegendRow extends StatelessWidget {
   final double pct;
   final int cents;
 
+  /// Tap drills into [HoldingsByClassScreen] for this row's class.
+  /// Wrapping the legend in an InkWell rather than a separate
+  /// GestureDetector lets the user see the ripple — important
+  /// affordance, since text-only rows don't otherwise read as
+  /// tappable.
+  final VoidCallback? onTap;
+
   const _LegendRow({
     required this.label,
     required this.color,
     required this.pct,
     required this.cents,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Row(
+    final row = Row(
       children: [
         Container(
           width: 10,
@@ -897,6 +929,15 @@ class _LegendRow extends StatelessWidget {
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
     );
   }
 }
