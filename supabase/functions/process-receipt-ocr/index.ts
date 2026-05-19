@@ -35,6 +35,11 @@ interface ReceiptLineItemInput {
   is_tax?: boolean;
   is_tip?: boolean;
   is_discount?: boolean;
+  // Forwarded into the RPC verbatim. Budgets only see line items
+  // whose category_id is non-null (Option B in migration 029), so
+  // tests exercising the rollup must supply it. Production OCR
+  // populates this via the categorizer after extracting items.
+  category_id?: string;
 }
 
 const DEFAULT_ITEMS: ReceiptLineItemInput[] = [
@@ -109,6 +114,7 @@ async function processReceipt(
     is_tax: it.is_tax ?? false,
     is_tip: it.is_tip ?? false,
     is_discount: it.is_discount ?? false,
+    category_id: it.category_id ?? null,
   }));
   const { data: lineItems, error: liErr } = await supabase.rpc(
     "save_receipt_line_items",
