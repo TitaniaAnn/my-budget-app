@@ -1,5 +1,9 @@
 // Transactions screen — grouped list with account filter, search, date range,
 // swipe-to-delete, and tap-to-edit.
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +23,7 @@ import '../providers/transaction_tags_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
+import '../services/transactions_csv.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
@@ -91,6 +96,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String _search = '';
   bool _showSearch = false;
   bool _recategorizing = false;
+  bool _exporting = false;
   late final TextEditingController _searchCtrl;
 
   @override
@@ -158,6 +164,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             icon: const Icon(Icons.upload_outlined),
             tooltip: 'Import statement',
             onPressed: () => _showImportSheet(context),
+          ),
+          // Export the currently-filtered transactions as CSV. The
+          // active filters (account / category / tag / date / search)
+          // determine the export scope — "filter to the contractor
+          // tag, then tap Export" is the intended tax-time workflow.
+          IconButton(
+            icon: _exporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined),
+            tooltip: 'Export CSV',
+            onPressed: _exporting ? null : _exportCsv,
           ),
         ],
       ),
@@ -307,6 +328,88 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   void _showImportSheet(BuildContext context) {
     showAppSheet<void>(context, child: const ImportStatementSheet());
+  }
+
+  /// Exports the currently-filtered transactions as CSV. Reads from
+  /// the same providers the list view does, so the export honors
+  /// every active filter (account / category / tag / search / date).
+  ///
+  /// Writes via [FilePicker.saveFile] with the bytes inline — no
+  /// intermediate temp file. On Android the system save dialog
+  /// (SAF) lets the user pick a destination; cancel returns null
+  /// and the export becomes a no-op.
+  Future<void> _exportCsv() async {
+    setState(() => _exporting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final (from, to) = _dateRange;
+      // .future on each so the export blocks until data is loaded
+      // — exporting partial data because a provider hadn't settled
+      // would silently truncate the CSV.
+      final accounts = await ref.read(accountsProvider.future);
+      final tags = await ref.read(transactionTagsProvider.future);
+      final assignments = await ref.read(
+        transactionTagAssignmentsProvider.future,
+      );
+      final transactions = await ref.read(
+        transactionsProvider(
+          accountId: _selectedAccountId,
+          categoryId: _selectedCategoryId,
+          tagId: _selectedTagId,
+          search: _search.isEmpty ? null : _search,
+          dateFrom: from,
+          dateTo: to,
+        ).future,
+      );
+
+      if (transactions.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('No transactions to export with the current filter.'),
+          ),
+        );
+        return;
+      }
+
+      final csv = transactionsToCsv(
+        transactions: transactions,
+        accountsById: {for (final a in accounts) a.id: a},
+        tagsById: {for (final t in tags) t.id: t},
+        tagAssignments: assignments,
+      );
+
+      // Filename includes the tag name when filtering by tag so the
+      // exported file is self-identifying after the user shares it
+      // out of the app.
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final tagSlug = _selectedTagId == null
+          ? ''
+          : '-${tags.firstWhere((t) => t.id == _selectedTagId, orElse: () => tags.first).name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
+      final suggestedName = 'transactions$tagSlug-$today.csv';
+
+      final saved = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save transactions CSV',
+        fileName: suggestedName,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+        bytes: Uint8List.fromList(utf8.encode(csv)),
+      );
+
+      if (!mounted) return;
+      if (saved != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Exported ${transactions.length} transactions'),
+          ),
+        );
+      }
+      // Null return = user cancelled the save dialog. No feedback —
+      // surfacing "cancelled" would feel like an error.
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   Future<void> _deleteTransaction(Transaction tx) async {
