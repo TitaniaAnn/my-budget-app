@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/reports/screens/monthly_report_screen.dart';
 import '../../../features/transactions/screens/manage_tags_screen.dart';
 import '../../../features/transactions/screens/review_categorisations_screen.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -125,6 +126,22 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const ManageTagsScreen()),
+            ),
+          ),
+
+          // ── Reports ────────────────────────────────────────────────────
+          _SectionHeader('Reports'),
+          ListTile(
+            leading: const Icon(Icons.picture_as_pdf_outlined),
+            title: const Text('Monthly Report'),
+            subtitle: const Text(
+              'Income, expenses, and category breakdown — shareable as PDF',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const MonthlyReportScreen(),
+              ),
             ),
           ),
 

@@ -52,6 +52,10 @@ dependencies:
   # UI
   cupertino_icons: ^1.0.8
 
+  # PDF report generation (monthly_report screen).
+  pdf: ^3.11.1
+  printing: ^5.13.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
