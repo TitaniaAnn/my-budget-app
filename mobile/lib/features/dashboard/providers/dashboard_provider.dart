@@ -40,12 +40,20 @@ class DashboardData {
   /// together at render time.
   final Map<String, Category> categoryLookup;
 
+  /// Year-to-date Roth IRA contributions in cents. Sum of positive-
+  /// amount transactions on iraRoth accounts dated >= Jan 1 of the
+  /// current year. Used by [RothIraUnderusedRule]; defaults to 0 so
+  /// the rule stays silent for households that don't have a Roth IRA
+  /// account (and so existing tests don't have to set it).
+  final int ytdRothContributionsCents;
+
   const DashboardData({
     required this.accounts,
     required this.recentTransactions30d,
     required this.recentTransactions,
     this.spendingByCategory = const {},
     this.categoryLookup = const {},
+    this.ytdRothContributionsCents = 0,
   });
 
   // ── Monthly summary (current calendar month) ──────────────────────────────
@@ -191,11 +199,28 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     txRepo.fetchCategories(),
   ).wait;
 
+  // Roth YTD contributions — sequential because it depends on the
+  // accounts list to know which IDs are iraRoth. Cheap on
+  // households with no Roth (skipped) and households with a Roth
+  // (one focused query, ~12-26 rows). If/when more advisor rules
+  // need per-account-type YTD rollups, replace the pair of queries
+  // with a single RPC.
+  final yearStart = DateTime(now.year, 1, 1);
+  final rothAccountIds = accounts
+      .where((a) => a.isActive && a.accountType == AccountType.iraRoth)
+      .map((a) => a.id)
+      .toList();
+  final ytdRothContributions = await txRepo.sumPositiveAmountsForAccountsSince(
+    accountIds: rothAccountIds,
+    from: yearStart,
+  );
+
   return DashboardData(
     accounts: accounts,
     recentTransactions30d: recent30d,
     recentTransactions: recent5,
     spendingByCategory: spendByCat,
     categoryLookup: {for (final c in categories) c.id: c},
+    ytdRothContributionsCents: ytdRothContributions,
   );
 }

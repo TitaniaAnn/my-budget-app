@@ -60,6 +60,7 @@ Transaction _tx({required int amountCents, required DateTime date}) {
 DashboardData _data({
   required List<Account> accounts,
   required int spendCents,
+  int ytdRothContributionsCents = 0,
 }) {
   final txs = spendCents > 0
       ? [_tx(amountCents: -spendCents, date: _now())]
@@ -68,6 +69,7 @@ DashboardData _data({
     accounts: accounts,
     recentTransactions30d: txs,
     recentTransactions: txs,
+    ytdRothContributionsCents: ytdRothContributionsCents,
   );
 }
 
@@ -244,6 +246,83 @@ void main() {
         spendCents: 100000,
       );
       expect(const CreditCardCarryRule().evaluate(data), isNull);
+    });
+  });
+
+  group('RothIraUnderusedRule', () {
+    test('fires when a Roth IRA exists and YTD < the annual limit', () {
+      // $3,000 contributed against the $7,000 limit → $4,000 gap.
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.iraRoth, currentBalance: 1500000),
+        ],
+        spendCents: 100000,
+        ytdRothContributionsCents: 300000,
+      );
+      final s = const RothIraUnderusedRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.severity, SuggestionSeverity.opportunity);
+      expect(s.id, 'roth_ira_underused');
+      // Detail must surface both the headline numbers so the user
+      // doesn't have to open the account to know the gap.
+      expect(s.detail, contains(r'$3,000'));
+      expect(s.detail, contains(r'$7,000'));
+      expect(s.detail, contains(r'$4,000'));
+    });
+
+    test('stays silent when the household has no Roth IRA account', () {
+      // No Roth → nothing to suggest. The rule must not fire just
+      // because contributions are at zero — that would always fire
+      // for households that don't use this account type at all.
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.brokerage, currentBalance: 5000000),
+          _account(type: AccountType.iraTraditional, currentBalance: 5000000),
+        ],
+        spendCents: 100000,
+        ytdRothContributionsCents: 0,
+      );
+      expect(const RothIraUnderusedRule().evaluate(data), isNull);
+    });
+
+    test('stays silent when contributions are at or above the limit', () {
+      // Already maxed — silent. Even slightly over (50+ catch-up
+      // territory) shouldn't emit a warning we can't act on.
+      for (final ytd in [
+        RothIraUnderusedRule.annualLimitCents,
+        RothIraUnderusedRule.annualLimitCents + 100000,
+      ]) {
+        final data = _data(
+          accounts: [
+            _account(type: AccountType.iraRoth, currentBalance: 1500000),
+          ],
+          spendCents: 100000,
+          ytdRothContributionsCents: ytd,
+        );
+        expect(
+          const RothIraUnderusedRule().evaluate(data),
+          isNull,
+          reason: 'YTD=$ytd cents should be considered maxed.',
+        );
+      }
+    });
+
+    test('ignores inactive Roth IRA accounts', () {
+      // A closed/archived Roth doesn't qualify — the user has
+      // signalled they're no longer using it, so nagging about
+      // unused contribution room would be noise.
+      final data = _data(
+        accounts: [
+          _account(
+            type: AccountType.iraRoth,
+            currentBalance: 0,
+            isActive: false,
+          ),
+        ],
+        spendCents: 100000,
+        ytdRothContributionsCents: 0,
+      );
+      expect(const RothIraUnderusedRule().evaluate(data), isNull);
     });
   });
 

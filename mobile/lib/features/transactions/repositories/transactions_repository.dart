@@ -213,6 +213,32 @@ class TransactionsRepository {
     return data.map<Transaction>(Transaction.fromJson).toList();
   }
 
+  /// Sums positive-amount transactions on [accountIds] dated on or
+  /// after [from]. Returns the total in cents, or 0 if [accountIds]
+  /// is empty.
+  ///
+  /// Used by the Roth IRA Underused growth-advisor rule to compute
+  /// year-to-date contributions. Positive amount = inflow = a
+  /// contribution (the sign convention is the same as the rest of
+  /// the app — debits negative, credits positive). PostgREST doesn't
+  /// have a server-side SUM in its select grammar, so the sum
+  /// happens in Dart over a focused result set: a typical year has
+  /// 12-26 contribution rows per Roth account, which is well under
+  /// the threshold where shipping a new RPC would be worth it.
+  Future<int> sumPositiveAmountsForAccountsSince({
+    required List<String> accountIds,
+    required DateTime from,
+  }) async {
+    if (accountIds.isEmpty) return 0;
+    final rows = await supabase
+        .from('transactions')
+        .select('amount')
+        .inFilter('account_id', accountIds)
+        .gt('amount', 0)
+        .gte('transaction_date', from.toIso8601String().substring(0, 10));
+    return rows.fold<int>(0, (sum, row) => sum + (row['amount'] as int));
+  }
+
   /// Fetches all transactions within a date range for dashboard summaries.
   /// Joins categories so spending-by-category can be computed in Dart.
   Future<List<Transaction>> fetchTransactionsForDashboard({

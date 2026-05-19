@@ -77,6 +77,7 @@ class GrowthAdvisor {
   static const List<GrowthRule> defaultRules = [
     EmergencyFundRule(),
     CreditCardCarryRule(),
+    RothIraUnderusedRule(),
     IdleCashRule(),
   ];
 
@@ -225,6 +226,61 @@ class IdleCashRule implements GrowthRule {
       detail:
           '$dollars in checking and savings is more than a year of '
           'expenses. Consider moving the excess into investments.',
+    );
+  }
+}
+
+/// Roth IRA contribution headroom for the current calendar year.
+///
+/// Fires an OPPORTUNITY when the household has at least one active
+/// Roth IRA account AND year-to-date contributions are below the IRS
+/// annual limit. The detail names the dollar gap so the user can
+/// decide whether topping up is feasible without doing the math.
+///
+/// IRS contribution limit for tax year 2026 is $7,000 (under age 50);
+/// the over-50 catch-up of $1,000 isn't applied because the schema
+/// doesn't carry the account holder's age. A 50+ user will see this
+/// rule fire when they're between $7k and $8k contributed; the
+/// suggestion is observational ("look low") rather than prescriptive,
+/// so that's an acceptable over-fire.
+///
+/// Verify the limit annually against IRS guidance. The constant is a
+/// deliberate hardcoded number (not pulled from a config service)
+/// because the contribution-limit shift is exactly the kind of
+/// change that warrants a code review and a fresh test pass.
+class RothIraUnderusedRule implements GrowthRule {
+  const RothIraUnderusedRule();
+
+  /// 2026 IRS Roth IRA contribution limit (under 50), in cents.
+  /// Update annually.
+  static const int annualLimitCents = 700000;
+
+  @override
+  String get id => 'roth_ira_underused';
+
+  @override
+  GrowthSuggestion? evaluate(DashboardData data) {
+    final hasRoth = data.accounts.any(
+      (a) => a.isActive && a.accountType == AccountType.iraRoth,
+    );
+    if (!hasRoth) return null;
+
+    final contributed = data.ytdRothContributionsCents;
+    // Already maxed (or over — generous, but stay silent rather than
+    // emit a "you contributed too much" warning we can't act on).
+    if (contributed >= annualLimitCents) return null;
+
+    final gap = annualLimitCents - contributed;
+    final contributedStr = _formatDollars(contributed);
+    final limitStr = _formatDollars(annualLimitCents);
+    final gapStr = _formatDollars(gap);
+    return GrowthSuggestion(
+      id: id,
+      severity: SuggestionSeverity.opportunity,
+      title: 'Roth IRA contributions look low',
+      detail:
+          '$contributedStr of the $limitStr Roth IRA limit used this '
+          'year — $gapStr left before the deadline.',
     );
   }
 }
