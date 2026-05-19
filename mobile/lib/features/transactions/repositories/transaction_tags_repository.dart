@@ -62,6 +62,47 @@ class TransactionTagsRepository {
     return TransactionTag.fromJson(data);
   }
 
+  /// Returns assignment counts per tag, keyed by tag_id. Each value
+  /// is `(txCount, lineItemCount)` — how many transactions carry
+  /// the tag and how many receipt line items, respectively. Used by
+  /// the manage-tags screen to surface usage and warn before
+  /// destructive actions.
+  ///
+  /// Implemented as two flat fetches (no GROUP BY in PostgREST's
+  /// select grammar) with aggregation in Dart. Cheap at household
+  /// scale — the assignment tables typically hold low hundreds of
+  /// rows even for active households. If usage grows past that
+  /// threshold this should move into an RPC.
+  ///
+  /// RLS on both join tables scopes the visible rows to the
+  /// caller's household, so no household_id parameter is needed.
+  Future<Map<String, ({int txCount, int lineItemCount})>>
+  tagUsageCounts() async {
+    final txRows = await supabase
+        .from('transaction_tag_assignments')
+        .select('tag_id');
+    final liRows = await supabase
+        .from('receipt_line_item_tag_assignments')
+        .select('tag_id');
+
+    final tx = <String, int>{};
+    for (final row in txRows) {
+      final tagId = row['tag_id'] as String;
+      tx[tagId] = (tx[tagId] ?? 0) + 1;
+    }
+    final li = <String, int>{};
+    for (final row in liRows) {
+      final tagId = row['tag_id'] as String;
+      li[tagId] = (li[tagId] ?? 0) + 1;
+    }
+
+    final keys = {...tx.keys, ...li.keys};
+    return {
+      for (final id in keys)
+        id: (txCount: tx[id] ?? 0, lineItemCount: li[id] ?? 0),
+    };
+  }
+
   /// Renames a tag and/or recolors it. Either field is optional —
   /// null means "leave alone." Name is trimmed for the same
   /// "phantom dup" reason [createTag] is.

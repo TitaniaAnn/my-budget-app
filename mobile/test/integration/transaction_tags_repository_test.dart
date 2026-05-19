@@ -176,6 +176,70 @@ void main() {
       expect(updated.color, '#3B82F6');
     }, skip: reason);
 
+    // ─── tagUsageCounts ───────────────────────────────────────────────
+
+    test('tagUsageCounts returns both tx and line-item counts per tag, '
+        'omits tags with no assignments', () async {
+      // Fresh tag with no usage → must NOT appear in the map.
+      final unused = await repo.createTag(
+        householdId: harness.householdId,
+        name: stamped('unused'),
+      );
+
+      // Tagged transactions: assign tagA to two transactions.
+      final tagA = await repo.createTag(
+        householdId: harness.householdId,
+        name: stamped('usage-a'),
+      );
+      final tx1 = await harness.insertTransaction(description: 'USAGE 1');
+      final tx2 = await harness.insertTransaction(description: 'USAGE 2');
+      await repo.replaceAssignments(transactionId: tx1, tagIds: [tagA.id]);
+      await repo.replaceAssignments(transactionId: tx2, tagIds: [tagA.id]);
+
+      // Tagged line item: tagA on one line item.
+      final receiptRow = await harness.client
+          .from('receipts')
+          .insert({
+            'household_id': harness.householdId,
+            'uploaded_by': harness.userId,
+            'storage_path':
+                '${harness.householdId}/usage-${DateTime.now().microsecondsSinceEpoch}.jpg',
+            'ocr_status': 'pending',
+          })
+          .select('id')
+          .single();
+      final receiptId = receiptRow['id'] as String;
+      final liRow = await harness.client
+          .from('receipt_line_items')
+          .insert({
+            'receipt_id': receiptId,
+            'description': 'usage-li',
+            'amount': 100,
+            'is_tax': false,
+            'is_tip': false,
+            'is_discount': false,
+            'sort_order': 0,
+          })
+          .select('id')
+          .single();
+      await repo.replaceLineItemAssignments(
+        lineItemId: liRow['id'] as String,
+        tagIds: [tagA.id],
+      );
+
+      final counts = await repo.tagUsageCounts();
+      expect(
+        counts.containsKey(unused.id),
+        isFalse,
+        reason:
+            'tags with zero assignments must NOT appear in the map — '
+            'callers treat absent keys as (0, 0), and surfacing them '
+            'would clutter the "currently unused" view.',
+      );
+      expect(counts[tagA.id]?.txCount, 2);
+      expect(counts[tagA.id]?.lineItemCount, 1);
+    }, skip: reason);
+
     // ─── deleteTag cascade ────────────────────────────────────────────
 
     test('deleteTag cascades to assignments', () async {

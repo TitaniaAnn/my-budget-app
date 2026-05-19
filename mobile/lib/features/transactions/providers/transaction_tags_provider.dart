@@ -47,3 +47,15 @@ Future<Map<String, Set<String>>> transactionTagAssignments(
   final repo = ref.watch(transactionTagsRepositoryProvider);
   return repo.fetchAllAssignments();
 }
+
+/// Assignment counts per tag, used by the manage-tags screen for
+/// the "X transactions, Y line items" subtitle and to inform the
+/// delete-confirmation message. Empty inner counts are omitted —
+/// callers treat an absent key the same as "(0, 0)".
+@riverpod
+Future<Map<String, ({int txCount, int lineItemCount})>> tagUsageCounts(
+  TagUsageCountsRef ref,
+) async {
+  final repo = ref.watch(transactionTagsRepositoryProvider);
+  return repo.tagUsageCounts();
+}

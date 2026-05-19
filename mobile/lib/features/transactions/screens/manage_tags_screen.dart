@@ -24,6 +24,7 @@ class ManageTagsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tagsAsync = ref.watch(transactionTagsProvider);
+    final usageAsync = ref.watch(tagUsageCountsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tags')),
@@ -48,12 +49,19 @@ class ManageTagsScreen extends ConsumerWidget {
                   'and line items as a second dimension alongside categories.',
             );
           }
+          // Usage is supplementary — if the count fetch is still in
+          // flight or errored, render rows without subtitles rather
+          // than blocking the whole list.
+          final usage =
+              usageAsync.valueOrNull ??
+              const <String, ({int txCount, int lineItemCount})>{};
           return ListView.separated(
             padding: const EdgeInsets.only(bottom: 96),
             itemCount: tags.length,
             separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, i) => _TagTile(
               tag: tags[i],
+              usage: usage[tags[i].id],
               onTap: () => _showEditDialog(context, ref, tag: tags[i]),
             ),
           );
@@ -77,9 +85,15 @@ class ManageTagsScreen extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _TagTile extends StatelessWidget {
-  const _TagTile({required this.tag, required this.onTap});
+  const _TagTile({required this.tag, required this.usage, required this.onTap});
 
   final TransactionTag tag;
+
+  /// Per-tag assignment counts. Null when the bulk fetch hasn't
+  /// resolved yet (or errored) — the tile still renders the tag,
+  /// just without a usage subtitle.
+  final ({int txCount, int lineItemCount})? usage;
+
   final VoidCallback onTap;
 
   @override
@@ -94,9 +108,24 @@ class _TagTile extends StatelessWidget {
         decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
       ),
       title: Text(tag.name),
+      subtitle: _usageSubtitle(),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
+  }
+
+  /// "12 transactions · 3 line items" when both counts are non-zero,
+  /// trimmed when one is zero, null when both are zero (the tile
+  /// renders without a subtitle so the row stays compact).
+  Widget? _usageSubtitle() {
+    if (usage == null) return null;
+    final parts = <String>[];
+    final tx = usage!.txCount;
+    final li = usage!.lineItemCount;
+    if (tx > 0) parts.add('$tx ${tx == 1 ? 'transaction' : 'transactions'}');
+    if (li > 0) parts.add('$li ${li == 1 ? 'line item' : 'line items'}');
+    if (parts.isEmpty) return null;
+    return Text(parts.join(' · '));
   }
 }
 
@@ -177,6 +206,10 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
         );
       }
       ref.invalidate(transactionTagsProvider);
+      // Usage counts depend on the dictionary's existence too — a
+      // newly-created tag should appear with (0, 0) rather than
+      // not at all when the manage screen refreshes.
+      ref.invalidate(tagUsageCountsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -187,13 +220,31 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
   }
 
   Future<void> _delete() async {
+    // Concrete numbers in the prompt help the user decide whether
+    // this is a "nothing to lose, just clean up" delete or a "this
+    // touches actual records" one. Pulled inline rather than via
+    // an extra provider watch because the dialog is short-lived.
+    final usage = ref.read(tagUsageCountsProvider).valueOrNull?[widget.tag!.id];
+    final tx = usage?.txCount ?? 0;
+    final li = usage?.lineItemCount ?? 0;
+    final String message;
+    if (tx == 0 && li == 0) {
+      message =
+          'This tag isn\'t currently assigned to anything — safe to '
+          'remove from the dictionary.';
+    } else {
+      final parts = <String>[];
+      if (tx > 0) parts.add('$tx ${tx == 1 ? 'transaction' : 'transactions'}');
+      if (li > 0) parts.add('$li ${li == 1 ? 'line item' : 'line items'}');
+      message =
+          'This will remove the tag from ${parts.join(' and ')}. The '
+          'underlying records are not affected.';
+    }
+
     final confirmed = await confirmDestructive(
       context,
       title: 'Delete Tag?',
-      message:
-          'This removes the tag from every transaction and line item '
-          'it was assigned to. The transactions themselves are not '
-          'affected.',
+      message: message,
     );
     if (!confirmed) return;
     setState(() => _saving = true);
@@ -204,9 +255,10 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
       // Assignments cascade-deleted per migration 020's ON DELETE
       // CASCADE. The transactions list and any open editor that
       // displays tag chips needs to re-read; invalidate the bulk
-      // assignment provider too.
+      // assignment provider and the usage counts too.
       ref.invalidate(transactionTagsProvider);
       ref.invalidate(transactionTagAssignmentsProvider);
+      ref.invalidate(tagUsageCountsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {

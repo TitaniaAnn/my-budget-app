@@ -227,5 +227,33 @@ final transactionTagAssignmentsProvider =
 // ignore: unused_element
 typedef TransactionTagAssignmentsRef =
     AutoDisposeFutureProviderRef<Map<String, Set<String>>>;
+String _$tagUsageCountsHash() => r'd08b509944e67c67142c16167ae27bd9500409b4';
+
+/// Assignment counts per tag, used by the manage-tags screen for
+/// the "X transactions, Y line items" subtitle and to inform the
+/// delete-confirmation message. Empty inner counts are omitted —
+/// callers treat an absent key the same as "(0, 0)".
+///
+/// Copied from [tagUsageCounts].
+@ProviderFor(tagUsageCounts)
+final tagUsageCountsProvider =
+    AutoDisposeFutureProvider<
+      Map<String, ({int txCount, int lineItemCount})>
+    >.internal(
+      tagUsageCounts,
+      name: r'tagUsageCountsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$tagUsageCountsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TagUsageCountsRef =
+    AutoDisposeFutureProviderRef<
+      Map<String, ({int txCount, int lineItemCount})>
+    >;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
