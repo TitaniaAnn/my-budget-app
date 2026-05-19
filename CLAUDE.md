@@ -113,10 +113,8 @@ The integration suite has already paid for itself by catching two bugs that mock
 
 Two workflows under [.github/workflows/](.github/workflows/):
 
-- [`ci.yaml`](.github/workflows/ci.yaml) — runs `dart format --set-exit-if-changed`, `flutter analyze`, and `flutter test` on every push/PR. Format failures are exit-code failures, not warnings — run `dart format lib test` locally before pushing.
-- [`categorizer.yaml`](.github/workflows/categorizer.yaml) — triggers on `tools/categorizer/**`, `mobile/assets/ml/**`, or the classifier Dart file. Runs `pytest` (the pure-logic Python tests in `test_train.py`), bootstraps a seed, retrains the model, gates on `eval.py --min-accuracy 0.70`, then runs the Dart parity test against the fresh fixture. Splits this from the main `ci.yaml` so a Dart-only PR doesn't pay the Python install cost.
-
-**Caveat:** the workflows watch `main` but the active branch is `master`, so CI may not actually run on commits here. Verify locally before assuming the gates are enforced.
+- [`ci.yaml`](.github/workflows/ci.yaml) — runs `dart format --set-exit-if-changed`, `flutter analyze`, and `flutter test` on every push/PR to `main` or `master`. Format failures are exit-code failures, not warnings — run `dart format lib test` locally before pushing.
+- [`categorizer.yaml`](.github/workflows/categorizer.yaml) — triggers on `tools/categorizer/**`, `mobile/assets/ml/**`, or the classifier Dart file (same branch list). Runs `pytest` (the pure-logic Python tests in `test_train.py`), bootstraps a seed, retrains the model, gates on `eval.py --min-accuracy 0.70`, then runs the Dart parity test against the fresh fixture. Splits this from the main `ci.yaml` so a Dart-only PR doesn't pay the Python install cost.
 
 ## Build & Test Verification
 
