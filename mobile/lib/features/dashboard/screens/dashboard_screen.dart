@@ -12,6 +12,8 @@ import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
+import '../../holdings/models/holding.dart';
+import '../../holdings/providers/holdings_provider.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -156,6 +158,12 @@ class _DashboardBody extends ConsumerWidget {
             );
           },
         ),
+
+        // ── Asset Allocation ───────────────────────────────────────────────
+        // Donut + legend, hidden when no holdings are recorded so a
+        // household that doesn't use the holdings feature doesn't see
+        // an empty section header.
+        const _AssetAllocationSection(),
 
         // ── Top Categories ─────────────────────────────────────────────────
         if (data.topCategories.isNotEmpty) ...[
@@ -744,6 +752,151 @@ class _SuggestionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Asset Allocation donut + legend. Reads
+// [assetAllocationProvider] — already pre-sorted largest-slice
+// first. Returns SizedBox.shrink when there are no holdings or
+// every recorded value is zero, so the dashboard doesn't waste
+// space on an empty pie.
+// ---------------------------------------------------------------------------
+
+class _AssetAllocationSection extends ConsumerWidget {
+  const _AssetAllocationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allocAsync = ref.watch(assetAllocationProvider);
+    return allocAsync.when(
+      // Quiet states — the section is supplementary, and a spinner
+      // here would look like the dashboard's loading even though
+      // every other section already rendered.
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (slices) {
+        final total = slices.fold<int>(0, (s, e) => s + e.totalCents);
+        if (slices.isEmpty || total <= 0) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionHeader(title: 'Asset Allocation'),
+            const SizedBox(height: 10),
+            _AssetAllocationCard(slices: slices, totalCents: total),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AssetAllocationCard extends StatelessWidget {
+  final List<({AssetClass assetClass, int totalCents})> slices;
+  final int totalCents;
+
+  const _AssetAllocationCard({required this.slices, required this.totalCents});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          // Donut — fl_chart is already a dependency (sparkline +
+          // budget chart use it). 32 of radius keeps the dashboard
+          // compact; the legend carries the labels.
+          SizedBox(
+            width: 92,
+            height: 92,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 24,
+                startDegreeOffset: -90,
+                sections: [
+                  for (final s in slices)
+                    PieChartSectionData(
+                      value: s.totalCents.toDouble(),
+                      color: s.assetClass.sliceColor,
+                      title: '',
+                      radius: 18,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final s in slices) ...[
+                  _LegendRow(
+                    label: s.assetClass.displayName,
+                    color: s.assetClass.sliceColor,
+                    pct: (s.totalCents / totalCents * 100),
+                    cents: s.totalCents,
+                  ),
+                  if (s != slices.last) const SizedBox(height: 4),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  final String label;
+  final Color color;
+  final double pct;
+  final int cents;
+
+  const _LegendRow({
+    required this.label,
+    required this.color,
+    required this.pct,
+    required this.cents,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          '${pct.toStringAsFixed(0)}%',
+          style: TextStyle(fontSize: 11, color: colors.textSubtle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          formatCurrency(cents),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

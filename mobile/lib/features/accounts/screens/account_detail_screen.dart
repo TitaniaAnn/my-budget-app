@@ -7,6 +7,7 @@ import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
+import '../../holdings/screens/holdings_screen.dart';
 import '../../transactions/screens/transactions_screen.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
@@ -77,6 +78,23 @@ class _AccountDetailBody extends ConsumerWidget {
               onPressed: () => showAppSheet<void>(
                 context,
                 child: CreditCardRatesSheet(accountId: account.id),
+              ),
+            ),
+          // Holdings entry — only on investment-group accounts
+          // (brokerage / IRA / 401k / 403b / HSA / 529). The detail
+          // screen itself stays unchanged; tapping pushes a
+          // dedicated HoldingsScreen with FAB-add + edit-on-tap.
+          if (account.accountType.group == AccountGroup.investments)
+            IconButton(
+              icon: const Icon(Icons.trending_up_outlined),
+              tooltip: 'Holdings',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => HoldingsScreen(
+                    accountId: account.id,
+                    accountName: account.name,
+                  ),
+                ),
               ),
             ),
           IconButton(
