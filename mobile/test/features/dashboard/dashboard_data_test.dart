@@ -67,7 +67,7 @@ void main() {
           _account(id: 'checking', type: AccountType.checking, balance: 100000),
           _account(id: 'savings', type: AccountType.savings, balance: 500000),
         ],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
       );
       expect(data.netWorth, 600000); // $6,000.00
@@ -79,7 +79,7 @@ void main() {
           _account(id: 'checking', type: AccountType.checking, balance: 100000),
           _account(id: 'card', type: AccountType.creditCard, balance: -50000),
         ],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
       );
       expect(data.netWorth, 50000); // $500.00
@@ -97,7 +97,7 @@ void main() {
             balance: -30000000,
           ),
         ],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
       );
       expect(data.netWorth, -29800000);
@@ -106,7 +106,7 @@ void main() {
     test('returns 0 for an empty account list', () {
       const data = DashboardData(
         accounts: [],
-        recentTransactions30d: [],
+        recentTransactions90d: [],
         recentTransactions: [],
       );
       expect(data.netWorth, 0);
@@ -121,7 +121,7 @@ void main() {
     test('spend sums absolute value of debits in the current month', () {
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(amount: -1500, date: monthStart, id: 'a'),
           _tx(amount: -2500, date: monthStart, id: 'b'),
           _tx(amount: 1000, date: monthStart, id: 'c'), // income, ignored
@@ -134,7 +134,7 @@ void main() {
     test('income sums positive transactions only', () {
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(amount: 500000, date: monthStart, id: 'a'),
           _tx(amount: -1000, date: monthStart, id: 'b'), // debit, ignored
         ],
@@ -146,7 +146,7 @@ void main() {
     test('excludes transactions before the first of the month', () {
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(amount: -1000, date: lastMonth, id: 'old'),
           _tx(amount: -500, date: monthStart, id: 'new'),
         ],
@@ -169,7 +169,7 @@ void main() {
       final gas = cat('p', 'Gas');
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
         spendingByCategory: const {'g': 5000, 'p': 1500},
         categoryLookup: {'g': groceries, 'p': gas},
@@ -192,7 +192,7 @@ void main() {
       final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [_tx(amount: -1234, date: monthStart, id: '1')],
+        recentTransactions90d: [_tx(amount: -1234, date: monthStart, id: '1')],
         recentTransactions: const [],
       );
       expect(data.topCategories.first.name, 'Uncategorized');
@@ -215,7 +215,7 @@ void main() {
       ).copyWith(receiptId: 'r-1');
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [tx],
+        recentTransactions90d: [tx],
         recentTransactions: const [],
       );
       expect(
@@ -233,7 +233,7 @@ void main() {
       final spending = {for (var i = 0; i < 7; i++) 'c$i': (i + 1) * 100};
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
         spendingByCategory: spending,
         categoryLookup: lookup,
@@ -247,7 +247,7 @@ void main() {
       // the join must drop it rather than crash or surface a blank.
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: const [],
+        recentTransactions90d: const [],
         recentTransactions: const [],
         spendingByCategory: const {'missing-id': 9999, 'g': 1000},
         categoryLookup: {'g': cat('g', 'Groceries')},
@@ -262,7 +262,7 @@ void main() {
       final today = DateTime.now();
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(
             amount: -1000,
             date: DateTime(today.year, today.month, today.day),
@@ -290,7 +290,7 @@ void main() {
       final today = DateTime.now();
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(
             amount: 50000,
             date: DateTime(today.year, today.month, today.day),
@@ -306,7 +306,7 @@ void main() {
       final today = DateTime.now();
       final data = DashboardData(
         accounts: const [],
-        recentTransactions30d: [
+        recentTransactions90d: [
           _tx(
             amount: -1000,
             date: DateTime(

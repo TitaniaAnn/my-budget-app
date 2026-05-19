@@ -38,14 +38,27 @@ Account _account({
   );
 }
 
-Transaction _tx({required int amountCents, required DateTime date}) {
+int _txCounter = 0;
+
+Transaction _tx({
+  required int amountCents,
+  required DateTime date,
+  String? merchant,
+  String description = 'TEST',
+}) {
+  // Monotonic counter so multiple test rows sharing a date still get
+  // unique ids — the rule under test groups by merchant + month, but
+  // having duplicate ids in a List<Transaction> is a footgun the
+  // dashboard's downstream getters could hit.
+  _txCounter += 1;
   return Transaction(
-    id: 'tx-$amountCents-${date.microsecondsSinceEpoch}',
+    id: 'tx-$_txCounter',
     householdId: 'h',
     accountId: 'a',
     amount: amountCents,
     currency: 'USD',
-    description: 'TEST',
+    description: description,
+    merchant: merchant,
     transactionDate: date,
     pending: false,
     source: 'manual',
@@ -67,10 +80,29 @@ DashboardData _data({
       : <Transaction>[];
   return DashboardData(
     accounts: accounts,
-    recentTransactions30d: txs,
+    recentTransactions90d: txs,
     recentTransactions: txs,
     ytdRothContributionsCents: ytdRothContributionsCents,
   );
+}
+
+/// Builds DashboardData with an arbitrary [recent90d] list — for
+/// rules that read the transaction history rather than the derived
+/// monthly-spend number.
+DashboardData _dataWithTxs(List<Transaction> recent90d) {
+  return DashboardData(
+    accounts: const [],
+    recentTransactions90d: recent90d,
+    recentTransactions: const [],
+  );
+}
+
+/// Date inside calendar month [m] months ago (0 = current). Mid-
+/// month so the test doesn't accidentally straddle the month
+/// boundary when run on the 1st or last day.
+DateTime _monthsAgo(int m) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month - m, 15);
 }
 
 void main() {
@@ -323,6 +355,106 @@ void main() {
         ytdRothContributionsCents: 0,
       );
       expect(const RothIraUnderusedRule().evaluate(data), isNull);
+    });
+  });
+
+  group('SubscriptionDriftRule', () {
+    test('fires when current month recurring spend > 20% above prior avg', () {
+      // "Spotify" $15 last month and 2 months ago, $30 this month
+      // → 100% increase over a $15 prior-months average. Fires.
+      final data = _dataWithTxs([
+        _tx(amountCents: -1500, date: _monthsAgo(2), merchant: 'Spotify'),
+        _tx(amountCents: -1500, date: _monthsAgo(1), merchant: 'Spotify'),
+        _tx(amountCents: -3000, date: _monthsAgo(0), merchant: 'Spotify'),
+      ]);
+      final s = const SubscriptionDriftRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.severity, SuggestionSeverity.info);
+      expect(s.id, 'subscription_drift');
+      // Detail surfaces both numbers so the user doesn't have to do
+      // mental math to know the magnitude.
+      expect(s.detail, contains(r'$30'));
+      expect(s.detail, contains(r'$15'));
+      expect(s.detail, contains('100%'));
+    });
+
+    test('stays silent when growth is below the 20% threshold', () {
+      // Steady $20 a month with a tiny $22 bump this month → 10%
+      // increase. The rule should accept normal-noise variance and
+      // not nag.
+      final data = _dataWithTxs([
+        _tx(amountCents: -2000, date: _monthsAgo(2), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(1), merchant: 'Spotify'),
+        _tx(amountCents: -2200, date: _monthsAgo(0), merchant: 'Spotify'),
+      ]);
+      expect(const SubscriptionDriftRule().evaluate(data), isNull);
+    });
+
+    test('ignores one-off merchants (not recurring)', () {
+      // A single $500 purchase in the current month from a merchant
+      // that never appeared before. Shouldn't trigger drift — it's
+      // not a subscription pattern.
+      final data = _dataWithTxs([
+        _tx(amountCents: -2000, date: _monthsAgo(2), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(1), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(0), merchant: 'Spotify'),
+        // One-off — flat $500 to a unique merchant.
+        _tx(
+          amountCents: -50000,
+          date: _monthsAgo(0),
+          merchant: 'BIG ONE-OFF PURCHASE',
+        ),
+      ]);
+      // Recurring spend is steady ($20/$20/$20), one-off doesn't
+      // count because it appears in only one month.
+      expect(const SubscriptionDriftRule().evaluate(data), isNull);
+    });
+
+    test('stays silent when no prior months have recurring spend', () {
+      // A merchant that just started appearing this month + last
+      // month — two months total. Recurring? Yes. But prior to the
+      // current month, only one month of history, which is the
+      // baseline. The rule still needs a comparison so it goes by
+      // that single prior month: $10 → $30 = 200% increase. Should
+      // fire here, actually. Use a different shape: brand-new
+      // recurring merchant that ONLY appears this month.
+      final data = _dataWithTxs([
+        _tx(amountCents: -1000, date: _monthsAgo(0), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(0), merchant: 'Spotify'),
+      ]);
+      // Spotify only in current month — not recurring (only one
+      // distinct month), no comparison possible. Silent.
+      expect(const SubscriptionDriftRule().evaluate(data), isNull);
+    });
+
+    test('ignores positive-amount transactions (income / refunds)', () {
+      // A refund credit shouldn't pull the "recurring spend"
+      // baseline down or fake-trigger growth. The rule must filter
+      // by sign.
+      final data = _dataWithTxs([
+        // Recurring expense baseline.
+        _tx(amountCents: -2000, date: _monthsAgo(2), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(1), merchant: 'Spotify'),
+        _tx(amountCents: -2000, date: _monthsAgo(0), merchant: 'Spotify'),
+        // Big positive transaction on a recurring merchant — must
+        // be ignored, otherwise the rule would emit confusing
+        // "spending crept up" suggestions on refund-heavy months.
+        _tx(amountCents: 99999, date: _monthsAgo(0), merchant: 'Spotify'),
+      ]);
+      expect(const SubscriptionDriftRule().evaluate(data), isNull);
+    });
+
+    test('groups merchants case-insensitively', () {
+      // "spotify" vs "Spotify" — same vendor as far as drift is
+      // concerned. Without case-folding the rule would treat them
+      // as separate merchants and miss the recurring signal.
+      final data = _dataWithTxs([
+        _tx(amountCents: -1500, date: _monthsAgo(2), merchant: 'spotify'),
+        _tx(amountCents: -1500, date: _monthsAgo(1), merchant: 'SPOTIFY'),
+        _tx(amountCents: -3000, date: _monthsAgo(0), merchant: 'Spotify'),
+      ]);
+      final s = const SubscriptionDriftRule().evaluate(data);
+      expect(s, isNotNull);
     });
   });
 

@@ -20,8 +20,11 @@ class DashboardData {
   /// All active household accounts.
   final List<Account> accounts;
 
-  /// Transactions from the last 30 days (used for sparkline + monthly summary).
-  final List<Transaction> recentTransactions30d;
+  /// Transactions from the last 90 days. The window is wide enough to
+  /// support the [SubscriptionDriftRule] (which needs 3+ months of
+  /// merchant history) while the per-getter date filters below still
+  /// narrow to current-month / 30-day views for the existing widgets.
+  final List<Transaction> recentTransactions90d;
 
   /// The 5 most recent transactions across all accounts.
   final List<Transaction> recentTransactions;
@@ -49,7 +52,7 @@ class DashboardData {
 
   const DashboardData({
     required this.accounts,
-    required this.recentTransactions30d,
+    required this.recentTransactions90d,
     required this.recentTransactions,
     this.spendingByCategory = const {},
     this.categoryLookup = const {},
@@ -63,7 +66,7 @@ class DashboardData {
     return DateTime(now.year, now.month, 1);
   }
 
-  List<Transaction> get _monthTransactions => recentTransactions30d
+  List<Transaction> get _monthTransactions => recentTransactions90d
       .where((t) => !t.transactionDate.isBefore(_monthStart))
       .toList();
 
@@ -135,7 +138,7 @@ class DashboardData {
   List<int> get spendingByDay {
     final today = DateTime.now();
     final result = List<int>.filled(30, 0);
-    for (final tx in recentTransactions30d.where((t) => t.amount < 0)) {
+    for (final tx in recentTransactions90d.where((t) => t.amount < 0)) {
       final daysAgo = today
           .difference(
             DateTime(
@@ -161,7 +164,7 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   if (householdId == null) {
     return const DashboardData(
       accounts: [],
-      recentTransactions30d: [],
+      recentTransactions90d: [],
       recentTransactions: [],
     );
   }
@@ -171,11 +174,16 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final budgetRepo = ref.read(budgetRepositoryProvider);
 
   final now = DateTime.now();
-  final thirtyDaysAgo = DateTime(
+  // 90-day window covers both the 30-day sparkline/monthly summary
+  // (filtered in Dart) and the SubscriptionDriftRule which needs 3+
+  // months of merchant history to establish a baseline. Wire payload
+  // grows roughly 3x vs the prior 30-day fetch — still small for a
+  // typical household.
+  final ninetyDaysAgo = DateTime(
     now.year,
     now.month,
     now.day,
-  ).subtract(const Duration(days: 29));
+  ).subtract(const Duration(days: 89));
   final today = DateTime(now.year, now.month, now.day);
   // The Suggestions / Top Categories rollup operates on calendar-month
   // boundaries (matches monthlySpending/monthlyIncome), so the RPC
@@ -183,11 +191,11 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // would let mid-late-month spend leak from the previous month.
   final monthStart = DateTime(now.year, now.month, 1);
 
-  final (accounts, recent30d, recent5, spendByCat, categories) = await (
+  final (accounts, recent90d, recent5, spendByCat, categories) = await (
     accountsRepo.fetchAccounts(householdId),
     txRepo.fetchTransactionsForDashboard(
       householdId: householdId,
-      from: thirtyDaysAgo,
+      from: ninetyDaysAgo,
       to: today,
     ),
     txRepo.fetchTransactions(householdId: householdId, limit: 5),
@@ -217,7 +225,7 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
 
   return DashboardData(
     accounts: accounts,
-    recentTransactions30d: recent30d,
+    recentTransactions90d: recent90d,
     recentTransactions: recent5,
     spendingByCategory: spendByCat,
     categoryLookup: {for (final c in categories) c.id: c},

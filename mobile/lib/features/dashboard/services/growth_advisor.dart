@@ -10,12 +10,13 @@
 // rather than free-form ML output: every rule can be unit-tested in
 // isolation, and removing a noisy rule is a one-line change.
 //
-// Scope of v1: three rules that need nothing beyond accounts +
-// last-30-day transactions. Rules that need YTD totals (Roth
-// underused), 6-month history (subscription drift), or net-worth
-// time series are deliberately deferred — each would either bloat
-// the dashboard data fetch or require a new RPC, and the engine's
-// value is mostly in the first few good rules.
+// Rules read from [DashboardData], which currently carries 90 days
+// of transactions plus a YTD Roth-contribution rollup. Adding a new
+// rule that needs other data should expand DashboardData and the
+// dashboard provider together — the rule itself stays a pure
+// function. Net-worth trajectory is the remaining audit item not
+// yet covered; it needs a time-series of balances that nothing
+// else reads, so it'll get its own data path when added.
 
 import '../../accounts/models/account.dart';
 import '../providers/dashboard_provider.dart';
@@ -78,6 +79,7 @@ class GrowthAdvisor {
     EmergencyFundRule(),
     CreditCardCarryRule(),
     RothIraUnderusedRule(),
+    SubscriptionDriftRule(),
     IdleCashRule(),
   ];
 
@@ -190,12 +192,11 @@ class CreditCardCarryRule implements GrowthRule {
 
 /// Cash so far above the emergency-fund target that the excess is
 /// almost certainly idle. The audit pairs this with a
-/// "no-investment-contributions in 90 days" qualifier, but the
-/// dashboard only loads 30 days of transactions in v1 — so this
-/// rule's v1 version skips the qualifier and just flags the cash
-/// level. Worst-case false positive is suggesting a move the user
-/// has already made, which is fine for an observation framed as a
-/// question.
+/// "no-investment-contributions in 90 days" qualifier; v1 skipped
+/// that qualifier and just flagged the cash level. The dashboard's
+/// transaction window is now 90 days (extended for the subscription
+/// drift rule) so the qualifier is implementable as a follow-up —
+/// today's behaviour is still threshold-only.
 ///
 /// Threshold: cash > 12 × monthly spending. A year of expenses in
 /// checking is the cutoff between "comfortable cushion" and "this is
@@ -281,6 +282,110 @@ class RothIraUnderusedRule implements GrowthRule {
       detail:
           '$contributedStr of the $limitStr Roth IRA limit used this '
           'year — $gapStr left before the deadline.',
+    );
+  }
+}
+
+/// Drift in recurring spend across the last few calendar months.
+///
+/// A merchant counts as "recurring" if the household paid them in two
+/// or more distinct calendar months out of the trailing 3-month
+/// window. That's a deliberately loose definition — a quarterly bill
+/// or a paused-then-resumed subscription still trips it. Tightening
+/// the definition (e.g. "appears every month") would silence the
+/// drift on the merchants users most need to notice.
+///
+/// Once the recurring set is established, sum its spend per calendar
+/// month. The rule fires INFO when the current month's recurring
+/// total exceeds the prior months' average by [_flagPctIncrease].
+/// Information-only severity, not warning: a one-month bump can be a
+/// renewal or a tier change — the brand voice observes, not nags.
+///
+/// Reads `DashboardData.recentTransactions90d`. Requires the prior 2
+/// months to have at least one recurring tx between them, otherwise
+/// there's no baseline to compare against and the rule stays silent.
+class SubscriptionDriftRule implements GrowthRule {
+  const SubscriptionDriftRule();
+
+  /// How much higher the current month must be vs the prior-months
+  /// average to fire. 0.20 == 20% per the audit's wording.
+  static const double _flagPctIncrease = 0.20;
+
+  @override
+  String get id => 'subscription_drift';
+
+  /// Year-month bucket key in `YYYY-MM` form. Sortable as a string.
+  static String _ym(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}';
+
+  @override
+  GrowthSuggestion? evaluate(DashboardData data) {
+    if (data.recentTransactions90d.isEmpty) return null;
+
+    // Group expense transactions by (merchant, year-month). Use the
+    // merchant column when present, falling back to description so a
+    // hand-entered "Spotify" without a cleaned merchant still groups
+    // with its peers.
+    final spendByMerchantByMonth = <String, Map<String, int>>{};
+    for (final t in data.recentTransactions90d) {
+      if (t.amount >= 0) continue;
+      final raw = (t.merchant ?? t.description).trim();
+      if (raw.isEmpty) continue;
+      final key = raw.toLowerCase();
+      final ym = _ym(t.transactionDate);
+      final months = spendByMerchantByMonth.putIfAbsent(key, () => {});
+      months.update(
+        ym,
+        (v) => v + t.amount.abs(),
+        ifAbsent: () => t.amount.abs(),
+      );
+    }
+
+    // Recurring: appears in ≥ 2 distinct months in the window.
+    final recurringMerchants = spendByMerchantByMonth.entries
+        .where((e) => e.value.length >= 2)
+        .map((e) => e.key)
+        .toSet();
+    if (recurringMerchants.isEmpty) return null;
+
+    // Sum recurring spend per calendar month.
+    final monthlyTotals = <String, int>{};
+    for (final m in recurringMerchants) {
+      spendByMerchantByMonth[m]!.forEach((ym, cents) {
+        monthlyTotals.update(ym, (v) => v + cents, ifAbsent: () => cents);
+      });
+    }
+
+    // Current month vs the average of any other month in the window.
+    // Need at least one prior month with non-zero recurring spend to
+    // have a baseline.
+    final now = DateTime.now();
+    final currentYm = _ym(now);
+    final currentSpend = monthlyTotals[currentYm];
+    if (currentSpend == null || currentSpend <= 0) return null;
+
+    final priorTotals = monthlyTotals.entries
+        .where((e) => e.key != currentYm)
+        .map((e) => e.value)
+        .toList();
+    if (priorTotals.isEmpty) return null;
+
+    final priorAvg = priorTotals.reduce((a, b) => a + b) ~/ priorTotals.length;
+    if (priorAvg <= 0) return null;
+
+    final growth = (currentSpend - priorAvg) / priorAvg;
+    if (growth < _flagPctIncrease) return null;
+
+    final pctStr = (growth * 100).toStringAsFixed(0);
+    final currentStr = _formatDollars(currentSpend);
+    final priorStr = _formatDollars(priorAvg);
+    return GrowthSuggestion(
+      id: id,
+      severity: SuggestionSeverity.info,
+      title: 'Recurring spend ticked up',
+      detail:
+          'Recurring merchants cost $currentStr this month — up '
+          '$pctStr% from a prior-months average of $priorStr.',
     );
   }
 }
