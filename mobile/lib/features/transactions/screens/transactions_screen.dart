@@ -79,10 +79,18 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   /// a running balance is shown on each day header.
   final int? startingBalance;
 
+  /// When set, the category filter starts pre-selected to this id.
+  /// Used by the dashboard's Top Categories drill-down so tapping
+  /// "Groceries" lands on the transactions screen already filtered.
+  /// Unlike [lockedAccountId] this is just an initial value — the
+  /// user can clear or change the filter once on the screen.
+  final String? preselectedCategoryId;
+
   const TransactionsScreen({
     super.key,
     this.lockedAccountId,
     this.startingBalance,
+    this.preselectedCategoryId,
   });
 
   @override
@@ -104,6 +112,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void initState() {
     super.initState();
     _selectedAccountId = widget.lockedAccountId;
+    _selectedCategoryId = widget.preselectedCategoryId;
     _searchCtrl = TextEditingController();
   }
 

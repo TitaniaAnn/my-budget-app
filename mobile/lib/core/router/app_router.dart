@@ -74,7 +74,12 @@ GoRouter appRouter(AppRouterRef ref) {
           ),
           GoRoute(
             path: '/transactions',
-            builder: (_, _) => const TransactionsScreen(),
+            // `categoryId` query param: pre-selects the category
+            // filter. Used by the dashboard's Top Categories drill-
+            // down — e.g. `/transactions?categoryId=<groceries-uuid>`.
+            builder: (_, state) => TransactionsScreen(
+              preselectedCategoryId: state.uri.queryParameters['categoryId'],
+            ),
           ),
           GoRoute(
             path: '/receipts',

@@ -117,8 +117,14 @@ class DashboardData {
   /// under Option B their spending is line-item-shaped, not
   /// transaction-shaped, so attributing them to "Uncategorized" would
   /// double-count once line item categories are filled in.
-  List<({String name, String? color, int totalCents})> get topCategories {
-    final entries = <({String name, String? color, int totalCents})>[];
+  /// Rows surfaced in the dashboard's Top Categories card. [id] is
+  /// null for the synthesised "Uncategorized" bucket and present for
+  /// real categories — the dashboard tile uses [id] to deep-link into
+  /// the transactions screen with the category filter pre-applied.
+  List<({String? id, String name, String? color, int totalCents})>
+  get topCategories {
+    final entries =
+        <({String? id, String name, String? color, int totalCents})>[];
     for (final entry in spendingByCategory.entries) {
       // The RPC reports refund-exceeds-spend categories as negative
       // net_cents; the budget UI clamps those to 0 spent, and the
@@ -126,7 +132,12 @@ class DashboardData {
       if (entry.value <= 0) continue;
       final cat = categoryLookup[entry.key];
       if (cat == null) continue;
-      entries.add((name: cat.name, color: cat.color, totalCents: entry.value));
+      entries.add((
+        id: entry.key,
+        name: cat.name,
+        color: cat.color,
+        totalCents: entry.value,
+      ));
     }
 
     final uncategorizedCents = _monthTransactions
@@ -136,6 +147,9 @@ class DashboardData {
         .fold<int>(0, (sum, t) => sum + t.amount.abs());
     if (uncategorizedCents > 0) {
       entries.add((
+        // null id — no single category to drill into; the dashboard
+        // tile renders this row non-tappable.
+        id: null,
         name: 'Uncategorized',
         color: null,
         totalCents: uncategorizedCents,

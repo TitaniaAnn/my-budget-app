@@ -290,6 +290,38 @@ void main() {
       expect(data.topCategories, hasLength(1));
       expect(data.topCategories.single.name, 'Groceries');
     });
+
+    test(
+      'rows carry the category id for drill-down; Uncategorized carries '
+      'null',
+      () {
+        // The dashboard tile uses `id` to deep-link into the
+        // transactions screen with the category filter pre-applied.
+        // Real categories must surface their id; the synthesised
+        // Uncategorized bucket must report null so the tile can
+        // render it inert (there's no single category to filter by).
+        final monthStart = DateTime(
+          DateTime.now().year,
+          DateTime.now().month,
+          1,
+        );
+        final data = DashboardData(
+          accounts: const [],
+          recentTransactions90d: [_tx(amount: -1000, date: monthStart, id: 'u')],
+          recentTransactions: const [],
+          spendingByCategory: const {'g': 5000},
+          categoryLookup: {'g': cat('g', 'Groceries')},
+        );
+        final rowsById = {for (final r in data.topCategories) r.name: r.id};
+        expect(rowsById['Groceries'], 'g');
+        expect(
+          rowsById['Uncategorized'],
+          isNull,
+          reason: 'Uncategorized has no category id — the tile renders it '
+              'as a non-tappable row.',
+        );
+      },
+    );
   });
 
   group('spendingByDay', () {

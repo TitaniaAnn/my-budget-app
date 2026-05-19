@@ -595,7 +595,8 @@ class _BudgetAlertTile extends StatelessWidget {
 
 /// Horizontal bar chart of top spending categories for the month.
 class _TopCategoriesCard extends StatelessWidget {
-  final List<({String name, String? color, int totalCents})> categories;
+  final List<({String? id, String name, String? color, int totalCents})>
+  categories;
   final int totalSpending;
 
   const _TopCategoriesCard({
@@ -621,7 +622,12 @@ class _TopCategoriesCard extends StatelessWidget {
             cat.color,
             fallback: context.cs.primary,
           );
-          return Padding(
+          // Categories with an id deep-link into the transactions
+          // screen with the filter pre-applied; the synthesised
+          // "Uncategorized" bucket (id == null) stays inert because
+          // there's no single category to filter by.
+          final catId = cat.id;
+          final row = Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
               children: [
@@ -665,6 +671,12 @@ class _TopCategoriesCard extends StatelessWidget {
                 ),
               ],
             ),
+          );
+          if (catId == null) return row;
+          return InkWell(
+            onTap: () => context.go('/transactions?categoryId=$catId'),
+            borderRadius: BorderRadius.circular(6),
+            child: row,
           );
         }).toList(),
       ),
