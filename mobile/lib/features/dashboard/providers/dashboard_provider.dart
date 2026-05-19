@@ -9,9 +9,11 @@ import '../../../core/providers/household_provider.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
+import '../../scenarios/repositories/scenarios_repository.dart';
 import '../../transactions/models/category.dart';
 import '../../transactions/models/transaction.dart';
 import '../../transactions/repositories/transactions_repository.dart';
+import '../services/month_end_aggregator.dart';
 
 part 'dashboard_provider.g.dart';
 
@@ -50,6 +52,12 @@ class DashboardData {
   /// account (and so existing tests don't have to set it).
   final int ytdRothContributionsCents;
 
+  /// One end-of-month net-worth point per calendar month over the
+  /// trajectory lookback (180 days). Oldest first. Used by
+  /// [NetWorthTrajectoryRule]; defaults to const [] so existing
+  /// tests don't have to populate it.
+  final List<({DateTime monthEnd, int balanceCents})> monthlyNetWorth;
+
   const DashboardData({
     required this.accounts,
     required this.recentTransactions90d,
@@ -57,6 +65,7 @@ class DashboardData {
     this.spendingByCategory = const {},
     this.categoryLookup = const {},
     this.ytdRothContributionsCents = 0,
+    this.monthlyNetWorth = const [],
   });
 
   // ── Monthly summary (current calendar month) ──────────────────────────────
@@ -223,6 +232,28 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     from: yearStart,
   );
 
+  // Net-worth trajectory series. fetchHistoricalNetWorth walks
+  // backward from today using transaction deltas, so it has to run
+  // after accounts (currentNetWorth = SUM(currentBalance)). 180-day
+  // lookback covers the rule's 6-month rolling window; widening to
+  // a year would let the rule see slower trends but adds another
+  // fetch on every dashboard load.
+  final currentNetWorth = accounts.fold<int>(
+    0,
+    (sum, a) => sum + a.currentBalance,
+  );
+  final scenariosRepo = ref.read(scenariosRepositoryProvider);
+  final dailyPoints = await scenariosRepo.fetchHistoricalNetWorth(
+    householdId: householdId,
+    currentNetWorth: currentNetWorth,
+    lookbackDays: 180,
+  );
+  final monthlyNetWorth = aggregateMonthEndNetWorth(
+    dailyPoints,
+    now: now,
+    currentBalanceCents: currentNetWorth,
+  );
+
   return DashboardData(
     accounts: accounts,
     recentTransactions90d: recent90d,
@@ -230,5 +261,6 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     spendingByCategory: spendByCat,
     categoryLookup: {for (final c in categories) c.id: c},
     ytdRothContributionsCents: ytdRothContributions,
+    monthlyNetWorth: monthlyNetWorth,
   );
 }

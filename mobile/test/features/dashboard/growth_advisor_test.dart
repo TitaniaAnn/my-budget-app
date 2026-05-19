@@ -105,6 +105,28 @@ DateTime _monthsAgo(int m) {
   return DateTime(now.year, now.month - m, 15);
 }
 
+/// Builds DashboardData with an arbitrary monthly net-worth series.
+/// The list is interpreted oldest-first per [DashboardData.monthlyNetWorth].
+DashboardData _dataWithNetWorth(List<int> balancesByMonth) {
+  final now = DateTime.now();
+  final series = <({DateTime monthEnd, int balanceCents})>[];
+  // balancesByMonth.first is the oldest month; .last is current.
+  for (var i = 0; i < balancesByMonth.length; i++) {
+    final monthsBack = balancesByMonth.length - 1 - i;
+    final monthEnd = monthsBack == 0
+        ? now
+        // Last day of the target month.
+        : DateTime(now.year, now.month - monthsBack + 1, 0);
+    series.add((monthEnd: monthEnd, balanceCents: balancesByMonth[i]));
+  }
+  return DashboardData(
+    accounts: const [],
+    recentTransactions90d: const [],
+    recentTransactions: const [],
+    monthlyNetWorth: series,
+  );
+}
+
 void main() {
   group('EmergencyFundRule', () {
     test('fires a warning when liquid covers fewer than 3 months', () {
@@ -455,6 +477,75 @@ void main() {
       ]);
       final s = const SubscriptionDriftRule().evaluate(data);
       expect(s, isNotNull);
+    });
+  });
+
+  group('NetWorthTrajectoryRule', () {
+    test('fires INFO when the last 3 months sit below the rolling avg', () {
+      // 8 months total — first 5 ramping up, last 3 dropping below
+      // the 6-month rolling average. Numbers chosen so each of the
+      // last 3 months is strictly less than the mean of its 6-
+      // month window.
+      final data = _dataWithNetWorth([
+        100000, 105000, 110000, 115000, 120000, // ramp up
+        105000, 100000, 95000, // 3-month decline
+      ]);
+      final s = const NetWorthTrajectoryRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.severity, SuggestionSeverity.info);
+      expect(s.id, 'net_worth_trajectory');
+      // Detail surfaces a dollar-amount gap so the user knows the
+      // size of the drift, not just "trending down".
+      expect(s.detail, contains(r'$'));
+      expect(s.detail.toLowerCase(), contains('below'));
+    });
+
+    test('stays silent when only the most recent month is below avg', () {
+      // 5 stable months, then a single dip. A one-month dip isn't
+      // a trend — could be a renewal or a market wobble.
+      final data = _dataWithNetWorth([
+        100000,
+        100000,
+        100000,
+        100000,
+        100000,
+        90000,
+      ]);
+      expect(const NetWorthTrajectoryRule().evaluate(data), isNull);
+    });
+
+    test('stays silent when net worth is rising', () {
+      // Steady upward trend — the most-recent month is above its
+      // rolling average. Rule must not fire on the way up.
+      final data = _dataWithNetWorth([
+        100000,
+        105000,
+        110000,
+        115000,
+        120000,
+        125000,
+        130000,
+      ]);
+      expect(const NetWorthTrajectoryRule().evaluate(data), isNull);
+    });
+
+    test('stays silent for short histories (fewer than 4 months)', () {
+      // Below the baseline floor — even a clearly-falling 3-month
+      // series doesn't qualify because the rolling average for the
+      // earliest month would compare it to itself.
+      final data = _dataWithNetWorth([100000, 90000, 80000]);
+      expect(const NetWorthTrajectoryRule().evaluate(data), isNull);
+    });
+
+    test('stays silent when only 2 of the last 3 are below avg', () {
+      // Drop, recover slightly, drop again. The middle of the
+      // last three months sits above the rolling avg — not a
+      // sustained trend.
+      final data = _dataWithNetWorth([
+        100000, 110000, 120000, 130000, 140000, // strong rising baseline
+        100000, 200000, 100000, // dip-recover-dip
+      ]);
+      expect(const NetWorthTrajectoryRule().evaluate(data), isNull);
     });
   });
 

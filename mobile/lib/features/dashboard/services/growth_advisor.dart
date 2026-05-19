@@ -80,6 +80,7 @@ class GrowthAdvisor {
     CreditCardCarryRule(),
     RothIraUnderusedRule(),
     SubscriptionDriftRule(),
+    NetWorthTrajectoryRule(),
     IdleCashRule(),
   ];
 
@@ -386,6 +387,98 @@ class SubscriptionDriftRule implements GrowthRule {
       detail:
           'Recurring merchants cost $currentStr this month — up '
           '$pctStr% from a prior-months average of $priorStr.',
+    );
+  }
+}
+
+/// Net worth has been below its trailing 6-month rolling average
+/// for the past 3+ consecutive months.
+///
+/// The signal is "trend over the last quarter, judged against the
+/// half-year baseline" — a recent dip below the half-year average
+/// becomes a finding when it persists. Single-month dips don't
+/// fire (could be a one-off bill or a market wobble); a sustained
+/// drop is what gets surfaced. The audit calls for INFO severity
+/// here, not warning — the brand voice is observation.
+///
+/// Rolling average uses up to 6 prior months PLUS the month in
+/// question. Earlier months in a fresh household see a shorter
+/// window naturally; the rule needs at least 4 months of history
+/// to have anything meaningful to compare against, and stays
+/// silent below that threshold.
+///
+/// Reads `DashboardData.monthlyNetWorth` (oldest first). Empty or
+/// short series → silent.
+class NetWorthTrajectoryRule implements GrowthRule {
+  const NetWorthTrajectoryRule();
+
+  /// Minimum data points (including the current month) before the
+  /// rule will even attempt to evaluate. Below this the rolling
+  /// average for the current month would essentially compare the
+  /// value to itself.
+  static const int _minMonthsForBaseline = 4;
+
+  /// How many consecutive months at the end of the series must each
+  /// sit below their own rolling average for the rule to fire. Per
+  /// the audit: "3+ months". Three months of decline is the
+  /// shortest run that distinguishes a trend from noise.
+  static const int _consecutiveBelow = 3;
+
+  /// Window for the rolling average, in months (inclusive of the
+  /// point being evaluated).
+  static const int _rollingWindowMonths = 6;
+
+  @override
+  String get id => 'net_worth_trajectory';
+
+  @override
+  GrowthSuggestion? evaluate(DashboardData data) {
+    final series = data.monthlyNetWorth;
+    if (series.length < _minMonthsForBaseline) return null;
+    if (series.length < _consecutiveBelow) return null;
+
+    // For each of the last [_consecutiveBelow] months, compute
+    // the trailing rolling average (using up to
+    // [_rollingWindowMonths] prior points inclusive of the current
+    // one). Fire only when every one of them sits below its own
+    // window average.
+    for (var offset = 0; offset < _consecutiveBelow; offset++) {
+      final i = series.length - 1 - offset;
+      final windowStart = (i + 1 - _rollingWindowMonths).clamp(0, i);
+      // Need at least 2 points in the window to have a non-trivial
+      // comparison (the average of one point IS that point).
+      if (i - windowStart < 1) return null;
+      var sum = 0;
+      for (var j = windowStart; j <= i; j++) {
+        sum += series[j].balanceCents;
+      }
+      final avg = sum ~/ (i - windowStart + 1);
+      if (series[i].balanceCents >= avg) return null;
+    }
+
+    // All three checks passed — surface the headline numbers.
+    final current = series.last.balanceCents;
+    // 6-month average across the full available window (up to 6
+    // points ending at the current month), used as the headline
+    // baseline for the suggestion text.
+    final baselineStart = (series.length - _rollingWindowMonths).clamp(
+      0,
+      series.length - 1,
+    );
+    var baselineSum = 0;
+    for (var j = baselineStart; j < series.length; j++) {
+      baselineSum += series[j].balanceCents;
+    }
+    final baselineAvg = baselineSum ~/ (series.length - baselineStart);
+    final gap = baselineAvg - current;
+    final gapStr = _formatDollars(gap);
+    return GrowthSuggestion(
+      id: id,
+      severity: SuggestionSeverity.info,
+      title: 'Net worth has been drifting down',
+      detail:
+          'Past 3 months sat below the rolling 6-month average — '
+          'currently $gapStr below.',
     );
   }
 }
