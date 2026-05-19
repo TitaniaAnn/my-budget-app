@@ -330,6 +330,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     showAppSheet<void>(context, child: const ImportStatementSheet());
   }
 
+  /// Lowercases [name] and collapses runs of non-alphanumeric
+  /// characters to single dashes, with no leading/trailing dashes.
+  /// Used by the CSV-export filename so a tag like "@home" yields
+  /// "home" (not "-home") and "Tax Deductible" yields
+  /// "tax-deductible".
+  static String _slugify(String name) {
+    final lower = name.toLowerCase();
+    final dashed = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    return dashed.replaceAll(RegExp(r'^-+|-+$'), '');
+  }
+
   /// Exports the currently-filtered transactions as CSV. Reads from
   /// the same providers the list view does, so the export honors
   /// every active filter (account / category / tag / search / date).
@@ -380,12 +391,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
       // Filename includes the tag name when filtering by tag so the
       // exported file is self-identifying after the user shares it
-      // out of the app.
+      // out of the app. The slug:
+      //   * resolves the tag id against the loaded dictionary; if
+      //     the tag was deleted concurrently (another member of the
+      //     household, mid-export) we drop the slug entirely
+      //     rather than pick a wrong one
+      //   * lowercases, collapses non-alphanumeric runs to single
+      //     dashes, then strips leading/trailing dashes so a tag
+      //     named "@home" doesn't become "transactions--home-…"
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final tagSlug = _selectedTagId == null
-          ? ''
-          : '-${tags.firstWhere((t) => t.id == _selectedTagId, orElse: () => tags.first).name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
-      final suggestedName = 'transactions$tagSlug-$today.csv';
+      final selectedTag = _selectedTagId == null
+          ? null
+          : tags.where((t) => t.id == _selectedTagId).firstOrNull;
+      final tagSlug = selectedTag == null ? '' : _slugify(selectedTag.name);
+      final suggestedName =
+          'transactions${tagSlug.isEmpty ? '' : '-$tagSlug'}-$today.csv';
 
       final saved = await FilePicker.platform.saveFile(
         dialogTitle: 'Save transactions CSV',

@@ -235,16 +235,28 @@ class IdleCashRule implements GrowthRule {
 /// Roth IRA contribution headroom for the current calendar year.
 ///
 /// Fires an OPPORTUNITY when the household has at least one active
-/// Roth IRA account AND year-to-date contributions are below the IRS
-/// annual limit. The detail names the dollar gap so the user can
-/// decide whether topping up is feasible without doing the math.
+/// Roth IRA account AND year-to-date "contributions" are below the
+/// IRS annual limit. The detail names the dollar gap so the user
+/// can decide whether topping up is feasible without doing the math.
 ///
-/// IRS contribution limit for tax year 2026 is $7,000 (under age 50);
-/// the over-50 catch-up of $1,000 isn't applied because the schema
-/// doesn't carry the account holder's age. A 50+ user will see this
-/// rule fire when they're between $7k and $8k contributed; the
-/// suggestion is observational ("look low") rather than prescriptive,
-/// so that's an acceptable over-fire.
+/// IRS contribution limit for tax year 2026 is $7,000 (under age
+/// 50); the over-50 catch-up of $1,000 isn't applied because the
+/// schema doesn't carry the account holder's age.
+///
+/// Caveat — "contributions" is over-counted. The dashboard provider
+/// computes it as SUM(positive amounts on Roth IRA accounts since
+/// Jan 1). That includes dividend reinvestments, capital gains
+/// distributions, and any other internal inflow — not just external
+/// contributions the way the IRS defines them. We don't have a
+/// schema-level "transfer source" to tell external dollars apart.
+///
+/// To avoid silencing the rule for a user with heavy dividends, the
+/// silence threshold is [_silenceFactor] × the annual limit (i.e.
+/// 1.5× = $10,500 on the $7,000 limit). Below that the rule still
+/// fires — and the suggestion text flags the approximation so the
+/// user isn't misled. Above that we silence: we can't tell whether
+/// the user is maxed-and-also-dividend-rich, or under-contributing
+/// at a heavily-reinvested account.
 ///
 /// Verify the limit annually against IRS guidance. The constant is a
 /// deliberate hardcoded number (not pulled from a config service)
@@ -257,6 +269,12 @@ class RothIraUnderusedRule implements GrowthRule {
   /// Update annually.
   static const int annualLimitCents = 700000;
 
+  /// How much over the annual limit the "contributions" tally has
+  /// to be before we silence the rule. >1 because the dashboard
+  /// over-counts dividend reinvestments as contributions; we'd
+  /// rather over-fire than silence a user who's actually under.
+  static const double _silenceFactor = 1.5;
+
   @override
   String get id => 'roth_ira_underused';
 
@@ -268,21 +286,31 @@ class RothIraUnderusedRule implements GrowthRule {
     if (!hasRoth) return null;
 
     final contributed = data.ytdRothContributionsCents;
-    // Already maxed (or over — generous, but stay silent rather than
-    // emit a "you contributed too much" warning we can't act on).
-    if (contributed >= annualLimitCents) return null;
+    // Silence only when we're confident the user has truly maxed —
+    // i.e. even after the over-count from dividends, they're 50%
+    // past the limit. Inside that band, we still fire so a heavy-
+    // dividend account doesn't mute the suggestion.
+    if (contributed >= annualLimitCents * _silenceFactor) return null;
 
     final gap = annualLimitCents - contributed;
+    // Don't render a negative gap when contributed is between the
+    // hard limit and the silence threshold — read as "you've used
+    // ~the full limit" instead.
+    final gapStr = gap > 0
+        ? '${_formatDollars(gap)} left before the deadline'
+        : 'roughly at the limit';
     final contributedStr = _formatDollars(contributed);
     final limitStr = _formatDollars(annualLimitCents);
-    final gapStr = _formatDollars(gap);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.opportunity,
       title: 'Roth IRA contributions look low',
+      // "Approximate" flag in the body: the user sees the limitation
+      // up front rather than puzzling over why the number looks
+      // higher than what they think they contributed.
       detail:
-          '$contributedStr of the $limitStr Roth IRA limit used this '
-          'year — $gapStr left before the deadline.',
+          '~$contributedStr of the $limitStr Roth IRA limit used '
+          'this year (includes dividends) — $gapStr.',
     );
   }
 }

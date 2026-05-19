@@ -322,6 +322,10 @@ void main() {
       expect(s.detail, contains(r'$3,000'));
       expect(s.detail, contains(r'$7,000'));
       expect(s.detail, contains(r'$4,000'));
+      // Approximation flag: the user should know the number is
+      // inclusive of dividend reinvestments, not strict IRS
+      // contributions.
+      expect(s.detail.toLowerCase(), contains('includes dividends'));
     });
 
     test('stays silent when the household has no Roth IRA account', () {
@@ -339,26 +343,63 @@ void main() {
       expect(const RothIraUnderusedRule().evaluate(data), isNull);
     });
 
-    test('stays silent when contributions are at or above the limit', () {
-      // Already maxed — silent. Even slightly over (50+ catch-up
-      // territory) shouldn't emit a warning we can't act on.
-      for (final ytd in [
-        RothIraUnderusedRule.annualLimitCents,
-        RothIraUnderusedRule.annualLimitCents + 100000,
-      ]) {
-        final data = _data(
-          accounts: [
-            _account(type: AccountType.iraRoth, currentBalance: 1500000),
-          ],
-          spendCents: 100000,
-          ytdRothContributionsCents: ytd,
-        );
-        expect(
-          const RothIraUnderusedRule().evaluate(data),
-          isNull,
-          reason: 'YTD=$ytd cents should be considered maxed.',
-        );
-      }
+    test('still fires inside the dividend tolerance band', () {
+      // The dashboard provider over-counts "contributions" because
+      // dividend reinvestments look like positive transactions.
+      // The rule's silence threshold is 1.5x the IRS limit so a
+      // user with heavy dividends doesn't lose the nudge when they
+      // haven't actually maxed out. YTD just past the strict limit
+      // ($8,000 on the $7,000 cap) must still fire.
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.iraRoth, currentBalance: 1500000),
+        ],
+        spendCents: 100000,
+        ytdRothContributionsCents:
+            RothIraUnderusedRule.annualLimitCents + 100000,
+      );
+      final s = const RothIraUnderusedRule().evaluate(data);
+      expect(
+        s,
+        isNotNull,
+        reason:
+            'YTD just past the strict limit must still fire — the rule '
+            'gives a 1.5x tolerance band because contributions are '
+            'over-counted by dividend reinvestments.',
+      );
+      // No negative dollar-amount in the text — gap is non-positive
+      // here.
+      expect(s!.detail, isNot(contains('-')));
+    });
+
+    test('stays silent only when contributions exceed 1.5x the limit', () {
+      // Below the silence threshold: fire. At/above: silent.
+      final fires = _data(
+        accounts: [
+          _account(type: AccountType.iraRoth, currentBalance: 1500000),
+        ],
+        spendCents: 100000,
+        // Just under 1.5x ($10,499 on a $7,000 limit).
+        ytdRothContributionsCents:
+            (RothIraUnderusedRule.annualLimitCents * 1.5).round() - 100,
+      );
+      expect(const RothIraUnderusedRule().evaluate(fires), isNotNull);
+
+      final silenced = _data(
+        accounts: [
+          _account(type: AccountType.iraRoth, currentBalance: 1500000),
+        ],
+        spendCents: 100000,
+        ytdRothContributionsCents: (RothIraUnderusedRule.annualLimitCents * 1.5)
+            .round(),
+      );
+      expect(
+        const RothIraUnderusedRule().evaluate(silenced),
+        isNull,
+        reason:
+            'at 1.5x the limit, even a heavy-dividend account is '
+            'almost certainly maxed; further nudging would be noise.',
+      );
     });
 
     test('ignores inactive Roth IRA accounts', () {
