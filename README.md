@@ -2,7 +2,7 @@
 
 A family-budgeting app: Flutter mobile client, Supabase (Postgres + Auth + Storage + Edge Functions) backend.
 
-![CI](https://github.com/TitaniaAnn/my-budget-app/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/TitaniaAnn/my-budget-app/actions/workflows/ci.yaml/badge.svg)
 
 > **Status:** Private development. Not currently distributed; this repo exists as a working codebase and a public reference for some of the architectural decisions. See [Highlights](#highlights) for what's worth a closer look.
 
