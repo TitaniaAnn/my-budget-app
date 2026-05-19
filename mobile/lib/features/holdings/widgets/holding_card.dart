@@ -24,7 +24,7 @@ class HoldingCard extends ConsumerWidget {
   /// 30 days is a tradeoff: short enough that a quarterly statement
   /// doesn't sit unmarked, long enough that volatile securities
   /// don't drown the user in stale chips between updates.
-  static const int _staleAfterDays = 30;
+  static const int staleAfterDays = 30;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,7 +106,7 @@ class HoldingCard extends ConsumerWidget {
                       // positions). Tapping the card opens the edit
                       // sheet, where saving a new currentValue
                       // refreshes the timestamp.
-                      if (_isStale(holding.lastPricedAt)) ...[
+                      if (isHoldingStale(holding.lastPricedAt)) ...[
                         const SizedBox(width: 6),
                         _StalePill(lastPricedAt: holding.lastPricedAt),
                       ],
@@ -147,12 +147,21 @@ class HoldingCard extends ConsumerWidget {
   }
 }
 
-/// True when [at] is null (position never priced) or older than the
-/// staleness threshold. Top-level so the rule could be unit-tested
-/// independently of the card widget when that becomes worth doing.
-bool _isStale(DateTime? at) {
+/// True when [at] is null (position never priced) or older than
+/// [staleAfterDays]. Pure and public so unit tests can pin the
+/// threshold and the never-priced shortcut without needing the
+/// widget tree.
+///
+/// [now] defaults to `DateTime.now()`; tests pass a fixed value to
+/// avoid clock flakiness.
+bool isHoldingStale(
+  DateTime? at, {
+  int staleAfterDays = HoldingCard.staleAfterDays,
+  DateTime? now,
+}) {
   if (at == null) return true;
-  return DateTime.now().difference(at).inDays > HoldingCard._staleAfterDays;
+  final reference = now ?? DateTime.now();
+  return reference.difference(at).inDays > staleAfterDays;
 }
 
 /// Small amber chip on the holding card when its price is stale.
