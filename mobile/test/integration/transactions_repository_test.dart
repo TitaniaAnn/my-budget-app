@@ -800,6 +800,173 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── createTransfer (migration 030) ───────────────────────────────────
+    //
+    // create_transfer is the only blessed path for account-to-account
+    // money movement. It inserts two transaction rows in one DB
+    // transaction; both legs share a transfer_id. Tests pin: the rows
+    // land with the right signs and shared id, illegal inputs raise,
+    // and a mid-call failure rolls both legs back (atomicity).
+
+    group('createTransfer', () {
+      // Spins up a second account in the same household so we have
+      // somewhere to transfer to. The harness already seeds one
+      // ("Test Checking"); this adds a savings.
+      Future<String> insertSavingsAccount() async {
+        final row = await harness.client
+            .from('accounts')
+            .insert({
+              'household_id': harness.householdId,
+              'owner_user_id': harness.userId,
+              'name': 'Test Savings',
+              'account_type': 'savings',
+              'currency': 'USD',
+              'starting_balance': 0,
+              'current_balance': 0,
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'inserts two legs with matching transfer_id, opposite signs, '
+        'and shared description / date',
+        () async {
+          final savingsId = await insertSavingsAccount();
+          final date = DateTime.utc(2026, 5, 14);
+
+          final transferId = await repo.createTransfer(
+            householdId: harness.householdId,
+            fromAccountId: harness.accountId,
+            toAccountId: savingsId,
+            amountCents: 25000,
+            transactionDate: date,
+            description: 'May rent buffer',
+            enteredBy: harness.userId,
+          );
+
+          final legs = await harness.client
+              .from('transactions')
+              .select('account_id, amount, description, transfer_id')
+              .eq('transfer_id', transferId)
+              .order('amount', ascending: true);
+          expect(
+            legs,
+            hasLength(2),
+            reason: 'create_transfer must insert exactly two rows.',
+          );
+
+          // legs[0] is the negative leg (debit on source), legs[1] is
+          // the positive leg (credit on destination).
+          expect(legs[0]['account_id'], harness.accountId);
+          expect(legs[0]['amount'], -25000);
+          expect(legs[1]['account_id'], savingsId);
+          expect(legs[1]['amount'], 25000);
+
+          expect(legs[0]['description'], 'May rent buffer');
+          expect(legs[1]['description'], 'May rent buffer');
+          expect(legs[0]['transfer_id'], legs[1]['transfer_id']);
+        },
+        skip: reason,
+      );
+
+      test(
+        'rejects same source and destination',
+        () async {
+          await expectLater(
+            repo.createTransfer(
+              householdId: harness.householdId,
+              fromAccountId: harness.accountId,
+              toAccountId: harness.accountId,
+              amountCents: 1000,
+              transactionDate: DateTime.utc(2026, 5, 14),
+              description: 'self-transfer should fail',
+              enteredBy: harness.userId,
+            ),
+            throwsA(anything),
+            reason:
+                'transferring an account to itself has no semantic meaning '
+                '— the RPC must raise rather than silently insert two rows '
+                'on the same ledger.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'rejects non-positive amounts',
+        () async {
+          final savingsId = await insertSavingsAccount();
+          for (final bad in [0, -100]) {
+            await expectLater(
+              repo.createTransfer(
+                householdId: harness.householdId,
+                fromAccountId: harness.accountId,
+                toAccountId: savingsId,
+                amountCents: bad,
+                transactionDate: DateTime.utc(2026, 5, 14),
+                description: 'bad amount',
+                enteredBy: harness.userId,
+              ),
+              throwsA(anything),
+              reason:
+                  'amount must be > 0; signs are derived by the RPC. A '
+                  'zero or negative input is a caller bug and must raise.',
+            );
+          }
+        },
+        skip: reason,
+      );
+
+      test(
+        'atomicity: a mid-call failure leaves no orphan leg behind',
+        () async {
+          // Engineer a deliberate failure of the SECOND insert: pass a
+          // syntactically valid UUID that doesn't reference any account
+          // row. The FK on transactions.account_id will reject the
+          // INSERT, the function aborts, and the first leg's insert
+          // must be rolled back. If the rollback ever regressed,
+          // we'd end up with an orphan debit on the source account.
+          final beforeRows = await harness.client
+              .from('transactions')
+              .select('id')
+              .eq('account_id', harness.accountId);
+          final beforeCount = (beforeRows as List).length;
+
+          await expectLater(
+            repo.createTransfer(
+              householdId: harness.householdId,
+              fromAccountId: harness.accountId,
+              toAccountId: '00000000-0000-0000-0000-000000000001',
+              amountCents: 1000,
+              transactionDate: DateTime.utc(2026, 5, 14),
+              description: 'should roll back',
+              enteredBy: harness.userId,
+            ),
+            throwsA(anything),
+            reason:
+                'destination account FK must fail and propagate to the '
+                'caller.',
+          );
+
+          final afterRows = await harness.client
+              .from('transactions')
+              .select('id')
+              .eq('account_id', harness.accountId);
+          expect(
+            (afterRows as List).length,
+            beforeCount,
+            reason:
+                'failed transfer must leave the source account unchanged '
+                '— the first leg INSERT has to roll back when the second '
+                'leg fails. A leaked debit here would skew balances.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }
 

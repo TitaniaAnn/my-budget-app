@@ -38,6 +38,7 @@ Transaction _tx({
   required DateTime date,
   Category? category,
   String id = 't',
+  String? transferId,
 }) {
   final ts = DateTime(2026, 1, 1);
   return Transaction(
@@ -56,6 +57,7 @@ Transaction _tx({
     // mirror the live wire format where both fields agree.
     categoryId: category?.id,
     category: category,
+    transferId: transferId,
   );
 }
 
@@ -153,6 +155,39 @@ void main() {
         recentTransactions: const [],
       );
       expect(data.monthlySpending, 500);
+    });
+
+    test('excludes both legs of a transfer from spending AND income', () {
+      // Migration 030: a $500 Checking → Savings transfer is two rows
+      // sharing a transfer_id. Without the exclusion the negative leg
+      // adds $500 to monthlySpending and the positive leg adds $500
+      // to monthlyIncome — net zero on net worth but inflated cash
+      // flow on both ends. The contract is that transfer legs are
+      // invisible to the monthly summary entirely.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          _tx(amount: -50000, date: monthStart, id: 'from', transferId: 'X'),
+          _tx(amount: 50000, date: monthStart, id: 'to', transferId: 'X'),
+          _tx(amount: -1200, date: monthStart, id: 'real-spend'),
+          _tx(amount: 200000, date: monthStart, id: 'real-income'),
+        ],
+        recentTransactions: const [],
+      );
+      expect(
+        data.monthlySpending,
+        1200,
+        reason:
+            'the -\$500 transfer leg must NOT show as spending — only the '
+            '\$12 real debit counts.',
+      );
+      expect(
+        data.monthlyIncome,
+        200000,
+        reason:
+            'the +\$500 transfer leg must NOT show as income — only the '
+            '\$2,000 real credit counts.',
+      );
     });
   });
 
@@ -320,6 +355,29 @@ void main() {
         recentTransactions: const [],
       );
       expect(data.spendingByDay.every((b) => b == 0), isTrue);
+    });
+
+    test('ignores transfer legs (migration 030)', () {
+      // The sparkline is "real spending per day"; a checking → savings
+      // transfer would otherwise spike the bucket the user moved
+      // money on, and they'd see the dashboard claim they "spent"
+      // their savings buffer.
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          _tx(amount: -50000, date: todayDate, id: 'leg', transferId: 'X'),
+        ],
+        recentTransactions: const [],
+      );
+      expect(
+        data.spendingByDay[29],
+        0,
+        reason:
+            'today\'s bucket must not include the -\$500 transfer leg — '
+            'spendingByDay is for real expenses.',
+      );
     });
   });
 }

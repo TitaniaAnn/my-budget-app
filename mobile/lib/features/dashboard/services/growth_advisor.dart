@@ -358,6 +358,9 @@ class SubscriptionDriftRule implements GrowthRule {
     final spendByMerchantByMonth = <String, Map<String, int>>{};
     for (final t in data.recentTransactions90d) {
       if (t.amount >= 0) continue;
+      // Transfer legs (migration 030) aren't real spending — a recurring
+      // checking → savings sweep would otherwise look like a subscription.
+      if (t.transferId != null) continue;
       final raw = (t.merchant ?? t.description).trim();
       if (raw.isEmpty) continue;
       final key = raw.toLowerCase();

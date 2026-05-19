@@ -25,6 +25,7 @@ import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
 import '../services/transactions_csv.dart';
 import '../widgets/add_transaction_sheet.dart';
+import '../widgets/add_transfer_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
 // ── Date-range quick filter ────────────────────────────────────────────────────
@@ -290,9 +291,49 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _showAddSheet(BuildContext context) {
-    showAppSheet<void>(
-      context,
-      child: AddTransactionSheet(preselectedAccountId: _selectedAccountId),
+    // Two entry points share the FAB: a single transaction (the
+    // common case) and a transfer between accounts. Rendered as a
+    // tiny chooser sheet rather than a SpeedDial so it stays
+    // dependency-free and accessible (the items are real list tiles
+    // with labels). Tapping "Transaction" preserves the previous
+    // FAB behaviour, including the account preselect.
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Transaction'),
+              subtitle: const Text('Single expense or income'),
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                showAppSheet<void>(
+                  context,
+                  child: AddTransactionSheet(
+                    preselectedAccountId: _selectedAccountId,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('Transfer'),
+              subtitle: const Text('Move money between two accounts'),
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                showAppSheet<void>(
+                  context,
+                  child: const AddTransferSheet(),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 

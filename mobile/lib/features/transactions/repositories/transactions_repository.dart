@@ -186,6 +186,47 @@ class TransactionsRepository {
     return Transaction.fromJson(data);
   }
 
+  /// Atomically records a transfer between two accounts in the same
+  /// household. Inserts two transaction rows sharing a fresh
+  /// `transfer_id`: a negative leg on [fromAccountId] and a positive
+  /// leg on [toAccountId], both for [amountCents] (which must be
+  /// positive — the SQL function flips the sign per leg).
+  ///
+  /// Goes through the `create_transfer` RPC (migration 030) so the
+  /// two inserts share one DB transaction. A mid-call failure rolls
+  /// both legs back rather than leaving a half-recorded transfer that
+  /// would skew account balances.
+  ///
+  /// Returns the shared `transfer_id` (UUID). The caller typically
+  /// refetches the ledger afterwards rather than holding onto the id
+  /// — it's returned mainly so integration tests can join back to
+  /// both legs.
+  Future<String> createTransfer({
+    required String householdId,
+    required String fromAccountId,
+    required String toAccountId,
+    required int amountCents,
+    required DateTime transactionDate,
+    required String description,
+    required String enteredBy,
+  }) async {
+    final result = await supabase.rpc(
+      'create_transfer',
+      params: {
+        'p_household_id': householdId,
+        'p_from_account_id': fromAccountId,
+        'p_to_account_id': toAccountId,
+        'p_amount_cents': amountCents,
+        'p_transaction_date': transactionDate
+            .toIso8601String()
+            .substring(0, 10),
+        'p_description': description,
+        'p_entered_by': enteredBy,
+      },
+    );
+    return result as String;
+  }
+
   /// Fetches transactions whose ML-assigned category fell in the
   /// "uncertain" confidence band — predictions that auto-applied at or
   /// above [maxConfidenceBp] are excluded (those are the "we're sure"

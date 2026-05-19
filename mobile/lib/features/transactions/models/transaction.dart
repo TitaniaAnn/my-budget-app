@@ -49,6 +49,12 @@ class Transaction with _$Transaction {
     /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
     String? externalId,
 
+    /// Shared id linking the two legs of an account-to-account transfer
+    /// (migration 030). Non-null on both legs, null on every other
+    /// transaction. Aggregations that treat transfers as cash movement
+    /// rather than income/expense gate on this.
+    String? transferId,
+
     /// Top-class probability from the ML categorizer in basis points
     /// (0–10000, where 10000 == 1.00). Populated only when
     /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review

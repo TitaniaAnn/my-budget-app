@@ -53,6 +53,12 @@ mixin _$Transaction {
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
   String? get externalId => throw _privateConstructorUsedError;
 
+  /// Shared id linking the two legs of an account-to-account transfer
+  /// (migration 030). Non-null on both legs, null on every other
+  /// transaction. Aggregations that treat transfers as cash movement
+  /// rather than income/expense gate on this.
+  String? get transferId => throw _privateConstructorUsedError;
+
   /// Top-class probability from the ML categorizer in basis points
   /// (0–10000, where 10000 == 1.00). Populated only when
   /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
@@ -99,6 +105,7 @@ abstract class $TransactionCopyWith<$Res> {
     String? rateId,
     String? notes,
     String? externalId,
+    String? transferId,
     int? mlModelConfidence,
     DateTime createdAt,
     DateTime updatedAt,
@@ -140,6 +147,7 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
     Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
+    Object? transferId = freezed,
     Object? mlModelConfidence = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -215,6 +223,10 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
                 ? _value.externalId
                 : externalId // ignore: cast_nullable_to_non_nullable
                       as String?,
+            transferId: freezed == transferId
+                ? _value.transferId
+                : transferId // ignore: cast_nullable_to_non_nullable
+                      as String?,
             mlModelConfidence: freezed == mlModelConfidence
                 ? _value.mlModelConfidence
                 : mlModelConfidence // ignore: cast_nullable_to_non_nullable
@@ -278,6 +290,7 @@ abstract class _$$TransactionImplCopyWith<$Res>
     String? rateId,
     String? notes,
     String? externalId,
+    String? transferId,
     int? mlModelConfidence,
     DateTime createdAt,
     DateTime updatedAt,
@@ -319,6 +332,7 @@ class __$$TransactionImplCopyWithImpl<$Res>
     Object? rateId = freezed,
     Object? notes = freezed,
     Object? externalId = freezed,
+    Object? transferId = freezed,
     Object? mlModelConfidence = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -394,6 +408,10 @@ class __$$TransactionImplCopyWithImpl<$Res>
             ? _value.externalId
             : externalId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        transferId: freezed == transferId
+            ? _value.transferId
+            : transferId // ignore: cast_nullable_to_non_nullable
+                  as String?,
         mlModelConfidence: freezed == mlModelConfidence
             ? _value.mlModelConfidence
             : mlModelConfidence // ignore: cast_nullable_to_non_nullable
@@ -436,6 +454,7 @@ class _$TransactionImpl implements _Transaction {
     this.rateId,
     this.notes,
     this.externalId,
+    this.transferId,
     this.mlModelConfidence,
     required this.createdAt,
     required this.updatedAt,
@@ -494,6 +513,13 @@ class _$TransactionImpl implements _Transaction {
   @override
   final String? externalId;
 
+  /// Shared id linking the two legs of an account-to-account transfer
+  /// (migration 030). Non-null on both legs, null on every other
+  /// transaction. Aggregations that treat transfers as cash movement
+  /// rather than income/expense gate on this.
+  @override
+  final String? transferId;
+
   /// Top-class probability from the ML categorizer in basis points
   /// (0–10000, where 10000 == 1.00). Populated only when
   /// `category_assigned_by == 'ml_model'`; null otherwise. The "Review
@@ -511,7 +537,7 @@ class _$TransactionImpl implements _Transaction {
 
   @override
   String toString() {
-    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, rateId: $rateId, notes: $notes, externalId: $externalId, mlModelConfidence: $mlModelConfidence, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
+    return 'Transaction(id: $id, householdId: $householdId, accountId: $accountId, amount: $amount, currency: $currency, description: $description, merchant: $merchant, categoryId: $categoryId, transactionDate: $transactionDate, postedDate: $postedDate, pending: $pending, source: $source, enteredBy: $enteredBy, receiptId: $receiptId, rateId: $rateId, notes: $notes, externalId: $externalId, transferId: $transferId, mlModelConfidence: $mlModelConfidence, createdAt: $createdAt, updatedAt: $updatedAt, category: $category)';
   }
 
   @override
@@ -547,6 +573,8 @@ class _$TransactionImpl implements _Transaction {
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.externalId, externalId) ||
                 other.externalId == externalId) &&
+            (identical(other.transferId, transferId) ||
+                other.transferId == transferId) &&
             (identical(other.mlModelConfidence, mlModelConfidence) ||
                 other.mlModelConfidence == mlModelConfidence) &&
             (identical(other.createdAt, createdAt) ||
@@ -578,6 +606,7 @@ class _$TransactionImpl implements _Transaction {
     rateId,
     notes,
     externalId,
+    transferId,
     mlModelConfidence,
     createdAt,
     updatedAt,
@@ -617,6 +646,7 @@ abstract class _Transaction implements Transaction {
     final String? rateId,
     final String? notes,
     final String? externalId,
+    final String? transferId,
     final int? mlModelConfidence,
     required final DateTime createdAt,
     required final DateTime updatedAt,
@@ -674,6 +704,13 @@ abstract class _Transaction implements Transaction {
   /// Bank-assigned dedup key. Prevents re-importing the same statement twice.
   @override
   String? get externalId;
+
+  /// Shared id linking the two legs of an account-to-account transfer
+  /// (migration 030). Non-null on both legs, null on every other
+  /// transaction. Aggregations that treat transfers as cash movement
+  /// rather than income/expense gate on this.
+  @override
+  String? get transferId;
 
   /// Top-class probability from the ML categorizer in basis points
   /// (0–10000, where 10000 == 1.00). Populated only when

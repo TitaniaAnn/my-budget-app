@@ -75,8 +75,14 @@ class DashboardData {
     return DateTime(now.year, now.month, 1);
   }
 
+  /// Transactions in the current calendar month, with transfer legs
+  /// filtered out. Transfers (migration 030) are pure cash movement
+  /// between two of the household's own accounts — counting their
+  /// legs in [monthlyIncome] / [monthlySpending] would inflate both
+  /// by the same amount and misrepresent the actual cash flow.
   List<Transaction> get _monthTransactions => recentTransactions90d
       .where((t) => !t.transactionDate.isBefore(_monthStart))
+      .where((t) => t.transferId == null)
       .toList();
 
   /// Net worth = sum of every account's signed balance.
@@ -147,7 +153,9 @@ class DashboardData {
   List<int> get spendingByDay {
     final today = DateTime.now();
     final result = List<int>.filled(30, 0);
-    for (final tx in recentTransactions90d.where((t) => t.amount < 0)) {
+    for (final tx in recentTransactions90d.where(
+      (t) => t.amount < 0 && t.transferId == null,
+    )) {
       final daysAgo = today
           .difference(
             DateTime(
