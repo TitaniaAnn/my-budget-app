@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/transactions/screens/manage_tags_screen.dart';
 import '../../../features/transactions/screens/review_categorisations_screen.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
@@ -115,6 +116,15 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => const ReviewCategorisationsScreen(),
               ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.label_outline),
+            title: const Text('Manage Tags'),
+            subtitle: const Text('Rename, recolor, or remove household tags'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ManageTagsScreen()),
             ),
           ),
 

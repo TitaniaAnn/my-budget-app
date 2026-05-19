@@ -62,6 +62,31 @@ class TransactionTagsRepository {
     return TransactionTag.fromJson(data);
   }
 
+  /// Renames a tag and/or recolors it. Either field is optional —
+  /// null means "leave alone." Name is trimmed for the same
+  /// "phantom dup" reason [createTag] is.
+  ///
+  /// Returns the updated row. The unique constraint on
+  /// `(household_id, name)` lives at the schema level; a rename
+  /// collision surfaces as a Postgres error the caller catches.
+  Future<TransactionTag> updateTag({
+    required String tagId,
+    String? name,
+    String? color,
+  }) async {
+    final patch = <String, dynamic>{};
+    if (name != null) patch['name'] = name.trim();
+    if (color != null) patch['color'] = color;
+
+    final data = await supabase
+        .from('transaction_tags')
+        .update(patch)
+        .eq('id', tagId)
+        .select()
+        .single();
+    return TransactionTag.fromJson(data);
+  }
+
   /// Deletes a tag. The schema's `ON DELETE CASCADE` on both
   /// assignment tables means we don't have to clean up assignments
   /// manually — they vanish with the tag row.

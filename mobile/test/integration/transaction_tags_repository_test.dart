@@ -134,6 +134,48 @@ void main() {
       expect(await repo.fetchAssignedTagIds(txId), isEmpty);
     }, skip: reason);
 
+    // ─── updateTag ────────────────────────────────────────────────────
+
+    test('updateTag renames in place', () async {
+      final original = await repo.createTag(
+        householdId: harness.householdId,
+        name: stamped('original'),
+      );
+      final newName = stamped('renamed');
+      final updated = await repo.updateTag(tagId: original.id, name: newName);
+      expect(updated.id, original.id, reason: 'id must not change on rename.');
+      expect(updated.name, newName);
+    }, skip: reason);
+
+    test('updateTag trims whitespace from name', () async {
+      // Same "phantom dup" guard as createTag — trailing whitespace
+      // would let two tags coexist that look identical to the user.
+      final tag = await repo.createTag(
+        householdId: harness.householdId,
+        name: stamped('untrimmed'),
+      );
+      final newName = stamped('trim-target');
+      final updated = await repo.updateTag(tagId: tag.id, name: '  $newName  ');
+      expect(updated.name.startsWith(' '), isFalse);
+      expect(updated.name.endsWith(' '), isFalse);
+      expect(updated.name, newName);
+    }, skip: reason);
+
+    test('updateTag with name-only patch leaves color alone', () async {
+      // Null fields in the patch mean "leave alone" — verifies the
+      // method doesn't accidentally clear unspecified columns.
+      final tag = await repo.createTag(
+        householdId: harness.householdId,
+        name: stamped('keep-color'),
+        color: '#3B82F6',
+      );
+      final updated = await repo.updateTag(
+        tagId: tag.id,
+        name: stamped('keep-color-renamed'),
+      );
+      expect(updated.color, '#3B82F6');
+    }, skip: reason);
+
     // ─── deleteTag cascade ────────────────────────────────────────────
 
     test('deleteTag cascades to assignments', () async {
