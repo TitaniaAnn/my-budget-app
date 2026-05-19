@@ -126,12 +126,19 @@ class TransactionsRepository {
 
   /// Fetches all categories (system + household-specific).
   /// System categories have household_id IS NULL; RLS exposes them to everyone.
+  ///
+  /// Ordered by `sort_order` ASC, then `name` ASC as tiebreaker. The
+  /// seed (migration 002) packs parents at 0/10/20… and children at
+  /// 1/2/3…, so ASC reproduces the intended on-screen grouping
+  /// (Income then Housing then Food…, with children in spec order).
+  /// postgrest's .order() defaults to DESC, so the explicit
+  /// `ascending: true` here is load-bearing.
   Future<List<Category>> fetchCategories() async {
     final data = await supabase
         .from('categories')
         .select()
-        .order('sort_order')
-        .order('name');
+        .order('sort_order', ascending: true)
+        .order('name', ascending: true);
     return data.map<Category>(Category.fromJson).toList();
   }
 

@@ -42,13 +42,20 @@ class ReceiptsRepository {
     return Receipt.fromJson(data);
   }
 
-  /// Fetches all line items for a receipt, ordered by sort_order.
+  /// Fetches all line items for a receipt, ordered by sort_order ASC
+  /// (the order the user — or OCR — saved them in).
+  ///
+  /// `save_receipt_line_items` (migration 018) writes sort_order from
+  /// the input array's ordinality, so ASC reproduces the on-paper
+  /// reading order. postgrest's .order() defaults to DESC, so the
+  /// `ascending: true` here is load-bearing — without it the editor
+  /// would render line items bottom-up.
   Future<List<ReceiptLineItem>> fetchLineItems(String receiptId) async {
     final data = await supabase
         .from('receipt_line_items')
         .select()
         .eq('receipt_id', receiptId)
-        .order('sort_order');
+        .order('sort_order', ascending: true);
 
     return data.map<ReceiptLineItem>(ReceiptLineItem.fromJson).toList();
   }

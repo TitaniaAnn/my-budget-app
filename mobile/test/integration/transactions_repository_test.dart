@@ -730,6 +730,76 @@ void main() {
         );
       }, skip: reason);
     });
+
+    // ── fetchCategories ordering ────────────────────────────────────────
+    //
+    // The seed (migration 002) packs parents at sort_order 0/10/20…
+    // and children at 1/2/3…, so ASC ordering keeps parents grouped
+    // and children in spec order within each parent. postgrest's
+    // .order() default is DESC — the test pins that the repo
+    // overrides that explicitly.
+
+    group('fetchCategories', () {
+      test(
+        'returns categories in sort_order ASC, with name as tiebreaker',
+        () async {
+          final cats = await repo.fetchCategories();
+          expect(cats, isNotEmpty);
+          for (var i = 1; i < cats.length; i++) {
+            final prev = cats[i - 1];
+            final curr = cats[i];
+            final sortMonotonic = curr.sortOrder >= prev.sortOrder;
+            // Postgres uses case-insensitive collation by default
+            // (en_US.UTF-8 puts "Home" before "HSA") whereas Dart's
+            // String.compareTo is case-sensitive ("HSA" < "Home" by
+            // ASCII). Compare lowercased so the assertion mirrors
+            // the server's actual sort.
+            final nameTieMonotonic =
+                curr.sortOrder != prev.sortOrder ||
+                curr.name.toLowerCase().compareTo(prev.name.toLowerCase()) >= 0;
+            expect(
+              sortMonotonic,
+              isTrue,
+              reason:
+                  'fetchCategories must be non-decreasing in sort_order. '
+                  'Saw ${prev.name}(${prev.sortOrder}) before '
+                  '${curr.name}(${curr.sortOrder}) at index $i.',
+            );
+            expect(
+              nameTieMonotonic,
+              isTrue,
+              reason:
+                  'Within a sort_order tie, name must be non-decreasing '
+                  '(case-insensitive). Saw ${prev.name} before '
+                  '${curr.name} at sort_order ${curr.sortOrder}.',
+            );
+          }
+        },
+        skip: reason,
+      );
+
+      test(
+        '"Income" (sort_order 0) precedes "Housing" (sort_order 10)',
+        () async {
+          // Picks a stable pair from the seed: Income parent is at 0,
+          // Housing parent is at 10. ASC ordering puts Income first.
+          final cats = await repo.fetchCategories();
+          final names = cats.map((c) => c.name).toList();
+          final incomeIdx = names.indexOf('Income');
+          final housingIdx = names.indexOf('Housing');
+          expect(incomeIdx >= 0 && housingIdx >= 0, isTrue);
+          expect(
+            incomeIdx,
+            lessThan(housingIdx),
+            reason:
+                'Income (sort_order 0) must come before Housing '
+                '(sort_order 10). DESC ordering — the previous bug — '
+                'reversed this.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }
 

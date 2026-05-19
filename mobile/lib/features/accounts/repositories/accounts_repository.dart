@@ -14,15 +14,22 @@ AccountsRepository accountsRepository(AccountsRepositoryRef ref) {
 }
 
 class AccountsRepository {
-  /// Fetches all active accounts for a household, ordered by creation date.
+  /// Fetches all active accounts for a household, newest first.
   /// RLS on the `accounts` table ensures only visible accounts are returned.
+  ///
+  /// `ascending: false` is the current (and intentional) behavior —
+  /// a recently-added account appears at the top of the list so the
+  /// user can find it without scrolling. Stated explicitly because
+  /// postgrest's .order() default happens to match, and an
+  /// uninformed reader (or a library upgrade that flips the default)
+  /// could quietly change the UX.
   Future<List<Account>> fetchAccounts(String householdId) async {
     final data = await supabase
         .from('accounts')
         .select()
         .eq('household_id', householdId)
         .eq('is_active', true)
-        .order('created_at');
+        .order('created_at', ascending: false);
 
     return data.map<Account>(Account.fromJson).toList();
   }

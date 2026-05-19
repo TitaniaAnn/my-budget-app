@@ -18,7 +18,11 @@ class CreditCardRatesRepository {
         .select()
         .eq('account_id', accountId)
         .order('is_intro', ascending: false)
-        .order('created_at');
+        // Secondary order: newest rate first inside each is_intro
+        // bucket so a recently-added rate floats to the top of its
+        // group. postgrest's .order() default happens to match but
+        // we state it so a library upgrade can't flip the UX.
+        .order('created_at', ascending: false);
     return data.map<CreditCardRate>(CreditCardRate.fromJson).toList();
   }
 

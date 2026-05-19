@@ -313,5 +313,59 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── fetchLineItems ordering ──────────────────────────────────────────
+    //
+    // Pins the postgrest `.order()` gotcha: the default is DESC, so
+    // an implicit `.order('sort_order')` rendered line items
+    // bottom-up. The repo now asks for ASC explicitly; this test
+    // catches any regression if someone strips the keyword arg.
+
+    group('fetchLineItems', () {
+      test('returns items in sort_order ASC', () async {
+        // Insert a receipt, then three line items with explicit
+        // sort_order values, in non-monotonic insertion order. The
+        // repo's ASC ordering must surface them in 0, 1, 2 sequence
+        // regardless of which row went into the table first.
+        final receiptRow = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/order-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'pending',
+            })
+            .select('id')
+            .single();
+        final receiptId = receiptRow['id'] as String;
+
+        Future<void> insertItem(int sortOrder, String desc) async {
+          await harness.client.from('receipt_line_items').insert({
+            'receipt_id': receiptId,
+            'description': desc,
+            'amount': 100,
+            'is_tax': false,
+            'is_tip': false,
+            'is_discount': false,
+            'sort_order': sortOrder,
+          });
+        }
+
+        await insertItem(2, 'third');
+        await insertItem(0, 'first');
+        await insertItem(1, 'second');
+
+        final items = await repo.fetchLineItems(receiptId);
+        expect(
+          items.map((i) => i.description).toList(),
+          ['first', 'second', 'third'],
+          reason:
+              'fetchLineItems must order by sort_order ASC — postgrest '
+              'defaults to DESC, so the `ascending: true` in the repo '
+              'is load-bearing.',
+        );
+      }, skip: reason);
+    });
   });
 }

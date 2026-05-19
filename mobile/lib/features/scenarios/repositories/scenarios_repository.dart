@@ -112,14 +112,21 @@ class ScenariosRepository {
     return data.map<Scenario>(Scenario.fromJson).toList();
   }
 
-  /// Fetches all events for a scenario, ordered by date then sort_order.
+  /// Fetches all events for a scenario, ordered chronologically by
+  /// event_date ASC then sort_order ASC. Scenarios are forward-
+  /// projecting timelines, so the user sees the earliest event first
+  /// — left-to-right in any rendering.
+  ///
+  /// postgrest's .order() defaults to DESC, so the explicit
+  /// `ascending: true` is load-bearing: without it the timeline
+  /// renders backwards (farthest-future event first).
   Future<List<ScenarioEvent>> fetchEvents(String scenarioId) async {
     final data = await supabase
         .from('scenario_events')
         .select()
         .eq('scenario_id', scenarioId)
-        .order('event_date')
-        .order('sort_order');
+        .order('event_date', ascending: true)
+        .order('sort_order', ascending: true);
     return data.map<ScenarioEvent>(ScenarioEvent.fromJson).toList();
   }
 
