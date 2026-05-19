@@ -158,5 +158,187 @@ void main() {
             'a deleted tag must not survive as a dangling assignment.',
       );
     }, skip: reason);
+
+    // ── line-item tag assignments ───────────────────────────────────────
+    //
+    // Mirrors the transaction-side picker contract for line items.
+    // The bulk fetch is what the line-items editor uses to seed
+    // each row's chips on load, so it gets its own test.
+
+    group('line-item tag assignments', () {
+      // Helper: insert a receipt directly, then a line item under it.
+      // Tag assignments need a real line_item_id to reference.
+      Future<String> insertReceipt() async {
+        final row = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/li-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'pending',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      Future<String> insertLineItem(
+        String receiptId, {
+        int sortOrder = 0,
+      }) async {
+        final row = await harness.client
+            .from('receipt_line_items')
+            .insert({
+              'receipt_id': receiptId,
+              'description': 'test item',
+              'amount': 100,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+              'sort_order': sortOrder,
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'replaceLineItemAssignments is set semantics, same as the tx side',
+        () async {
+          final tagA = await repo.createTag(
+            householdId: harness.householdId,
+            name: 'li-a-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          final tagB = await repo.createTag(
+            householdId: harness.householdId,
+            name: 'li-b-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          final receiptId = await insertReceipt();
+          final liId = await insertLineItem(receiptId);
+
+          // Assign both, then replace with one, then empty.
+          await repo.replaceLineItemAssignments(
+            lineItemId: liId,
+            tagIds: [tagA.id, tagB.id],
+          );
+          expect((await repo.fetchAssignedTagIdsForLineItem(liId)).toSet(), {
+            tagA.id,
+            tagB.id,
+          });
+
+          await repo.replaceLineItemAssignments(
+            lineItemId: liId,
+            tagIds: [tagA.id],
+          );
+          expect(
+            (await repo.fetchAssignedTagIdsForLineItem(liId)).toSet(),
+            {tagA.id},
+            reason:
+                'replaceLineItemAssignments must replace, not append — '
+                'the editor relies on this to drop tags the user de-'
+                'selected.',
+          );
+
+          await repo.replaceLineItemAssignments(
+            lineItemId: liId,
+            tagIds: const [],
+          );
+          expect(await repo.fetchAssignedTagIdsForLineItem(liId), isEmpty);
+        },
+        skip: reason,
+      );
+
+      test(
+        'fetchAllLineItemAssignmentsForReceipt indexes by line_item_id',
+        () async {
+          final tag = await repo.createTag(
+            householdId: harness.householdId,
+            name: 'li-bulk-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          final receiptId = await insertReceipt();
+          final liA = await insertLineItem(receiptId, sortOrder: 0);
+          final liB = await insertLineItem(receiptId, sortOrder: 1);
+          // Tag only liA; liB has no assignments and must NOT appear
+          // in the map.
+          await repo.replaceLineItemAssignments(
+            lineItemId: liA,
+            tagIds: [tag.id],
+          );
+
+          final result = await repo.fetchAllLineItemAssignmentsForReceipt(
+            receiptId,
+          );
+          expect(result.keys, contains(liA));
+          expect(result[liA], contains(tag.id));
+          expect(
+            result.containsKey(liB),
+            isFalse,
+            reason:
+                'line items with no assignments must not appear as empty '
+                'keys — the editor treats absence as empty.',
+          );
+        },
+        skip: reason,
+      );
+
+      test('fetchAllLineItemAssignmentsForReceipt is empty for an '
+          'untagged receipt', () async {
+        final receiptId = await insertReceipt();
+        await insertLineItem(receiptId);
+        final result = await repo.fetchAllLineItemAssignmentsForReceipt(
+          receiptId,
+        );
+        expect(result, isEmpty);
+      }, skip: reason);
+
+      test('assignments survive a save_receipt_line_items UPDATE — '
+          'migration 028 contract', () async {
+        // Verifies the full flow the line-items editor depends on:
+        // saving a line item via the upsert RPC (migration 028)
+        // preserves its id, so tag assignments pointing at it stay
+        // valid. If the RPC ever reverts to delete-and-reinsert
+        // this test fails immediately.
+        final tag = await repo.createTag(
+          householdId: harness.householdId,
+          name: 'survive-${DateTime.now().microsecondsSinceEpoch}',
+        );
+        final receiptId = await insertReceipt();
+        final liId = await insertLineItem(receiptId);
+        await repo.replaceLineItemAssignments(
+          lineItemId: liId,
+          tagIds: [tag.id],
+        );
+
+        // Re-save the same line item via the RPC, passing its id.
+        // Tag assignments must still be there afterward.
+        await harness.client.rpc(
+          'save_receipt_line_items',
+          params: {
+            'p_receipt_id': receiptId,
+            'p_items': [
+              {
+                'id': liId,
+                'description': 'edited',
+                'amount': 200,
+                'is_tax': false,
+                'is_tip': false,
+                'is_discount': false,
+              },
+            ],
+          },
+        );
+
+        expect(
+          (await repo.fetchAssignedTagIdsForLineItem(liId)).toSet(),
+          {tag.id},
+          reason:
+              'a re-save via save_receipt_line_items (migration 028) '
+              'must preserve the line item id, so tag assignments '
+              'with that FK survive. Reverting to migration 018\'s '
+              'delete-and-reinsert behaviour fails this test.',
+        );
+      }, skip: reason);
+    });
   });
 }

@@ -5,8 +5,10 @@
 // list (one [_LineItemDraft] per row) so the user can reorder by
 // adding/removing rows without round-tripping each edit through
 // Supabase. Save calls [ReceiptsRepository.saveLineItems], which
-// atomically replaces all rows via the `save_receipt_line_items` RPC
-// (migration 018).
+// upserts via the `save_receipt_line_items` RPC (migration 028,
+// formerly 018). IDs of existing rows survive the save so FKs on
+// downstream tables (e.g. receipt_line_item_tag_assignments) don't
+// cascade-delete.
 //
 // Lives on its own screen — not inline in receipt_detail — because the
 // keyboard would otherwise fight the receipt image and the per-item
@@ -21,7 +23,10 @@ import '../../../core/utils/money.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/money_text_field.dart';
 import '../../transactions/models/category.dart';
+import '../../transactions/models/transaction_tag.dart';
+import '../../transactions/providers/transaction_tags_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
+import '../../transactions/repositories/transaction_tags_repository.dart';
 import '../models/receipt_line_item.dart';
 import '../providers/receipts_provider.dart';
 import '../repositories/receipts_repository.dart';
@@ -43,7 +48,38 @@ class _LineItemsEditorScreenState extends ConsumerState<LineItemsEditorScreen> {
   /// away in-progress edits and leak [TextEditingController]s.
   List<_LineItemDraft>? _drafts;
 
+  /// Bulk-fetched tag assignments keyed by line_item_id. Null until
+  /// the load finishes; the draft list waits on it so each row
+  /// starts with the right tag selection rather than a flash of
+  /// empty chips followed by a re-init.
+  Map<String, Set<String>>? _assignmentsByLineItemId;
+
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssignments();
+  }
+
+  Future<void> _loadAssignments() async {
+    try {
+      final assignments = await ref
+          .read(transactionTagsRepositoryProvider)
+          .fetchAllLineItemAssignmentsForReceipt(widget.receiptId);
+      if (!mounted) return;
+      setState(() => _assignmentsByLineItemId = assignments);
+    } catch (_) {
+      // Tag assignments are supplementary — if the fetch fails the
+      // editor still loads with empty tag sets and the user can
+      // still edit description/amount/category. The next save
+      // would replace whatever tags were on the row, but the user
+      // has no way to lose tag data by clicking around without
+      // touching the tag picker.
+      if (!mounted) return;
+      setState(() => _assignmentsByLineItemId = const {});
+    }
+  }
 
   @override
   void dispose() {
@@ -76,11 +112,36 @@ class _LineItemsEditorScreenState extends ConsumerState<LineItemsEditorScreen> {
 
     setState(() => _saving = true);
     try {
-      final repo = ref.read(receiptsRepositoryProvider);
-      await repo.saveLineItems(
+      final receiptsRepo = ref.read(receiptsRepositoryProvider);
+      final saved = await receiptsRepo.saveLineItems(
         receiptId: widget.receiptId,
         items: usable.map((d) => d.toRpcJson()).toList(),
       );
+
+      // Tag assignments piggyback on the save. The RPC sets
+      // sort_order from input ordinality, so saved[i] corresponds
+      // to usable[i]; we use that to bind each draft's tag set to
+      // the (potentially newly-minted) row id. Only write when the
+      // user actually moved chips — saves a delete-then-reinsert
+      // round-trip per untouched row, and avoids a brief window
+      // where the row has zero tags between the two halves of
+      // replaceLineItemAssignments.
+      final tagsRepo = ref.read(transactionTagsRepositoryProvider);
+      final tagWrites = <Future<void>>[];
+      for (var i = 0; i < usable.length; i++) {
+        final draft = usable[i];
+        if (!draft.tagsChanged) continue;
+        // saved[] is ordered by sort_order ASC (the RPC's RETURNING
+        // doesn't guarantee insertion order; we sort defensively).
+        final savedRow = saved.firstWhere((r) => r.sortOrder == i);
+        tagWrites.add(
+          tagsRepo.replaceLineItemAssignments(
+            lineItemId: savedRow.id,
+            tagIds: draft.assignedTagIds.toList(),
+          ),
+        );
+      }
+      if (tagWrites.isNotEmpty) await Future.wait(tagWrites);
 
       // The receipt detail screen's list re-reads to render the new
       // items; the budget aggregation reads receipt_line_items.
@@ -119,10 +180,28 @@ class _LineItemsEditorScreenState extends ConsumerState<LineItemsEditorScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error loading line items: $e')),
         data: (items) {
+          // Wait for the tag-assignments fetch before instantiating
+          // drafts. Without this, every row would render with an
+          // empty tag set on first paint and then "flash" the real
+          // selection in — and worse, draft state owns the in-flight
+          // tag selection, so a re-init would clobber the user's
+          // changes.
+          final assignments = _assignmentsByLineItemId;
+          if (assignments == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           // First-load handoff: copy the loaded rows into editable
           // drafts exactly once. Future provider refreshes (e.g. from
           // another tab) leave the in-progress draft state alone.
-          _drafts ??= items.map(_LineItemDraft.fromExisting).toList();
+          _drafts ??= items
+              .map(
+                (item) => _LineItemDraft.fromExisting(
+                  item,
+                  tagIds: assignments[item.id] ?? const {},
+                ),
+              )
+              .toList();
 
           return categoriesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -233,7 +312,7 @@ class _EmptyState extends StatelessWidget {
 // One editable line item row.
 // ---------------------------------------------------------------------------
 
-class _LineItemRow extends StatelessWidget {
+class _LineItemRow extends ConsumerStatefulWidget {
   const _LineItemRow({
     required this.draft,
     required this.categories,
@@ -247,7 +326,28 @@ class _LineItemRow extends StatelessWidget {
   final bool enabled;
 
   @override
+  ConsumerState<_LineItemRow> createState() => _LineItemRowState();
+}
+
+class _LineItemRowState extends ConsumerState<_LineItemRow> {
+  void _toggleTag(String tagId, bool isOn) {
+    setState(() {
+      if (isOn) {
+        widget.draft.assignedTagIds.add(tagId);
+      } else {
+        widget.draft.assignedTagIds.remove(tagId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tagsAsync = ref.watch(transactionTagsProvider);
+    // Hide the chip row entirely when the household has no tags
+    // defined — adding a tag is a transaction-side concern in v1,
+    // so the empty state on a line item editor would be confusing.
+    final tags = tagsAsync.valueOrNull ?? const <TransactionTag>[];
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -259,8 +359,8 @@ class _LineItemRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: draft.descriptionCtrl,
-                    enabled: enabled,
+                    controller: widget.draft.descriptionCtrl,
+                    enabled: widget.enabled,
                     decoration: const InputDecoration(
                       hintText: 'Description',
                       isDense: true,
@@ -270,7 +370,7 @@ class _LineItemRow extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: 'Delete line',
-                  onPressed: enabled ? onRemove : null,
+                  onPressed: widget.enabled ? widget.onRemove : null,
                 ),
               ],
             ),
@@ -280,19 +380,44 @@ class _LineItemRow extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 120,
-                  child: MoneyTextField(controller: draft.amountCtrl),
+                  child: MoneyTextField(controller: widget.draft.amountCtrl),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _CategoryDropdown(
-                    value: draft.categoryId,
-                    categories: categories,
-                    enabled: enabled,
-                    onChanged: (v) => draft.categoryId = v,
+                    value: widget.draft.categoryId,
+                    categories: widget.categories,
+                    enabled: widget.enabled,
+                    onChanged: (v) => widget.draft.categoryId = v,
                   ),
                 ),
               ],
             ),
+            if (tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final t in tags)
+                      FilterChip(
+                        label: Text(
+                          t.name,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        selected: widget.draft.assignedTagIds.contains(t.id),
+                        onSelected: widget.enabled
+                            ? (on) => _toggleTag(t.id, on)
+                            : null,
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -382,14 +507,19 @@ class _LineItemDraft {
     this.isTax = false,
     this.isTip = false,
     this.isDiscount = false,
-  });
+    Set<String>? assignedTagIds,
+  }) : assignedTagIds = assignedTagIds ?? <String>{},
+       _initialAssignedTagIds = Set<String>.from(assignedTagIds ?? const {});
 
   factory _LineItemDraft.empty() => _LineItemDraft(
     descriptionCtrl: TextEditingController(),
     amountCtrl: TextEditingController(),
   );
 
-  factory _LineItemDraft.fromExisting(ReceiptLineItem item) => _LineItemDraft(
+  factory _LineItemDraft.fromExisting(
+    ReceiptLineItem item, {
+    Set<String> tagIds = const {},
+  }) => _LineItemDraft(
     id: item.id,
     descriptionCtrl: TextEditingController(text: item.description),
     amountCtrl: TextEditingController(
@@ -399,6 +529,7 @@ class _LineItemDraft {
     isTax: item.isTax,
     isTip: item.isTip,
     isDiscount: item.isDiscount,
+    assignedTagIds: tagIds,
   );
 
   /// Existing row id, or null for an "Add Line" stub. Passed through
@@ -411,6 +542,24 @@ class _LineItemDraft {
   final TextEditingController descriptionCtrl;
   final TextEditingController amountCtrl;
   String? categoryId;
+
+  /// Currently-selected tag ids for this row. Mutable so the picker
+  /// can toggle without rebuilding the whole draft. Empty for new
+  /// rows; pre-loaded from the bulk fetch for existing rows.
+  Set<String> assignedTagIds;
+
+  /// Snapshot taken at construction so the save flow knows whether
+  /// the user actually moved any chips on this row — replace-only
+  /// when the set differs, so an idempotent save doesn't briefly
+  /// leave the row tagless between the DELETE and INSERT halves of
+  /// [TransactionTagsRepository.replaceLineItemAssignments].
+  final Set<String> _initialAssignedTagIds;
+
+  /// True when the user changed the tag set from what was loaded.
+  /// Used by the save flow to skip no-op writes.
+  bool get tagsChanged =>
+      assignedTagIds.length != _initialAssignedTagIds.length ||
+      !assignedTagIds.containsAll(_initialAssignedTagIds);
 
   // Flags are preserved across an edit pass even though the v1 UI
   // doesn't expose toggles for them. Keeps OCR-classified rows

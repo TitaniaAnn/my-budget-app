@@ -1,14 +1,15 @@
 // Data access layer for the tag dictionary and tag assignments.
 //
-// Two row shapes the repo cares about:
+// Three row shapes the repo cares about:
 //   * the dictionary (transaction_tags): one row per (household, name)
-//   * the join table (transaction_tag_assignments): one row per
-//     (transaction, tag)
+//   * transaction_tag_assignments: one row per (transaction, tag)
+//   * receipt_line_item_tag_assignments: one row per (line_item, tag)
 //
-// Line-item tag assignments share the dictionary but live in a
-// different join table (receipt_line_item_tag_assignments). They're
-// not exposed in this repo yet — the v1 picker is on transaction
-// rows only.
+// The two assignment tables share the same dictionary — a tag named
+// "contractor" applies to both surfaces. The line-item assignments
+// rely on migration 028's id-preserving save_receipt_line_items;
+// the original migration 018 would cascade-delete them on every
+// receipt edit, making line-item tags useless.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction_tag.dart';
@@ -118,6 +119,78 @@ class TransactionTagsRepository {
         .select('tag_id')
         .eq('transaction_id', transactionId);
     return data.map<String>((row) => row['tag_id'] as String).toList();
+  }
+
+  /// Returns the ids of tags assigned to [lineItemId]. Mirrors
+  /// [fetchAssignedTagIds] for the line-item side; the picker on
+  /// the line-items editor uses the bulk method below in practice,
+  /// but this exists for completeness and for any future
+  /// per-row consumer.
+  Future<List<String>> fetchAssignedTagIdsForLineItem(String lineItemId) async {
+    final data = await supabase
+        .from('receipt_line_item_tag_assignments')
+        .select('tag_id')
+        .eq('line_item_id', lineItemId);
+    return data.map<String>((row) => row['tag_id'] as String).toList();
+  }
+
+  /// Bulk-fetches every tag assignment for line items belonging to
+  /// [receiptId], indexed by line_item_id. Used by the line-items
+  /// editor to render existing tags on every row without N+1
+  /// fetches.
+  ///
+  /// Two-step under the hood: first fetch the receipt's line item
+  /// ids, then their tag assignments via inFilter. Postgrest doesn't
+  /// support the "join through" filter that would let this be a
+  /// single trip without an RPC, and the cost of the extra hop is
+  /// trivial — line items per receipt is in the single digits.
+  Future<Map<String, Set<String>>> fetchAllLineItemAssignmentsForReceipt(
+    String receiptId,
+  ) async {
+    final lineItemRows = await supabase
+        .from('receipt_line_items')
+        .select('id')
+        .eq('receipt_id', receiptId);
+    final ids = lineItemRows.map<String>((r) => r['id'] as String).toList();
+    if (ids.isEmpty) return const {};
+
+    final assignments = await supabase
+        .from('receipt_line_item_tag_assignments')
+        .select('line_item_id, tag_id')
+        .inFilter('line_item_id', ids);
+    final result = <String, Set<String>>{};
+    for (final row in assignments) {
+      final liId = row['line_item_id'] as String;
+      final tagId = row['tag_id'] as String;
+      (result[liId] ??= <String>{}).add(tagId);
+    }
+    return result;
+  }
+
+  /// Replaces the tag assignments on [lineItemId] with exactly
+  /// [tagIds]. Same delete-then-insert shape as the transaction-side
+  /// method, with the same caveat: not atomic across the two
+  /// writes. Acceptable trade-off for v1 — the line items editor
+  /// already batches one assignment-write per row, so an N-line
+  /// receipt does at most N such operations on save.
+  Future<void> replaceLineItemAssignments({
+    required String lineItemId,
+    required List<String> tagIds,
+  }) async {
+    await supabase
+        .from('receipt_line_item_tag_assignments')
+        .delete()
+        .eq('line_item_id', lineItemId);
+
+    if (tagIds.isEmpty) return;
+
+    await supabase
+        .from('receipt_line_item_tag_assignments')
+        .insert(
+          tagIds
+              .map((id) => {'line_item_id': lineItemId, 'tag_id': id})
+              .toList(),
+        );
   }
 
   /// Replaces the set of tags assigned to [transactionId] with
