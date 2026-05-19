@@ -140,6 +140,12 @@ class _HoldingCard extends ConsumerWidget {
 
   static final _qtyFmt = NumberFormat.decimalPattern();
 
+  /// Days after which a value is considered stale enough to flag.
+  /// 30 days is a tradeoff: short enough that a quarterly statement
+  /// doesn't sit unmarked, long enough that volatile securities
+  /// don't drown the user in stale chips between updates.
+  static const int _staleAfterDays = 30;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
@@ -202,9 +208,29 @@ class _HoldingCard extends ConsumerWidget {
                     ),
                   ],
                   const SizedBox(height: 2),
-                  Text(
-                    '${_qtyFmt.format(holding.quantity)} ${holding.quantity == 1 ? 'share' : 'shares'}',
-                    style: TextStyle(fontSize: 11, color: colors.textSubtle),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${_qtyFmt.format(holding.quantity)} ${holding.quantity == 1 ? 'share' : 'shares'}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSubtle,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Stale-price badge: surfaces when the user
+                      // hasn't re-marked the value in 30+ days, or
+                      // when last_priced_at was never set (backfilled
+                      // positions). Tapping the card opens the edit
+                      // sheet, where saving a new currentValue
+                      // refreshes the timestamp.
+                      if (_isStale(holding.lastPricedAt)) ...[
+                        const SizedBox(width: 6),
+                        _StalePill(lastPricedAt: holding.lastPricedAt),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -235,6 +261,49 @@ class _HoldingCard extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// True when [at] is null (position never priced) or older than the
+/// staleness threshold. Top-level so the rule can be unit-tested
+/// independently of the card widget when that becomes worth doing.
+bool _isStale(DateTime? at) {
+  if (at == null) return true;
+  return DateTime.now().difference(at).inDays > _HoldingCard._staleAfterDays;
+}
+
+/// Small amber chip on the holding card when its price is stale.
+/// Text adapts to whether the position has ever been priced: "Never
+/// priced" reads more accurately than "Stale · — d" for a row the
+/// user just typed in without a last_priced_at hint.
+class _StalePill extends StatelessWidget {
+  const _StalePill({required this.lastPricedAt});
+
+  final DateTime? lastPricedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    // Warning amber — same family as the loans accent so the chip
+    // reads as a soft heads-up rather than an error.
+    const accent = Color(0xFFF59E0B);
+    final label = lastPricedAt == null
+        ? 'Never priced'
+        : 'Stale · ${DateTime.now().difference(lastPricedAt!).inDays}d';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: accent,
         ),
       ),
     );
