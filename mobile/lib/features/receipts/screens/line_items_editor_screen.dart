@@ -377,6 +377,7 @@ class _LineItemDraft {
   _LineItemDraft({
     required this.descriptionCtrl,
     required this.amountCtrl,
+    this.id,
     this.categoryId,
     this.isTax = false,
     this.isTip = false,
@@ -389,6 +390,7 @@ class _LineItemDraft {
   );
 
   factory _LineItemDraft.fromExisting(ReceiptLineItem item) => _LineItemDraft(
+    id: item.id,
     descriptionCtrl: TextEditingController(text: item.description),
     amountCtrl: TextEditingController(
       text: (item.amount / 100).toStringAsFixed(2),
@@ -398,6 +400,13 @@ class _LineItemDraft {
     isTip: item.isTip,
     isDiscount: item.isDiscount,
   );
+
+  /// Existing row id, or null for an "Add Line" stub. Passed through
+  /// to the save_receipt_line_items RPC (migration 028) so the
+  /// underlying row is UPDATEd in place instead of being deleted
+  /// and re-inserted with a fresh UUID — the latter would cascade
+  /// any FKs pointing at it (e.g. receipt_line_item_tag_assignments).
+  final String? id;
 
   final TextEditingController descriptionCtrl;
   final TextEditingController amountCtrl;
@@ -422,6 +431,9 @@ class _LineItemDraft {
 
   Map<String, dynamic> toRpcJson() {
     return {
+      // Null id triggers the RPC's INSERT-with-fresh-UUID branch
+      // (migration 028); non-null reuses the existing row.
+      'id': id,
       'description': descriptionCtrl.text.trim(),
       'amount': parseToCents(amountCtrl.text).abs(),
       'category_id': categoryId,

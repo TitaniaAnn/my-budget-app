@@ -367,5 +367,174 @@ void main() {
         );
       }, skip: reason);
     });
+
+    // ── saveLineItems ID preservation (migration 028) ────────────────────
+    //
+    // Original save_receipt_line_items (migration 018) did a full
+    // DELETE + INSERT, regenerating IDs on every edit. That cascade-
+    // deleted any FK pointing at the rows — e.g. the
+    // receipt_line_item_tag_assignments table from migration 020.
+    // Migration 028 made the RPC upsert-by-id with delete-orphans.
+    // These tests pin that behaviour so a future refactor can't
+    // silently revert to the destructive shape.
+
+    group('saveLineItems ID preservation', () {
+      Future<String> insertReceipt() async {
+        final row = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/id-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'pending',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'passing an existing id UPDATEs in place — id and FKs survive',
+        () async {
+          final receiptId = await insertReceipt();
+          // Initial save: no ids supplied → fresh UUIDs.
+          final first = await repo.saveLineItems(
+            receiptId: receiptId,
+            items: const [
+              {
+                'description': 'coffee',
+                'amount': 500,
+                'is_tax': false,
+                'is_tip': false,
+                'is_discount': false,
+              },
+              {
+                'description': 'pastry',
+                'amount': 350,
+                'is_tax': false,
+                'is_tip': false,
+                'is_discount': false,
+              },
+            ],
+          );
+          expect(first, hasLength(2));
+          final coffeeId = first
+              .firstWhere((i) => i.description == 'coffee')
+              .id;
+          final pastryId = first
+              .firstWhere((i) => i.description == 'pastry')
+              .id;
+
+          // Re-save with the same ids but a tweaked amount on coffee.
+          // The returned rows should keep their ids — UPDATEd in place.
+          final second = await repo.saveLineItems(
+            receiptId: receiptId,
+            items: [
+              {
+                'id': coffeeId,
+                'description': 'coffee',
+                'amount': 600,
+                'is_tax': false,
+                'is_tip': false,
+                'is_discount': false,
+              },
+              {
+                'id': pastryId,
+                'description': 'pastry',
+                'amount': 350,
+                'is_tax': false,
+                'is_tip': false,
+                'is_discount': false,
+              },
+            ],
+          );
+          expect(
+            second.firstWhere((i) => i.description == 'coffee').id,
+            coffeeId,
+            reason:
+                'coffee row id must survive the re-save — the upsert is '
+                'load-bearing for the line-item tag picker (migration 020 '
+                'FKs cascade-delete otherwise).',
+          );
+          expect(
+            second.firstWhere((i) => i.description == 'coffee').amount,
+            600,
+            reason: 'the UPDATE branch must apply the new amount.',
+          );
+          expect(
+            second.firstWhere((i) => i.description == 'pastry').id,
+            pastryId,
+            reason: 'untouched row id must also survive.',
+          );
+        },
+        skip: reason,
+      );
+
+      test('rows not in the input set are deleted', () async {
+        final receiptId = await insertReceipt();
+        final initial = await repo.saveLineItems(
+          receiptId: receiptId,
+          items: const [
+            {
+              'description': 'keep me',
+              'amount': 100,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+            },
+            {
+              'description': 'delete me',
+              'amount': 200,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+            },
+          ],
+        );
+        final keepId = initial.firstWhere((i) => i.description == 'keep me').id;
+
+        // Save again with only the "keep me" row.
+        final after = await repo.saveLineItems(
+          receiptId: receiptId,
+          items: [
+            {
+              'id': keepId,
+              'description': 'keep me',
+              'amount': 100,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+            },
+          ],
+        );
+        expect(after, hasLength(1));
+        expect(after.single.description, 'keep me');
+        expect(after.single.id, keepId);
+      }, skip: reason);
+
+      test('empty items input deletes everything for the receipt', () async {
+        // Matches the original migration 018 short-circuit. The
+        // editor should never pass an empty list when the user
+        // wants to keep items, but the RPC supports it for
+        // completeness.
+        final receiptId = await insertReceipt();
+        await repo.saveLineItems(
+          receiptId: receiptId,
+          items: const [
+            {
+              'description': 'doomed',
+              'amount': 100,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+            },
+          ],
+        );
+        await repo.saveLineItems(receiptId: receiptId, items: const []);
+        final items = await repo.fetchLineItems(receiptId);
+        expect(items, isEmpty);
+      }, skip: reason);
+    });
   });
 }
