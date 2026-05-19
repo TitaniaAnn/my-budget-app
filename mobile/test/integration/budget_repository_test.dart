@@ -286,6 +286,51 @@ void main() {
         },
         skip: reason,
       );
+
+      test('line items are NOT double-counted when multiple transactions '
+          'pair to the same receipt', () async {
+        // Migration 026 used a JOIN that multiplied line items
+        // by paired-transaction count: a $200 receipt paid as 2 x
+        // $100 installments would add $400 to the category total.
+        // Migration 029 replaced the JOIN with EXISTS to count
+        // each line item once. This test pins the new contract.
+        final coffeeId = await harness.systemCategoryIdByName(
+          'Coffee & Drinks',
+        );
+        final before = await spendingFor(coffeeId);
+
+        // $25 receipt with one line item under Coffee, paid in
+        // two $12.50 installments — both in the window. Schema
+        // explicitly allows multi-pair (split bills, installments).
+        final receiptId = await insertReceipt();
+        await insertLineItem(
+          receiptId: receiptId,
+          amountCents: 2500,
+          categoryId: coffeeId,
+        );
+        final txA = await harness.insertTransaction(
+          description: 'INSTALLMENT 1',
+          amountCents: -1250,
+          transactionDate: anchor,
+        );
+        final txB = await harness.insertTransaction(
+          description: 'INSTALLMENT 2',
+          amountCents: -1250,
+          transactionDate: anchor,
+        );
+        await pair(txA, receiptId);
+        await pair(txB, receiptId);
+
+        final after = await spendingFor(coffeeId);
+        expect(
+          after - before,
+          2500,
+          reason:
+              'multi-paired receipt must contribute its line-item '
+              'total ONCE — pre-migration-029 the JOIN would yield '
+              '\$50 (2x \$25).',
+        );
+      }, skip: reason);
     });
   });
 }
