@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/recurring/screens/recurring_transactions_screen.dart';
 import '../../../features/reports/screens/monthly_report_screen.dart';
 import '../../../features/transactions/screens/manage_tags_screen.dart';
 import '../../../features/transactions/screens/review_categorisations_screen.dart';
@@ -126,6 +127,22 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const ManageTagsScreen()),
+            ),
+          ),
+
+          // ── Automation ─────────────────────────────────────────────────
+          _SectionHeader('Automation'),
+          ListTile(
+            leading: const Icon(Icons.repeat),
+            title: const Text('Recurring Transactions'),
+            subtitle: const Text(
+              'Rules that auto-create transactions on a cadence',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const RecurringTransactionsScreen(),
+              ),
             ),
           ),
 
