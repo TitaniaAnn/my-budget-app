@@ -23,7 +23,9 @@ import '../../../shared/widgets/sheet_scaffold.dart';
 import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
+import '../services/column_mapping_presets.dart';
 import '../services/statement_parser.dart';
+import 'column_override_sheet.dart';
 
 class ImportStatementSheet extends ConsumerStatefulWidget {
   const ImportStatementSheet({super.key});
@@ -64,7 +66,47 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       // Read async + parse on a background isolate so a multi-MB statement
       // doesn't freeze the UI thread.
       final content = await File(file.path!).readAsString();
-      final parsed = await compute(parseStatementCsv, content);
+
+      // Try a previously-saved preset for this exact header shape first
+      // — if the user matched columns on a prior import from this bank,
+      // we skip the prompt and parse straight through.
+      final headers = extractHeaders(content);
+      final fingerprint = headerFingerprint(headers);
+      final savedMapping = await loadColumnMappingPreset(fingerprint);
+
+      ParsedStatement parsed;
+      try {
+        parsed = savedMapping != null
+            // Re-parse path is small enough to run on the main isolate
+            // — and a saved mapping skips auto-detect anyway, so the
+            // cost-saving rationale for compute() doesn't apply.
+            ? parseStatementCsv(content, mapping: savedMapping)
+            : await compute(_autoDetectParse, content);
+      } on ColumnDetectionFailure catch (failure) {
+        // Auto-detect failed AND we have no saved preset for these
+        // headers. Surface the manual override sheet so the user can
+        // pick columns themselves — their choice is persisted under
+        // this fingerprint so subsequent imports skip the prompt.
+        if (!mounted) return;
+        final picked = await showAppSheet<ColumnMapping>(
+          context,
+          child: ColumnOverrideSheet(headers: failure.headers),
+        );
+        if (picked == null) {
+          // User dismissed the sheet — surface the original error so
+          // they know nothing was imported.
+          if (!mounted) return;
+          setState(() => _error = failure.toString());
+          return;
+        }
+        parsed = parseStatementCsv(content, mapping: picked);
+        // Only persist manual overrides — an auto-detect path doesn't
+        // need a preset, the next import will detect the same way.
+        await saveColumnMappingPreset(
+          fingerprint: fingerprint,
+          mapping: picked,
+        );
+      }
 
       if (parsed.rows.isEmpty) throw Exception('No valid rows found in file');
       if (!mounted) return;
@@ -89,6 +131,12 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  /// Top-level callable for `compute()` — needs a `(String) -> R`
+  /// callback shape. Wraps parseStatementCsv which now has named
+  /// optional `mapping` (compute can't pass that through).
+  static ParsedStatement _autoDetectParse(String content) =>
+      parseStatementCsv(content);
 
   Future<void> _import() async {
     if (_selectedAccountId == null) {

@@ -52,20 +52,109 @@ class ParsedStatement {
   final List<String> warnings;
 }
 
-/// Top-level entry point. Suitable for `compute()` so a multi-MB statement
-/// doesn't block the UI thread.
-ParsedStatement parseStatementCsv(String content) {
-  // Normalise line endings — bank CSVs commonly use \r\n (Windows).
-  final normalised = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-  final rows = const CsvToListConverter(eol: '\n').convert(normalised);
-  if (rows.length < 2) {
-    throw const FormatException('File appears empty');
+/// Resolved column indices into a CSV's header row. Produced by
+/// [detectColumnMapping] (heuristic auto-detect) or supplied by the
+/// caller after a manual override. The parser treats either source
+/// the same.
+///
+/// `amountIdx` and (`debitIdx`, `creditIdx`) are mutually exclusive
+/// — banks export either a single signed-amount column OR two
+/// unsigned debit/credit columns, never both meaningfully populated.
+/// Use [ColumnMapping.signed] for the single-column shape and
+/// [ColumnMapping.split] for the two-column shape.
+class ColumnMapping {
+  const ColumnMapping._({
+    required this.dateIdx,
+    required this.descIdx,
+    required this.amountIdx,
+    required this.debitIdx,
+    required this.creditIdx,
+  });
+
+  /// Single signed-amount column.
+  const ColumnMapping.signed({
+    required int dateIdx,
+    required int descIdx,
+    required int amountIdx,
+  }) : this._(
+         dateIdx: dateIdx,
+         descIdx: descIdx,
+         amountIdx: amountIdx,
+         debitIdx: -1,
+         creditIdx: -1,
+       );
+
+  /// Split debit + credit columns. Both must be present; the parser
+  /// rejects a half-split mapping at construction.
+  const ColumnMapping.split({
+    required int dateIdx,
+    required int descIdx,
+    required int debitIdx,
+    required int creditIdx,
+  }) : this._(
+         dateIdx: dateIdx,
+         descIdx: descIdx,
+         amountIdx: -1,
+         debitIdx: debitIdx,
+         creditIdx: creditIdx,
+       );
+
+  final int dateIdx;
+  final int descIdx;
+  final int amountIdx;
+  final int debitIdx;
+  final int creditIdx;
+
+  bool get isSplit => amountIdx == -1 && debitIdx != -1 && creditIdx != -1;
+}
+
+/// Exception thrown when [parseStatementCsv] can't auto-detect
+/// columns. Carries the parsed header row so the UI can offer a
+/// manual override picker without re-reading the file.
+///
+/// Subclasses [FormatException] so existing call-sites that catch
+/// `FormatException` (the surface API up to migration of this
+/// override path) keep working — they just don't get access to the
+/// header list. New code can catch `ColumnDetectionFailure`
+/// specifically and pull `.headers` off it.
+class ColumnDetectionFailure extends FormatException {
+  ColumnDetectionFailure(this.headers)
+    : super(
+        'Could not detect columns.\nFound: ${headers.join(', ')}\n'
+        'Expected: date, description, amount '
+        '(or separate debit and credit columns)',
+      );
+  final List<String> headers;
+}
+
+/// Stable per-file-shape identifier derived from the header row.
+/// Used to look up a saved [ColumnMapping] preset so a re-import
+/// from the same bank doesn't re-prompt. Lowercases and trims each
+/// header before hashing so a "Date" / "date " round-trip doesn't
+/// invalidate the preset.
+///
+/// Plain SHA-1 over a delimiter-joined string — cryptographic
+/// strength is irrelevant here, we just want a short stable key
+/// that's unlikely to collide across banks.
+String headerFingerprint(List<String> headers) {
+  final normalised = headers
+      .map((h) => h.toLowerCase().trim())
+      .join(''); // SOH delimiter — won't appear in real headers.
+  // Lightweight hash: FNV-1a 32-bit, hex-encoded. Avoids a crypto
+  // dependency for what's effectively just a dictionary key.
+  var hash = 2166136261;
+  for (final cu in normalised.codeUnits) {
+    hash ^= cu;
+    hash = (hash * 16777619) & 0xFFFFFFFF;
   }
+  return hash.toRadixString(16).padLeft(8, '0');
+}
 
-  final headers = rows.first
-      .map((h) => h.toString().toLowerCase().trim())
-      .toList();
-
+/// Auto-detects column indices from [headers]. Returns null when
+/// the heuristic can't lock onto date+desc+amount-or-split — the
+/// caller's job to either consult a saved preset or surface the
+/// override sheet.
+ColumnMapping? detectColumnMapping(List<String> headers) {
   final dateIdx = _findCol(headers, const [
     'transaction date',
     'post date',
@@ -79,23 +168,58 @@ ParsedStatement parseStatementCsv(String content) {
     'memo',
     'name',
   ]);
-  // Single signed-amount column. Tried before split debit/credit so a bank
-  // that exports both "Amount" and a stub "Debit" column still parses.
   final amountIdx = _findCol(headers, const ['amount']);
-  // Some banks export debits and credits in separate unsigned columns.
   final debitIdx = _findCol(headers, const ['debit', 'withdrawal']);
   final creditIdx = _findCol(headers, const ['credit', 'deposit']);
 
-  final hasSplit = amountIdx == -1 && debitIdx != -1 && creditIdx != -1;
-  if (dateIdx == -1 || descIdx == -1 || (amountIdx == -1 && !hasSplit)) {
-    throw FormatException(
-      'Could not detect columns.\n'
-      'Found: ${headers.join(', ')}\n'
-      'Expected: date, description, amount '
-      '(or separate debit and credit columns)',
+  if (dateIdx == -1 || descIdx == -1) return null;
+  if (amountIdx != -1) {
+    return ColumnMapping.signed(
+      dateIdx: dateIdx,
+      descIdx: descIdx,
+      amountIdx: amountIdx,
     );
   }
+  if (debitIdx != -1 && creditIdx != -1) {
+    return ColumnMapping.split(
+      dateIdx: dateIdx,
+      descIdx: descIdx,
+      debitIdx: debitIdx,
+      creditIdx: creditIdx,
+    );
+  }
+  return null;
+}
 
+/// Top-level entry point. Suitable for `compute()` so a multi-MB statement
+/// doesn't block the UI thread.
+///
+/// When [mapping] is supplied, the parser skips auto-detection and uses it
+/// verbatim — the path the override sheet and the saved-preset lookup take.
+/// When [mapping] is null, auto-detection runs and a
+/// [ColumnDetectionFailure] is thrown when it can't find the columns.
+/// Callers should catch that and either consult a saved preset by
+/// [headerFingerprint] or surface the override sheet.
+ParsedStatement parseStatementCsv(String content, {ColumnMapping? mapping}) {
+  // Normalise line endings — bank CSVs commonly use \r\n (Windows).
+  final normalised = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final rows = const CsvToListConverter(eol: '\n').convert(normalised);
+  if (rows.length < 2) {
+    throw const FormatException('File appears empty');
+  }
+
+  final headers = rows.first
+      .map((h) => h.toString().toLowerCase().trim())
+      .toList();
+
+  final resolved = mapping ?? detectColumnMapping(headers);
+  if (resolved == null) {
+    throw ColumnDetectionFailure(headers);
+  }
+  return _parseWithMapping(rows, resolved);
+}
+
+ParsedStatement _parseWithMapping(List<List<dynamic>> rows, ColumnMapping m) {
   final out = <ParsedStatementRow>[];
   final skipped = <String>[];
   final warnings = <String>[];
@@ -105,17 +229,17 @@ ParsedStatement parseStatementCsv(String content) {
 
   for (final (i, row) in rows.skip(1).indexed) {
     final rowNum = i + 2; // 1-based, accounting for header
-    final neededCols = hasSplit
-        ? [dateIdx, descIdx, debitIdx, creditIdx]
-        : [dateIdx, descIdx, amountIdx];
+    final neededCols = m.isSplit
+        ? [m.dateIdx, m.descIdx, m.debitIdx, m.creditIdx]
+        : [m.dateIdx, m.descIdx, m.amountIdx];
     final maxIdx = neededCols.reduce((a, b) => a > b ? a : b);
     if (row.length <= maxIdx) {
       skipped.add('Row $rowNum: too few columns (${row.length})');
       continue;
     }
 
-    final dateStr = row[dateIdx].toString().trim();
-    final desc = row[descIdx].toString().trim();
+    final dateStr = row[m.dateIdx].toString().trim();
+    final desc = row[m.descIdx].toString().trim();
     if (dateStr.isEmpty || desc.isEmpty) {
       skipped.add('Row $rowNum: empty date or description');
       continue;
@@ -130,16 +254,16 @@ ParsedStatement parseStatementCsv(String content) {
     final int? cents;
     final amountErr = StringBuffer();
     final amountWarn = StringBuffer();
-    if (hasSplit) {
+    if (m.isSplit) {
       cents = _parseSplitAmount(
-        debit: row[debitIdx].toString().trim(),
-        credit: row[creditIdx].toString().trim(),
+        debit: row[m.debitIdx].toString().trim(),
+        credit: row[m.creditIdx].toString().trim(),
         err: amountErr,
         warn: amountWarn,
       );
     } else {
       cents = _parseSingleAmount(
-        raw: row[amountIdx].toString().trim(),
+        raw: row[m.amountIdx].toString().trim(),
         description: desc,
         err: amountErr,
       );
@@ -168,6 +292,17 @@ ParsedStatement parseStatementCsv(String content) {
   }
 
   return ParsedStatement(rows: out, skipped: skipped, warnings: warnings);
+}
+
+/// Reads just the header row from [content]. Useful when the import UI
+/// needs to compute a [headerFingerprint] or populate the override
+/// sheet's dropdowns without re-running the full parser. Returns the
+/// raw (lowercased, trimmed) header strings.
+List<String> extractHeaders(String content) {
+  final normalised = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final rows = const CsvToListConverter(eol: '\n').convert(normalised);
+  if (rows.isEmpty) return const [];
+  return rows.first.map((h) => h.toString().toLowerCase().trim()).toList();
 }
 
 /// Returns the index of the first header containing any candidate substring.
