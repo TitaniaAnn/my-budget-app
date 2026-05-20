@@ -314,8 +314,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       } else {
         final householdId = await ref.read(householdIdProvider.future);
         final user = ref.read(currentUserProvider);
-        if (householdId == null || user == null)
+        if (householdId == null || user == null) {
           throw Exception('Not logged in');
+        }
 
         await repo.createTransaction(
           householdId: householdId,

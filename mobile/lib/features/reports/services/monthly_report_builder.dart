@@ -15,10 +15,17 @@
 // transaction's spend flows through its receipt line items, not its
 // own category. An "Uncategorized" bucket is added Dart-side from
 // unpaired + uncategorised rows so users see those dollars too.
+//
+// Per-account closing balances are reconstructed by walking
+// [transactionsAfterMonth] backward from each account's
+// `current_balance`. See [closingBalancesAtMonthEnd] for the math
+// and why transfer legs are NOT excluded from that walkback.
 
+import '../../accounts/models/account.dart';
 import '../../transactions/models/category.dart';
 import '../../transactions/models/transaction.dart';
 import '../models/monthly_report_data.dart';
+import 'closing_balances.dart';
 
 MonthlyReportData buildMonthlyReport({
   required DateTime monthStart,
@@ -27,6 +34,9 @@ MonthlyReportData buildMonthlyReport({
   required List<Transaction> transactionsInMonth,
   required Map<String, int> spendingByCategory,
   required Map<String, Category> categoryLookup,
+  required List<Account> accounts,
+  required List<Transaction> transactionsAfterMonth,
+  required DateTime closingAsOf,
 }) {
   var income = 0;
   var expenses = 0;
@@ -78,6 +88,12 @@ MonthlyReportData buildMonthlyReport({
 
   rows.sort((a, b) => b.cents.compareTo(a.cents));
 
+  final closingBalances = closingBalancesAtMonthEnd(
+    accounts: accounts,
+    transactionsAfterClose: transactionsAfterMonth,
+    closingAsOf: closingAsOf,
+  );
+
   return MonthlyReportData(
     monthStart: monthStart,
     monthEnd: monthEnd,
@@ -86,5 +102,7 @@ MonthlyReportData buildMonthlyReport({
     expensesCents: expenses,
     byCategory: rows,
     transferLegCount: transferLegs,
+    closingBalances: closingBalances,
+    closingAsOf: closingAsOf,
   );
 }

@@ -15,9 +15,39 @@
 //   * by-category rows are sorted descending by cents
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mybudget/features/accounts/models/account.dart';
+import 'package:mybudget/features/reports/models/monthly_report_data.dart';
 import 'package:mybudget/features/reports/services/monthly_report_builder.dart';
 import 'package:mybudget/features/transactions/models/category.dart';
 import 'package:mybudget/features/transactions/models/transaction.dart';
+
+/// Wraps [buildMonthlyReport] with sane defaults for the closing-
+/// balance inputs. Tests that don't care about closing balances
+/// don't have to thread the new params; tests that DO care override
+/// them explicitly.
+MonthlyReportData _build({
+  required DateTime monthStart,
+  required DateTime monthEnd,
+  required String householdName,
+  required List<Transaction> transactionsInMonth,
+  required Map<String, int> spendingByCategory,
+  required Map<String, Category> categoryLookup,
+  List<Account> accounts = const [],
+  List<Transaction> transactionsAfterMonth = const [],
+  DateTime? closingAsOf,
+}) {
+  return buildMonthlyReport(
+    monthStart: monthStart,
+    monthEnd: monthEnd,
+    householdName: householdName,
+    transactionsInMonth: transactionsInMonth,
+    spendingByCategory: spendingByCategory,
+    categoryLookup: categoryLookup,
+    accounts: accounts,
+    transactionsAfterMonth: transactionsAfterMonth,
+    closingAsOf: closingAsOf ?? monthEnd,
+  );
+}
 
 Category _cat(String id, String name, {String? color}) => Category(
   id: id,
@@ -61,7 +91,7 @@ void main() {
 
   group('buildMonthlyReport', () {
     test('income and expenses sum signed amounts on non-transfer rows', () {
-      final r = buildMonthlyReport(
+      final r = _build(
         monthStart: monthStart,
         monthEnd: monthEnd,
         householdName: 'Test',
@@ -83,7 +113,7 @@ void main() {
       'transfer legs are excluded from BOTH income and expenses and counted '
       'in transferLegCount',
       () {
-        final r = buildMonthlyReport(
+        final r = _build(
           monthStart: monthStart,
           monthEnd: monthEnd,
           householdName: 'Test',
@@ -115,7 +145,7 @@ void main() {
     test('by-category rows come from the RPC map, joined by id', () {
       final groceries = _cat('g', 'Groceries', color: '#22c55e');
       final coffee = _cat('c', 'Coffee', color: '#f59e0b');
-      final r = buildMonthlyReport(
+      final r = _build(
         monthStart: monthStart,
         monthEnd: monthEnd,
         householdName: 'Test',
@@ -133,7 +163,7 @@ void main() {
     });
 
     test('RPC ids missing from the lookup are silently skipped', () {
-      final r = buildMonthlyReport(
+      final r = _build(
         monthStart: monthStart,
         monthEnd: monthEnd,
         householdName: 'Test',
@@ -151,7 +181,7 @@ void main() {
       () {
         // The budget UI clamps these to zero rather than showing a
         // negative spending bar; the report follows suit.
-        final r = buildMonthlyReport(
+        final r = _build(
           monthStart: monthStart,
           monthEnd: monthEnd,
           householdName: 'Test',
@@ -166,7 +196,7 @@ void main() {
     test(
       'Uncategorized bucket counts unpaired + uncategorised debits only',
       () {
-        final r = buildMonthlyReport(
+        final r = _build(
           monthStart: monthStart,
           monthEnd: monthEnd,
           householdName: 'Test',
@@ -204,7 +234,7 @@ void main() {
     );
 
     test('no Uncategorized bucket appears when total is zero', () {
-      final r = buildMonthlyReport(
+      final r = _build(
         monthStart: monthStart,
         monthEnd: monthEnd,
         householdName: 'Test',

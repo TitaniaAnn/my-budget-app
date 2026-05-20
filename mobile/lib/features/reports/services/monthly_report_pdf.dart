@@ -124,6 +124,70 @@ Future<Uint8List> renderMonthlyReportPdf(MonthlyReportData data) async {
           ),
         pw.SizedBox(height: 20),
 
+        // ── Closing balances ──────────────────────────────────
+        // Skipped entirely when the household has no accounts —
+        // not worth a header just to render an empty table.
+        if (data.closingBalances.isNotEmpty) ...[
+          pw.Text(
+            // Past months label as "Balance at month end"; an
+            // in-progress month says "as of today" so users can
+            // tell the report is partial. closingAsOf carries the
+            // distinction without a separate boolean.
+            data.closingAsOf.isBefore(data.monthEnd)
+                ? 'Balances as of '
+                      '${DateFormat.yMMMd().format(data.closingAsOf)}'
+                : 'Balances at month end',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Table(
+            columnWidths: const {
+              0: pw.FlexColumnWidth(),
+              1: pw.IntrinsicColumnWidth(),
+              2: pw.IntrinsicColumnWidth(),
+            },
+            children: [
+              for (final row in data.closingBalances)
+                pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                      child: pw.Text(row.accountName),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        top: 4,
+                        bottom: 4,
+                      ),
+                      child: pw.Text(
+                        row.accountType.displayName,
+                        style: const pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                      child: pw.Text(
+                        fmt(row.balanceCents),
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(
+                          color: row.balanceCents < 0
+                              ? PdfColors.red800
+                              : PdfColors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+        ],
+
         // ── Footnotes ─────────────────────────────────────────
         if (data.transferLegCount > 0)
           pw.Text(

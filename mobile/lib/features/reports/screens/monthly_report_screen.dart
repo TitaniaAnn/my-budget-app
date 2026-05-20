@@ -13,8 +13,10 @@ import 'package:printing/printing.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
+import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../features/budget/repositories/budget_repository.dart';
 import '../../../features/settings/providers/settings_provider.dart';
+import '../../../features/transactions/models/transaction.dart';
 import '../../../features/transactions/repositories/transactions_repository.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -45,7 +47,14 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
 
     final txRepo = ref.read(transactionsRepositoryProvider);
     final budgetRepo = ref.read(budgetRepositoryProvider);
+    final accountsRepo = ref.read(accountsRepositoryProvider);
     final monthEnd = _lastOfMonth(monthStart);
+    // For past months, the closing balance is the literal end of the
+    // reporting month. For an in-progress month, monthEnd is in the
+    // future and the walkback has nothing to undo — so the as-of date
+    // is "now". The renderer reads this to label the table correctly.
+    final now = DateTime.now();
+    final closingAsOf = monthEnd.isBefore(now) ? monthEnd : now;
 
     final householdInfoFuture = ref.read(householdInfoProvider.future);
     final transactionsFuture = txRepo.fetchTransactions(
@@ -62,12 +71,33 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       to: monthEnd,
     );
     final categoriesFuture = txRepo.fetchCategories();
+    final accountsFuture = accountsRepo.fetchAccounts(householdId);
+    // Post-month transactions for the per-account walkback. For an
+    // in-progress month this resolves to an empty list — closingAsOf
+    // is now, so there's nothing dated strictly after it to undo.
+    final postMonthTxFuture = monthEnd.isBefore(now)
+        ? txRepo.fetchTransactions(
+            householdId: householdId,
+            from: monthEnd.add(const Duration(days: 1)),
+            to: now,
+            limit: 5000,
+          )
+        : Future<List<Transaction>>.value(const []);
 
-    final (info, transactions, spending, categories) = await (
+    final (
+      info,
+      transactions,
+      spending,
+      categories,
+      accounts,
+      postMonthTx,
+    ) = await (
       householdInfoFuture,
       transactionsFuture,
       spendingFuture,
       categoriesFuture,
+      accountsFuture,
+      postMonthTxFuture,
     ).wait;
 
     return buildMonthlyReport(
@@ -77,6 +107,9 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       transactionsInMonth: transactions,
       spendingByCategory: spending,
       categoryLookup: {for (final c in categories) c.id: c},
+      accounts: accounts,
+      transactionsAfterMonth: postMonthTx,
+      closingAsOf: closingAsOf,
     );
   }
 
@@ -247,6 +280,42 @@ class _Preview extends StatelessWidget {
               trailing: Text(formatCurrency(row.cents)),
             ),
           ),
+        if (data.closingBalances.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              // Adaptive label: past months show "at month end",
+              // an in-progress month shows the actual as-of date
+              // so the user can tell the report is partial.
+              data.closingAsOf.isBefore(data.monthEnd)
+                  ? 'Balances as of '
+                        '${DateFormat.yMMMd().format(data.closingAsOf)}'
+                  : 'Balances at month end',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ...data.closingBalances.map(
+            (row) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(row.accountName),
+              subtitle: Text(
+                row.accountType.displayName,
+                style: TextStyle(fontSize: 11, color: colors.textSubtle),
+              ),
+              trailing: Text(
+                formatCurrency(row.balanceCents),
+                style: TextStyle(
+                  color: row.balanceCents < 0 ? colors.expense : null,
+                ),
+              ),
+            ),
+          ),
+        ],
         if (data.transferLegCount > 0)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),

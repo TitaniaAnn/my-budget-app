@@ -2,7 +2,11 @@
 // no JSON marshalling — the report isn't persisted, just rendered.
 //
 // `byCategory` entries are sorted by `cents` descending; the renderer
-// trusts the order it gets and doesn't re-sort.
+// trusts the order it gets and doesn't re-sort. Same contract for
+// `closingBalances`, sorted descending by absolute balance so heavy
+// accounts surface first.
+
+import '../../accounts/models/account.dart';
 
 class MonthlyReportData {
   const MonthlyReportData({
@@ -13,6 +17,8 @@ class MonthlyReportData {
     required this.expensesCents,
     required this.byCategory,
     required this.transferLegCount,
+    required this.closingBalances,
+    required this.closingAsOf,
   });
 
   /// First day of the report's calendar month (00:00 local).
@@ -41,8 +47,40 @@ class MonthlyReportData {
   /// account-to-account movement.
   final int transferLegCount;
 
+  /// Per-account balance at [closingAsOf], computed by walking
+  /// transactions backward from `accounts.current_balance`. Sorted
+  /// descending by absolute balance — large positions (or large
+  /// debts) surface first. Empty when the household has no accounts.
+  ///
+  /// Transfer legs are NOT excluded from the walkback: each leg
+  /// genuinely moves money between accounts, so subtracting them is
+  /// exactly what we want.
+  final List<MonthlyReportAccountBalance> closingBalances;
+
+  /// The actual as-of timestamp for [closingBalances]. Equal to
+  /// [monthEnd] for past months; for a report covering the current
+  /// month (the month hasn't ended yet) this is "now" — the balances
+  /// reflect today, with the renderer adapting its label accordingly.
+  final DateTime closingAsOf;
+
   /// income - expenses. Positive = saved, negative = spent down.
   int get netChangeCents => incomeCents - expensesCents;
+}
+
+class MonthlyReportAccountBalance {
+  const MonthlyReportAccountBalance({
+    required this.accountName,
+    required this.accountType,
+    required this.balanceCents,
+  });
+
+  final String accountName;
+  final AccountType accountType;
+
+  /// Signed cents: liabilities (credit cards, mortgages) come through
+  /// as negative — the renderer relies on the sign for colour and
+  /// the absolute-value sort.
+  final int balanceCents;
 }
 
 class MonthlyReportCategoryRow {
