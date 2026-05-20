@@ -339,6 +339,52 @@ class TransactionsRepository {
     await supabase.from('transactions').delete().eq('id', id);
   }
 
+  /// Assigns [categoryId] to every transaction in [transactionIds] as
+  /// a user-sourced choice — sets `category_assigned_by = 'user'`,
+  /// stamps `category_assigned_at`, and clears `ml_model_confidence`
+  /// (a stale ML value would confuse the active-learning review
+  /// screen). One UPDATE…WHERE id IN (…) round-trip.
+  ///
+  /// Distinct from [bulkRecategorize], which runs the categorizer
+  /// per row and groups by predicted class; this method takes an
+  /// explicit user choice and applies it to a known set.
+  Future<void> setUserCategoryForMany({
+    required List<String> transactionIds,
+    required String categoryId,
+  }) async {
+    if (transactionIds.isEmpty) return;
+    await supabase
+        .from('transactions')
+        .update({
+          'category_id': categoryId,
+          'category_assigned_by': 'user',
+          'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
+          'ml_model_confidence': null,
+        })
+        .inFilter('id', transactionIds);
+  }
+
+  /// Deletes every transaction in [transactionIds] in one round-trip.
+  /// Returns the distinct account ids that were touched so the caller
+  /// can recompute their balances (the trigger fires per-row, but the
+  /// Dart-side `currentBalance` mirror needs an explicit refresh).
+  ///
+  /// Uses PostgREST's delete-returning form so we learn the affected
+  /// account ids without a separate SELECT — same pattern as
+  /// [deleteTransfer].
+  Future<List<String>> deleteMany(List<String> transactionIds) async {
+    if (transactionIds.isEmpty) return const [];
+    final rows = await supabase
+        .from('transactions')
+        .delete()
+        .inFilter('id', transactionIds)
+        .select('account_id');
+    return {
+      for (final r in (rows as List).cast<Map<String, dynamic>>())
+        r['account_id'] as String,
+    }.toList();
+  }
+
   /// Deletes both legs of a transfer (migration 030) in one round-trip.
   /// Returns the account ids that were affected so the caller can
   /// recompute balances. Deleting a single leg in isolation would

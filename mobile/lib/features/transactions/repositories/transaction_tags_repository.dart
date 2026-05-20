@@ -289,4 +289,29 @@ class TransactionTagsRepository {
               .toList(),
         );
   }
+
+  /// Adds [tagId] to every transaction in [transactionIds] in a
+  /// single round-trip. Existing assignments are preserved — already-
+  /// tagged rows are no-ops via ON CONFLICT DO NOTHING on the
+  /// composite primary key (transaction_id, tag_id).
+  ///
+  /// Distinct from [replaceAssignments], which is for the
+  /// per-transaction picker where the user authoritatively picks the
+  /// full set. Bulk-tag is purely additive.
+  Future<void> addTagToMany({
+    required String tagId,
+    required List<String> transactionIds,
+  }) async {
+    if (transactionIds.isEmpty) return;
+    await supabase
+        .from('transaction_tag_assignments')
+        .upsert(
+          [
+            for (final txId in transactionIds)
+              {'transaction_id': txId, 'tag_id': tagId},
+          ],
+          onConflict: 'transaction_id,tag_id',
+          ignoreDuplicates: true,
+        );
+  }
 }

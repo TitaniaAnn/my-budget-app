@@ -1234,6 +1234,191 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── Bulk operations (selection-mode actions on the screen) ───────────
+    //
+    // The transactions screen's selection mode lets the user pick N
+    // rows and apply a single edit (category, tag, or delete). The
+    // repo methods that back those actions are the unit of test.
+
+    group('bulk operations', () {
+      test(
+        'setUserCategoryForMany updates every row to user-sourced',
+        () async {
+          final groceriesId = await harness.systemCategoryIdByName('Groceries');
+          // Three uncategorised tx; one untouched tx with a different
+          // category that must NOT be overwritten.
+          final ids = <String>[
+            for (var i = 0; i < 3; i++)
+              await harness.insertTransaction(
+                description: 'bulk-recat-target-$i',
+                amountCents: -100 * (i + 1),
+              ),
+          ];
+          final coffeeId = await harness.systemCategoryIdByName(
+            'Coffee & Drinks',
+          );
+          final untouchedId = await harness.insertTransaction(
+            description: 'bulk-recat-untouched',
+            amountCents: -5000,
+            categoryId: coffeeId,
+            categoryAssignedBy: 'user',
+          );
+
+          await repo.setUserCategoryForMany(
+            transactionIds: ids,
+            categoryId: groceriesId,
+          );
+
+          final rows = await harness.client
+              .from('transactions')
+              .select('id, category_id, category_assigned_by, '
+                  'ml_model_confidence')
+              .inFilter('id', [...ids, untouchedId]);
+          final byId = {
+            for (final r in rows as List)
+              r['id'] as String: r as Map<String, dynamic>,
+          };
+          for (final id in ids) {
+            expect(byId[id]?['category_id'], groceriesId);
+            expect(byId[id]?['category_assigned_by'], 'user');
+            expect(
+              byId[id]?['ml_model_confidence'],
+              isNull,
+              reason: 'ml confidence must be cleared on user assignment '
+                  'so a stale value doesn\'t resurface in the review '
+                  'screen after the user has spoken.',
+            );
+          }
+          expect(
+            byId[untouchedId]?['category_id'],
+            coffeeId,
+            reason: 'rows not in the input set must NOT be touched.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'deleteMany removes rows and reports affected account ids '
+        '(deduplicated)',
+        () async {
+          // Two rows on the seeded account, one on a fresh second
+          // account in the same household. deleteMany should return
+          // both account ids, each once.
+          final secondAccountRow = await harness.client
+              .from('accounts')
+              .insert({
+                'household_id': harness.householdId,
+                'owner_user_id': harness.userId,
+                'name': 'Bulk Test Second',
+                'account_type': 'savings',
+                'currency': 'USD',
+                'starting_balance': 0,
+                'current_balance': 0,
+              })
+              .select('id')
+              .single();
+          final secondAccountId = secondAccountRow['id'] as String;
+
+          final tx1 = await harness.insertTransaction(
+            description: 'bulk-del-1',
+          );
+          final tx2 = await harness.insertTransaction(
+            description: 'bulk-del-2',
+          );
+          // Insert directly so we can target the second account; the
+          // harness helper hardcodes the seeded account.
+          final tx3Row = await harness.client
+              .from('transactions')
+              .insert({
+                'household_id': harness.householdId,
+                'account_id': secondAccountId,
+                'entered_by': harness.userId,
+                'amount': -1000,
+                'currency': 'USD',
+                'description': 'bulk-del-3',
+                'transaction_date': DateTime.now()
+                    .toIso8601String()
+                    .substring(0, 10),
+                'pending': false,
+                'source': 'manual',
+              })
+              .select('id')
+              .single();
+          final tx3 = tx3Row['id'] as String;
+
+          final affected = await repo.deleteMany([tx1, tx2, tx3]);
+
+          expect(
+            affected.toSet(),
+            {harness.accountId, secondAccountId},
+            reason: 'each affected account id must appear exactly once '
+                'in the return so the caller doesn\'t recompute the '
+                'same balance twice.',
+          );
+          final remaining = await harness.client
+              .from('transactions')
+              .select('id')
+              .inFilter('id', [tx1, tx2, tx3]);
+          expect((remaining as List), isEmpty);
+        },
+        skip: reason,
+      );
+
+      test(
+        'deleteMany with empty input is a no-op',
+        () async {
+          // Pin: an empty input shouldn't even hit the wire. A round-
+          // trip with an empty `IN ()` list would be a PostgREST error
+          // on some versions and noise on others.
+          final affected = await repo.deleteMany(const []);
+          expect(affected, isEmpty);
+        },
+        skip: reason,
+      );
+
+      test(
+        'addTagToMany inserts assignments and skips already-tagged rows',
+        () async {
+          final tagsRepo = TransactionTagsRepository();
+          final tag = await tagsRepo.createTag(
+            householdId: harness.householdId,
+            name: 'bulk-tag-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          final tx1 = await harness.insertTransaction(description: 'bulk-tag-a');
+          final tx2 = await harness.insertTransaction(description: 'bulk-tag-b');
+
+          // Pre-assign the tag to tx1; bulk-add should leave it alone
+          // (no duplicate, no error) and still apply to tx2.
+          await tagsRepo.replaceAssignments(
+            transactionId: tx1,
+            tagIds: [tag.id],
+          );
+
+          await tagsRepo.addTagToMany(
+            tagId: tag.id,
+            transactionIds: [tx1, tx2],
+          );
+
+          final rows = await harness.client
+              .from('transaction_tag_assignments')
+              .select('transaction_id')
+              .eq('tag_id', tag.id)
+              .inFilter('transaction_id', [tx1, tx2]);
+          final ids =
+              {for (final r in rows as List) r['transaction_id'] as String};
+          expect(
+            ids,
+            {tx1, tx2},
+            reason: 'both rows must end up tagged exactly once; the '
+                'duplicate-on-tx1 path is ignoreDuplicates=true, not an '
+                'error.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }
 

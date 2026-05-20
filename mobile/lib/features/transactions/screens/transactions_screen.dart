@@ -9,18 +9,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
+import '../../../shared/widgets/sheet_scaffold.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../models/transaction_tag.dart';
 import '../providers/transaction_tags_provider.dart';
 import '../providers/transactions_provider.dart';
+import '../repositories/transaction_tags_repository.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
 import '../services/transactions_csv.dart';
@@ -118,6 +121,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   bool _exporting = false;
   late final TextEditingController _searchCtrl;
 
+  /// IDs of rows the user has selected via long-press → tap. When
+  /// non-empty the screen is in "selection mode" — the app bar
+  /// transforms into a bulk-action toolbar and taps toggle rows
+  /// instead of opening the edit sheet.
+  final Set<String> _selection = <String>{};
+  bool get _selectionMode => _selection.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +157,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     // owns the Scaffold/AppBar/FAB. Returning a second Scaffold here would
     // render a duplicate toolbar and FAB inside the parent's body.
     if (_embedded) return body;
+
+    // In selection mode the whole app bar swaps to a bulk-action
+    // toolbar: leading close-icon clears the selection, the title
+    // becomes a count, and the actions are the bulk operations.
+    // Keeping this branched at the AppBar level (rather than
+    // conditionally adding actions to the existing toolbar) makes
+    // the affordance feel like a different mode rather than a few
+    // extra icons appearing — same convention as Material's
+    // contextual app bar.
+    if (_selectionMode) {
+      return Scaffold(
+        appBar: _buildSelectionAppBar(context),
+        body: body,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -303,14 +328,162 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 transactions: transactions,
                 tagsByTransactionId: perTxTags,
                 startingBalance: widget.startingBalance,
-                onEdit: (tx) => _handleTap(context, tx),
+                // Tap = either edit OR toggle, decided by mode.
+                onEdit: (tx) {
+                  if (_selectionMode) {
+                    setState(() {
+                      if (!_selection.remove(tx.id)) _selection.add(tx.id);
+                    });
+                  } else {
+                    _handleTap(context, tx);
+                  }
+                },
                 onDelete: (tx) => _handleDelete(tx),
+                onLongPress: _embedded
+                    ? null
+                    : (tx) => setState(() => _selection.add(tx.id)),
+                selectedIds: _selection,
               );
             },
           ),
         ),
       ],
     );
+  }
+
+  // ── Selection-mode app bar + bulk actions ──────────────────────────
+  //
+  // Selection mode is entered by long-pressing any row and exited by
+  // the leading close icon or by emptying the selection. The actions
+  // mutate the selected set in one round-trip each (see the bulk
+  // methods on TransactionsRepository / TransactionTagsRepository),
+  // then invalidate `transactionsProvider` so the list reflects the
+  // change. The selection is cleared on every successful action so
+  // the user can't accidentally re-fire the same operation against
+  // a stale set.
+
+  AppBar _buildSelectionAppBar(BuildContext context) {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => setState(_selection.clear),
+      ),
+      title: Text('${_selection.length} selected'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.category_outlined),
+          tooltip: 'Set category',
+          onPressed: _bulkSetCategory,
+        ),
+        IconButton(
+          icon: const Icon(Icons.label_outline),
+          tooltip: 'Add tag',
+          onPressed: _bulkAddTag,
+        ),
+        IconButton(
+          icon: Icon(
+            Icons.delete_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          tooltip: 'Delete',
+          onPressed: _bulkDelete,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _bulkSetCategory() async {
+    final cats = await ref.read(categoriesProvider.future);
+    if (!mounted) return;
+    final categoryId = await showAppSheet<String>(
+      context,
+      child: _CategoryPickerSheet(categories: cats),
+    );
+    if (categoryId == null) return;
+    final ids = _selection.toList();
+    try {
+      await ref
+          .read(transactionsRepositoryProvider)
+          .setUserCategoryForMany(
+            transactionIds: ids,
+            categoryId: categoryId,
+          );
+      ref.invalidate(transactionsProvider);
+      setState(_selection.clear);
+      if (mounted) {
+        context.showSnackBar(
+          'Categorized ${ids.length} '
+          'transaction${ids.length == 1 ? '' : 's'}',
+        );
+      }
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    }
+  }
+
+  Future<void> _bulkAddTag() async {
+    final tags = await ref.read(transactionTagsProvider.future);
+    if (!mounted) return;
+    if (tags.isEmpty) {
+      context.showSnackBar(
+        'No tags in this household yet — create one from Settings → Tags.',
+      );
+      return;
+    }
+    final tagId = await showAppSheet<String>(
+      context,
+      child: _TagPickerSheet(tags: tags),
+    );
+    if (tagId == null) return;
+    final ids = _selection.toList();
+    try {
+      await ref
+          .read(transactionTagsRepositoryProvider)
+          .addTagToMany(tagId: tagId, transactionIds: ids);
+      ref.invalidate(transactionTagAssignmentsProvider);
+      setState(_selection.clear);
+      if (mounted) {
+        context.showSnackBar(
+          'Tagged ${ids.length} '
+          'transaction${ids.length == 1 ? '' : 's'}',
+        );
+      }
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    }
+  }
+
+  Future<void> _bulkDelete() async {
+    final count = _selection.length;
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Delete $count transaction${count == 1 ? '' : 's'}?',
+      message: 'This cannot be undone. Account balances will be recomputed.',
+    );
+    if (!confirmed) return;
+    final ids = _selection.toList();
+    try {
+      final affectedAccounts = await ref
+          .read(transactionsRepositoryProvider)
+          .deleteMany(ids);
+      // Balance triggers fire per-row, but the Dart mirror needs an
+      // explicit recompute per affected account. Run them in parallel
+      // — RPCs are independent.
+      final accountsRepo = ref.read(accountsRepositoryProvider);
+      await Future.wait(
+        affectedAccounts.map(accountsRepo.recalculateBalance),
+      );
+      ref.invalidate(accountsProvider);
+      ref.invalidate(transactionsProvider);
+      setState(_selection.clear);
+      if (mounted) {
+        context.showSnackBar(
+          'Deleted $count transaction${count == 1 ? '' : 's'}',
+        );
+      }
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    }
   }
 
   void _showAddSheet(BuildContext context) {
@@ -845,13 +1018,29 @@ class _TransactionList extends StatelessWidget {
   final ValueChanged<Transaction> onEdit;
   final ValueChanged<Transaction> onDelete;
 
+  /// Long-press handler used to enter bulk-selection mode. When
+  /// non-null, every row long-presses into the selection. When null,
+  /// long-press is a no-op (e.g. when the screen is embedded inside
+  /// the account detail surface, where bulk-edit isn't reachable).
+  final ValueChanged<Transaction>? onLongPress;
+
+  /// Set of selected transaction ids when the parent screen is in
+  /// selection mode. Empty means "not in selection mode" — tap
+  /// behaves as edit, long-press enters selection mode, and
+  /// swipe-to-delete is active.
+  final Set<String> selectedIds;
+
   const _TransactionList({
     required this.transactions,
     this.tagsByTransactionId = const {},
     this.startingBalance,
     required this.onEdit,
     required this.onDelete,
+    this.onLongPress,
+    this.selectedIds = const {},
   });
+
+  bool get _selectionMode => selectedIds.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -914,6 +1103,32 @@ class _TransactionList extends StatelessWidget {
               clipBehavior: Clip.hardEdge,
               child: Column(
                 children: dayTxs.map((tx) {
+                  final selected = selectedIds.contains(tx.id);
+                  final card = GestureDetector(
+                    onLongPress: onLongPress == null
+                        ? null
+                        : () => onLongPress!(tx),
+                    child: Container(
+                      // Subtle highlight on selected rows. Behind the
+                      // card so the existing card surface stays intact
+                      // and the selection state is a tint, not a
+                      // wholesale colour change.
+                      color: selected
+                          ? context.cs.primary.withValues(alpha: 0.12)
+                          : null,
+                      child: TransactionCard(
+                        transaction: tx,
+                        tags: tagsByTransactionId[tx.id] ?? const [],
+                        onTap: () => onEdit(tx),
+                      ),
+                    ),
+                  );
+                  // Swipe-to-delete is muted in selection mode — the
+                  // bulk delete action handles it, and accidentally
+                  // swiping while picking rows would be jarring.
+                  if (_selectionMode) {
+                    return KeyedSubtree(key: ValueKey(tx.id), child: card);
+                  }
                   return Dismissible(
                     key: ValueKey(tx.id),
                     direction: DismissDirection.endToStart,
@@ -930,11 +1145,7 @@ class _TransactionList extends StatelessWidget {
                       onDelete(tx);
                       return false; // actual deletion handled in parent
                     },
-                    child: TransactionCard(
-                      transaction: tx,
-                      tags: tagsByTransactionId[tx.id] ?? const [],
-                      onTap: () => onEdit(tx),
-                    ),
+                    child: card,
                   );
                 }).toList(),
               ),
@@ -1021,6 +1232,81 @@ class _DateHeader extends StatelessWidget {
                     ? context.appColors.expense
                     : context.appColors.income,
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Modal sheet for picking a category to apply via bulk-edit.
+/// Closes with the picked category id (returned by pop) or null
+/// when the user backs out. Lists all non-system categories the
+/// household has; system categories aren't excluded because they're
+/// valid user-assigned categories too.
+class _CategoryPickerSheet extends StatelessWidget {
+  const _CategoryPickerSheet({required this.categories});
+  final List<Category> categories;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheetScaffold(
+      title: 'Set category',
+      scrollable: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final c in categories)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: c.color != null ? colorFromHex(c.color) : Colors.grey,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              title: Text(c.name),
+              onTap: () => Navigator.of(context).pop(c.id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Modal sheet for picking a tag to add via bulk-edit. Distinct
+/// from the per-row picker on AddTransactionSheet because this one
+/// is single-select (one tag per bulk operation; users wanting to
+/// apply multiple tags can repeat the action).
+class _TagPickerSheet extends StatelessWidget {
+  const _TagPickerSheet({required this.tags});
+  final List<TransactionTag> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheetScaffold(
+      title: 'Add tag',
+      scrollable: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final t in tags)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: t.color != null ? colorFromHex(t.color) : Colors.grey,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              title: Text('#${t.name}'),
+              onTap: () => Navigator.of(context).pop(t.id),
             ),
         ],
       ),
