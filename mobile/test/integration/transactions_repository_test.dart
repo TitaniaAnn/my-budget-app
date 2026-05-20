@@ -1007,6 +1007,233 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── bulkImport reconciliation against recurring (slice 3) ────────────
+    //
+    // When a bank statement import lands a row that matches a recent
+    // scheduler-emitted (source='recurring') row, the import should
+    // reconcile against it rather than leave both in the ledger. Pinned:
+    //   * matched scheduler row is deleted; import row lands as source
+    //     'import' (canonical bank entry);
+    //   * BulkImportResult.reconciled reflects the count;
+    //   * a non-matching import takes the normal upsert path with no
+    //     scheduler-side effect.
+
+    group('bulkImport reconciliation against recurring', () {
+      // Each test wants a clean recurring-source slate on the seeded
+      // account so a sibling test's emissions don't accidentally match
+      // here. Targets only the test account so the harness's other
+      // setup is left alone.
+      setUp(() async {
+        if (reason != null) return;
+        await harness.client
+            .from('transactions')
+            .delete()
+            .eq('account_id', harness.accountId)
+            .eq('source', 'recurring');
+      });
+
+      // Sets up a fake "scheduler-emitted" row directly via insert so
+      // the test doesn't need to call the scheduler RPC (which has its
+      // own coverage). Returns the new row id.
+      Future<String> seedRecurringEmission({
+        required int amountCents,
+        required DateTime date,
+        String description = 'recurring-test-emission',
+      }) async {
+        final row = await harness.client
+            .from('transactions')
+            .insert({
+              'household_id': harness.householdId,
+              'account_id': harness.accountId,
+              'entered_by': harness.userId,
+              'amount': amountCents,
+              'currency': 'USD',
+              'description': description,
+              'transaction_date': date
+                  .toIso8601String()
+                  .substring(0, 10),
+              'pending': false,
+              'source': 'recurring',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'matched import deletes the scheduler row and reports reconciled=1',
+        () async {
+          // Date math: the bulkImport repo method gates on "last 14
+          // days" relative to `DateTime.now()`. Use a recent
+          // emission so the integration test isn't sensitive to
+          // wall-clock drift.
+          final today = DateTime.now().toUtc();
+          final emissionDate = DateTime.utc(today.year, today.month, today.day)
+              .subtract(const Duration(days: 1));
+          final emissionId = await seedRecurringEmission(
+            amountCents: -999,
+            date: emissionDate,
+          );
+
+          final result = await repo.bulkImport(
+            householdId: harness.householdId,
+            accountId: harness.accountId,
+            enteredBy: harness.userId,
+            rows: [
+              {
+                'amount': -999,
+                'description': 'SPOTIFY USA',
+                'transaction_date': emissionDate
+                    .toIso8601String()
+                    .substring(0, 10),
+                'external_id': 'BANK-TX-RECON-1',
+                'pending': false,
+              },
+            ],
+          );
+
+          expect(result.reconciled, 1);
+          expect(result.inserted, 1);
+          expect(result.skipped, 0);
+
+          // Scheduler row is gone.
+          final remainingEmission = await harness.client
+              .from('transactions')
+              .select('id')
+              .eq('id', emissionId);
+          expect(
+            (remainingEmission as List),
+            isEmpty,
+            reason: 'the matched scheduler-emitted row must be deleted '
+                'so the ledger doesn\'t carry two rows for the same '
+                'real-world charge.',
+          );
+
+          // Import row landed with the bank's canonical description.
+          final imported = await harness.client
+              .from('transactions')
+              .select('description, source')
+              .eq('external_id', 'BANK-TX-RECON-1')
+              .single();
+          expect(imported['description'], 'SPOTIFY USA');
+          expect(imported['source'], 'import');
+        },
+        skip: reason,
+      );
+
+      test(
+        'non-matching import takes the upsert path and leaves any '
+        'unrelated recurring row alone',
+        () async {
+          // Scheduler emission for $9.99; import row for $25 — no
+          // amount match. Nothing should reconcile.
+          final today = DateTime.now().toUtc();
+          final emissionDate = DateTime.utc(today.year, today.month, today.day)
+              .subtract(const Duration(days: 1));
+          final emissionId = await seedRecurringEmission(
+            amountCents: -999,
+            date: emissionDate,
+          );
+
+          final result = await repo.bulkImport(
+            householdId: harness.householdId,
+            accountId: harness.accountId,
+            enteredBy: harness.userId,
+            rows: [
+              {
+                'amount': -2500,
+                'description': 'GAS STATION',
+                'transaction_date': emissionDate
+                    .toIso8601String()
+                    .substring(0, 10),
+                'external_id': 'BANK-TX-NORECON-1',
+                'pending': false,
+              },
+            ],
+          );
+
+          expect(result.reconciled, 0);
+          expect(result.inserted, 1);
+
+          // Scheduler row is still there.
+          final stillThere = await harness.client
+              .from('transactions')
+              .select('id')
+              .eq('id', emissionId);
+          expect(
+            (stillThere as List),
+            hasLength(1),
+            reason: 'a non-matching import must NOT delete unrelated '
+                'recurring rows — only same-amount within-tolerance '
+                'rows are reconcile candidates.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'two import rows competing for one scheduler row: only one '
+        'reconciles, the other lands as a fresh insert',
+        () async {
+          // Two import rows of the same amount and date; one
+          // scheduler emission. The matcher claims exactly one of
+          // them (slice-3 contract). The other goes through the
+          // upsert path, lands fresh with a different external_id.
+          final today = DateTime.now().toUtc();
+          final emissionDate = DateTime.utc(today.year, today.month, today.day)
+              .subtract(const Duration(days: 1));
+          await seedRecurringEmission(
+            amountCents: -999,
+            date: emissionDate,
+          );
+
+          final result = await repo.bulkImport(
+            householdId: harness.householdId,
+            accountId: harness.accountId,
+            enteredBy: harness.userId,
+            rows: [
+              {
+                'amount': -999,
+                'description': 'SPOTIFY A',
+                'transaction_date': emissionDate
+                    .toIso8601String()
+                    .substring(0, 10),
+                'external_id': 'BANK-TX-A',
+                'pending': false,
+              },
+              {
+                'amount': -999,
+                'description': 'SPOTIFY B',
+                'transaction_date': emissionDate
+                    .toIso8601String()
+                    .substring(0, 10),
+                'external_id': 'BANK-TX-B',
+                'pending': false,
+              },
+            ],
+          );
+
+          expect(
+            result.reconciled,
+            1,
+            reason: 'one scheduler row can be claimed at most once per '
+                'import — the second matching import row must take the '
+                'normal insert path.',
+          );
+          expect(result.inserted, 2);
+
+          // Both bank rows are in the ledger.
+          final landed = await harness.client
+              .from('transactions')
+              .select('external_id')
+              .eq('account_id', harness.accountId)
+              .inFilter('external_id', ['BANK-TX-A', 'BANK-TX-B']);
+          expect((landed as List), hasLength(2));
+        },
+        skip: reason,
+      );
+    });
   });
 }
 

@@ -494,13 +494,22 @@ class TransactionsRepository {
   ///
   /// Uses upsert with conflict resolution on (account_id, external_id) so
   /// re-importing the same CSV is safe. Returns a [BulkImportResult] with
-  /// the count actually inserted vs. skipped as duplicates — the user-facing
-  /// "Imported N transactions" toast needs this distinction so the count
-  /// matches reality after a partial re-import.
+  /// the count actually inserted, skipped as duplicates of a prior import,
+  /// and reconciled against scheduler-emitted recurring rows — the
+  /// user-facing toast can surface all three.
   ///
   /// Caller is responsible for setting `category_assigned_by` /
   /// `category_assigned_at` on any row where they also set `category_id`
   /// (the import sheet routes through the Categorizer façade for this).
+  ///
+  /// Reconciliation against recurring rules: before the upsert, this
+  /// method looks for `source='recurring'` rows in the last 14 days on
+  /// the target account that align with import rows (same account, same
+  /// signed amount, transaction date within ±1 day). Each match deletes
+  /// the scheduler-emitted row before the upsert lands the bank's
+  /// canonical row — otherwise a Spotify rule that materialised on the
+  /// 1st would leave a duplicate next to the bank's actual Spotify
+  /// charge.
   Future<BulkImportResult> bulkImport({
     required String householdId,
     required String accountId,
@@ -509,6 +518,52 @@ class TransactionsRepository {
   }) async {
     if (rows.isEmpty) {
       return const BulkImportResult(inserted: 0, skipped: 0);
+    }
+
+    // ── Reconcile against recurring emissions ────────────────────────
+    // 14-day window: scheduler emissions older than this almost
+    // certainly reflect different real-world charges than today's
+    // import. Wider windows risk matching unrelated $9.99 events; this
+    // matches the typical bank-posting lag tolerance.
+    final fourteenDaysAgo = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: 14));
+    final recurringJson = await supabase
+        .from('transactions')
+        .select('id, transaction_date, amount')
+        .eq('household_id', householdId)
+        .eq('account_id', accountId)
+        .eq('source', 'recurring')
+        .gte(
+          'transaction_date',
+          fourteenDaysAgo.toIso8601String().substring(0, 10),
+        );
+    final recurringRows = [
+      for (final r in recurringJson as List)
+        (
+          id: r['id'] as String,
+          date: DateTime.parse(r['transaction_date'] as String),
+          amount: (r['amount'] as num).toInt(),
+        ),
+    ];
+
+    final matches = matchRecurringDuplicates(
+      importRows: rows,
+      recurringRows: recurringRows,
+    );
+
+    if (matches.isNotEmpty) {
+      // Delete the matched scheduler rows in one round-trip so the
+      // upsert that follows lands the bank's canonical entries
+      // without ghost duplicates. Order doesn't matter; we're
+      // deleting by primary key.
+      await supabase
+          .from('transactions')
+          .delete()
+          .inFilter(
+            'id',
+            [for (final m in matches) m.scheduledTransactionId],
+          );
     }
 
     final enriched = rows.map((r) {
@@ -538,16 +593,111 @@ class TransactionsRepository {
     return BulkImportResult(
       inserted: inserted,
       skipped: enriched.length - inserted,
+      reconciled: matches.length,
     );
   }
 }
 
-/// Outcome of a [TransactionsRepository.bulkImport] call. The UI shows
-/// `inserted` to the user and may surface `skipped` separately to explain
-/// "fewer rows than the CSV had → duplicates were dropped".
+/// Outcome of a [TransactionsRepository.bulkImport] call.
+///
+/// The UI shows `inserted` as the primary number; `skipped` and
+/// `reconciled` may be surfaced separately so the user understands
+/// why the import count doesn't match the CSV row count.
 class BulkImportResult {
-  const BulkImportResult({required this.inserted, required this.skipped});
+  const BulkImportResult({
+    required this.inserted,
+    required this.skipped,
+    this.reconciled = 0,
+  });
 
+  /// Rows newly inserted into `transactions`.
   final int inserted;
+
+  /// Rows the bank had already given us — UNIQUE (account_id,
+  /// external_id) rejected them. The user re-imported the same CSV.
   final int skipped;
+
+  /// Scheduler-emitted (source='recurring') rows the import
+  /// replaced — recurring-transactions slice 3 dedup. A Spotify
+  /// rule that materialised a row on the 1st gets reconciled with
+  /// the bank's actual Spotify charge when the statement lands,
+  /// instead of leaving two near-identical entries on the ledger.
+  final int reconciled;
+}
+
+/// Match between an imported row and a scheduler-emitted row that
+/// represents the same real-world charge. Pure-data shape so
+/// `matchRecurringDuplicates` can be unit-tested independently of
+/// the repository.
+class RecurringDuplicateMatch {
+  const RecurringDuplicateMatch({
+    required this.importRowIndex,
+    required this.scheduledTransactionId,
+  });
+
+  final int importRowIndex;
+  final String scheduledTransactionId;
+}
+
+/// Pairs each import row with at most one scheduler-emitted row
+/// from [recurringRows] representing the same real-world charge.
+///
+/// Match criteria:
+///   * same account is enforced upstream — both lists come from
+///     a single account-scoped fetch;
+///   * `amount` is exactly equal (signed cents); a Spotify -$9.99
+///     rule must reconcile against a -$9.99 bank charge, not a
+///     +$9.99 refund;
+///   * dates within ±[dateTolerance] of each other so bank
+///     posting lag doesn't defeat the match.
+///
+/// Each scheduler row is claimed at most once per call — duplicates
+/// in the import (e.g. an oddly-formatted CSV with two $9.99 rows
+/// on the same day) only get to claim a scheduler row ONCE. Ties
+/// are broken by closest date, then by first-seen scheduler row id
+/// so the result is deterministic.
+List<RecurringDuplicateMatch> matchRecurringDuplicates({
+  required List<Map<String, dynamic>> importRows,
+  required List<({String id, DateTime date, int amount})> recurringRows,
+  Duration dateTolerance = const Duration(days: 1),
+}) {
+  // Normalise both sides to UTC calendar-day midnights before
+  // diffing. The recurring rows arrive as `transaction_date` DATE
+  // values (no time/zone), and the import rows come from
+  // ISO-format date strings — comparing raw DateTimes mixes naive
+  // and zoned values and can off-by-one across a local timezone
+  // boundary. Stripping to (y, m, d) keeps the comparison a true
+  // calendar diff.
+  DateTime day(DateTime d) => DateTime.utc(d.year, d.month, d.day);
+
+  final matches = <RecurringDuplicateMatch>[];
+  final claimed = <String>{};
+  for (var i = 0; i < importRows.length; i++) {
+    final row = importRows[i];
+    final amount = row['amount'] as int?;
+    final dateStr = row['transaction_date'] as String?;
+    if (amount == null || dateStr == null) continue;
+    final date = day(DateTime.parse(dateStr));
+
+    String? bestId;
+    Duration? bestDelta;
+    for (final r in recurringRows) {
+      if (claimed.contains(r.id)) continue;
+      if (r.amount != amount) continue;
+      final delta = (day(r.date).difference(date)).abs();
+      if (delta > dateTolerance) continue;
+      if (bestDelta == null || delta < bestDelta) {
+        bestId = r.id;
+        bestDelta = delta;
+      }
+    }
+    if (bestId != null) {
+      claimed.add(bestId);
+      matches.add(RecurringDuplicateMatch(
+        importRowIndex: i,
+        scheduledTransactionId: bestId,
+      ));
+    }
+  }
+  return matches;
 }

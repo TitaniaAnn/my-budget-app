@@ -158,10 +158,18 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       ref.invalidate(accountsProvider);
       if (mounted) {
         Navigator.of(context).pop();
-        final msg = result.skipped > 0
-            ? 'Imported ${result.inserted} transactions '
-                  '(${result.skipped} duplicates skipped)'
-            : 'Imported ${result.inserted} transactions';
+        // Build the toast piecewise. `inserted` is the headline; the
+        // other two only appear when they're non-zero so a routine
+        // import doesn't pick up an irrelevant "0 reconciled" tail.
+        final extras = <String>[
+          if (result.skipped > 0) '${result.skipped} duplicates skipped',
+          if (result.reconciled > 0)
+            '${result.reconciled} recurring entries reconciled',
+        ];
+        final msg = extras.isEmpty
+            ? 'Imported ${result.inserted} transactions'
+            : 'Imported ${result.inserted} transactions '
+                  '(${extras.join(', ')})';
         context.showSnackBar(msg);
       }
     } catch (e) {
