@@ -1,30 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'dashboard_provider.dart';
+part of 'notification_runner_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dashboardDataHash() => r'46df2175b1bd1a613909840285894383bea46180';
+String _$runNotificationsHash() => r'cf75d7f93d38ac82d815e910a05be888ada4d424';
 
-/// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
-/// it refreshes automatically when the household changes.
-///
-/// Copied from [dashboardData].
-@ProviderFor(dashboardData)
-final dashboardDataProvider = AutoDisposeFutureProvider<DashboardData>.internal(
-  dashboardData,
-  name: r'dashboardDataProvider',
+/// See also [runNotifications].
+@ProviderFor(runNotifications)
+final runNotificationsProvider = FutureProvider<int>.internal(
+  runNotifications,
+  name: r'runNotificationsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$dashboardDataHash,
+      : _$runNotificationsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef DashboardDataRef = AutoDisposeFutureProviderRef<DashboardData>;
+typedef RunNotificationsRef = FutureProviderRef<int>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/notifications/screens/notification_settings_screen.dart';
 import '../../../features/recurring/screens/recurring_transactions_screen.dart';
 import '../../../features/reports/screens/monthly_report_screen.dart';
 import '../../../features/transactions/screens/manage_tags_screen.dart';
@@ -142,6 +143,19 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const RecurringTransactionsScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notifications'),
+            subtitle: const Text(
+              'Over-budget and large-transaction alerts (local)',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const NotificationSettingsScreen(),
               ),
             ),
           ),

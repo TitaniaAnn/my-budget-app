@@ -9,6 +9,7 @@ import '../../../core/providers/household_provider.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
+import '../../notifications/providers/notification_runner_provider.dart';
 import '../../recurring/providers/recurring_scheduler_provider.dart';
 import '../../scenarios/repositories/scenarios_repository.dart';
 import '../../transactions/models/category.dart';
@@ -208,6 +209,14 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // so this is effectively a one-shot per app process: the await
   // is free on subsequent dashboard loads.
   await ref.watch(runRecurringSchedulerProvider.future);
+
+  // Trigger the notifications pass (budget-over + large-tx). Fire-
+  // and-forget by design: the dashboard doesn't depend on its
+  // result and shouldn't be blocked by a misbehaving plugin. The
+  // provider is keepAlive so the engine still runs once per app
+  // process even though we don't await.
+  // ignore: unused_result
+  ref.read(runNotificationsProvider.future);
 
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);
