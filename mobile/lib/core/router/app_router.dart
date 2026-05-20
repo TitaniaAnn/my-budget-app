@@ -74,11 +74,16 @@ GoRouter appRouter(AppRouterRef ref) {
           ),
           GoRoute(
             path: '/transactions',
-            // `categoryId` query param: pre-selects the category
-            // filter. Used by the dashboard's Top Categories drill-
-            // down — e.g. `/transactions?categoryId=<groceries-uuid>`.
+            // Query params pre-seed the screen's filter state:
+            //   `categoryId` — Top Categories drill-down
+            //   `accountId`  — Accounts row drill-down
+            // Both are initial values; the in-screen filter bars
+            // can clear them. Use `lockedAccountId` instead when
+            // the caller wants a permanent filter (e.g. opening
+            // transactions from the account detail screen).
             builder: (_, state) => TransactionsScreen(
               preselectedCategoryId: state.uri.queryParameters['categoryId'],
+              preselectedAccountId: state.uri.queryParameters['accountId'],
             ),
           ),
           GoRoute(

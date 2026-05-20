@@ -283,56 +283,65 @@ class _AccountsRow extends StatelessWidget {
           final displayCents = isLiability
               ? a.currentBalance.abs()
               : a.currentBalance;
-          return Container(
-            width: 148,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(a.accountType.icon, size: 16, color: color),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        a.name,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+          // Drill-down: tapping an account card lands on the
+          // transactions screen with that account pre-selected.
+          // Using `preselectedAccountId` (not `lockedAccountId`) so
+          // the user can clear or switch accounts via the in-screen
+          // filter bar without backing out.
+          return InkWell(
+            onTap: () => context.go('/transactions?accountId=${a.id}'),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 148,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(a.accountType.icon, size: 16, color: color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          a.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  formatCurrency(displayCents),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: isLiability
-                        ? context.appColors.expense
-                        : Theme.of(context).colorScheme.onSurface,
+                    ],
                   ),
-                ),
-                if (a.institution != null)
+                  const Spacer(),
                   Text(
-                    a.institution!,
+                    formatCurrency(displayCents),
                     style: TextStyle(
-                      fontSize: 10,
-                      color: context.appColors.textSubtle,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isLiability
+                          ? context.appColors.expense
+                          : Theme.of(context).colorScheme.onSurface,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if (a.institution != null)
+                    Text(
+                      a.institution!,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: context.appColors.textSubtle,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
           );
         },

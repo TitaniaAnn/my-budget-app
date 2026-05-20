@@ -86,11 +86,21 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   /// user can clear or change the filter once on the screen.
   final String? preselectedCategoryId;
 
+  /// When set, the account filter starts pre-selected to this id.
+  /// Used by the dashboard's account-row drill-down — tapping a
+  /// checking card lands on transactions filtered by that account.
+  /// Distinct from [lockedAccountId]: this is just the initial
+  /// value, the user can clear or switch accounts via the filter
+  /// bar. Ignored when [lockedAccountId] is also set (the lock
+  /// wins).
+  final String? preselectedAccountId;
+
   const TransactionsScreen({
     super.key,
     this.lockedAccountId,
     this.startingBalance,
     this.preselectedCategoryId,
+    this.preselectedAccountId,
   });
 
   @override
@@ -111,7 +121,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAccountId = widget.lockedAccountId;
+    // The lock wins when both are present — caller's intent is
+    // "freeze on this account" rather than "start here, user can
+    // change". Equivalent today because no caller sets both, but
+    // explicit is cheap and future-proofs the precedence.
+    _selectedAccountId = widget.lockedAccountId ?? widget.preselectedAccountId;
     _selectedCategoryId = widget.preselectedCategoryId;
     _searchCtrl = TextEditingController();
   }
