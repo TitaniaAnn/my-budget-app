@@ -381,6 +381,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           onPressed: _bulkAddTag,
         ),
         IconButton(
+          icon: const Icon(Icons.label_off_outlined),
+          tooltip: 'Remove tag',
+          onPressed: _bulkRemoveTag,
+        ),
+        IconButton(
           icon: Icon(
             Icons.delete_outline,
             color: Theme.of(context).colorScheme.error,
@@ -422,6 +427,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _bulkAddTag() async {
+    await _bulkTagAction(add: true);
+  }
+
+  Future<void> _bulkRemoveTag() async {
+    await _bulkTagAction(add: false);
+  }
+
+  /// Shared body for both add-tag and remove-tag toolbar actions.
+  /// `add: true` calls addTagToMany; `add: false` calls
+  /// removeTagFromMany. The picker sheet itself is the same — the
+  /// title just swaps.
+  Future<void> _bulkTagAction({required bool add}) async {
     final tags = await ref.read(transactionTagsProvider.future);
     if (!mounted) return;
     if (tags.isEmpty) {
@@ -432,19 +449,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     final tagId = await showAppSheet<String>(
       context,
-      child: _TagPickerSheet(tags: tags),
+      child: _TagPickerSheet(
+        tags: tags,
+        title: add ? 'Add tag' : 'Remove tag',
+      ),
     );
     if (tagId == null) return;
     final ids = _selection.toList();
+    final tagsRepo = ref.read(transactionTagsRepositoryProvider);
     try {
-      await ref
-          .read(transactionTagsRepositoryProvider)
-          .addTagToMany(tagId: tagId, transactionIds: ids);
+      if (add) {
+        await tagsRepo.addTagToMany(tagId: tagId, transactionIds: ids);
+      } else {
+        await tagsRepo.removeTagFromMany(tagId: tagId, transactionIds: ids);
+      }
       ref.invalidate(transactionTagAssignmentsProvider);
       setState(_selection.clear);
       if (mounted) {
+        final verb = add ? 'Tagged' : 'Untagged';
         context.showSnackBar(
-          'Tagged ${ids.length} '
+          '$verb ${ids.length} '
           'transaction${ids.length == 1 ? '' : 's'}',
         );
       }
@@ -1282,13 +1306,18 @@ class _CategoryPickerSheet extends StatelessWidget {
 /// is single-select (one tag per bulk operation; users wanting to
 /// apply multiple tags can repeat the action).
 class _TagPickerSheet extends StatelessWidget {
-  const _TagPickerSheet({required this.tags});
+  const _TagPickerSheet({required this.tags, this.title = 'Pick tag'});
   final List<TransactionTag> tags;
+
+  /// Sheet header — set to 'Add tag' or 'Remove tag' by the caller
+  /// so the user can see at a glance which bulk action is about to
+  /// fire. The picker itself is identical in either mode.
+  final String title;
 
   @override
   Widget build(BuildContext context) {
     return AppSheetScaffold(
-      title: 'Add tag',
+      title: title,
       scrollable: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,

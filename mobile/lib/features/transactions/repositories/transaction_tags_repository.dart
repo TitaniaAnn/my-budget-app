@@ -314,4 +314,23 @@ class TransactionTagsRepository {
           ignoreDuplicates: true,
         );
   }
+
+  /// Removes [tagId] from every transaction in [transactionIds] in a
+  /// single round-trip. Rows that weren't tagged with [tagId] are
+  /// no-ops; other tags on the same transaction are left alone.
+  ///
+  /// The inverse of [addTagToMany] — kept narrowly scoped to one
+  /// tag at a time so the bulk-edit UX matches the bulk-add path
+  /// (one selection action targets one tag).
+  Future<void> removeTagFromMany({
+    required String tagId,
+    required List<String> transactionIds,
+  }) async {
+    if (transactionIds.isEmpty) return;
+    await supabase
+        .from('transaction_tag_assignments')
+        .delete()
+        .eq('tag_id', tagId)
+        .inFilter('transaction_id', transactionIds);
+  }
 }

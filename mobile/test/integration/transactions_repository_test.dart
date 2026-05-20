@@ -1418,6 +1418,117 @@ void main() {
         },
         skip: reason,
       );
+
+      test(
+        'removeTagFromMany removes only the targeted tag, leaving '
+        'other tags on the same rows intact',
+        () async {
+          final tagsRepo = TransactionTagsRepository();
+          final stamp = DateTime.now().microsecondsSinceEpoch;
+          final tagA = await tagsRepo.createTag(
+            householdId: harness.householdId,
+            name: 'bulk-untag-A-$stamp',
+          );
+          final tagB = await tagsRepo.createTag(
+            householdId: harness.householdId,
+            name: 'bulk-untag-B-$stamp',
+          );
+          final tx1 = await harness.insertTransaction(
+            description: 'bulk-untag-1',
+          );
+          final tx2 = await harness.insertTransaction(
+            description: 'bulk-untag-2',
+          );
+          final tx3 = await harness.insertTransaction(
+            description: 'bulk-untag-3',
+          );
+
+          // tx1, tx2 carry both tags. tx3 is the control — same
+          // tagA but NOT in the bulk-remove input set, so it must
+          // keep its tag.
+          await tagsRepo.replaceAssignments(
+            transactionId: tx1,
+            tagIds: [tagA.id, tagB.id],
+          );
+          await tagsRepo.replaceAssignments(
+            transactionId: tx2,
+            tagIds: [tagA.id, tagB.id],
+          );
+          await tagsRepo.replaceAssignments(
+            transactionId: tx3,
+            tagIds: [tagA.id],
+          );
+
+          await tagsRepo.removeTagFromMany(
+            tagId: tagA.id,
+            transactionIds: [tx1, tx2],
+          );
+
+          // tx1 and tx2 should now have ONLY tagB.
+          for (final tx in [tx1, tx2]) {
+            final assigned = await tagsRepo.fetchAssignedTagIds(tx);
+            expect(
+              assigned.toSet(),
+              {tagB.id},
+              reason: 'tag A removal must not collateral-damage tag B '
+                  'on the same row.',
+            );
+          }
+
+          // tx3 retained tagA (not in input set).
+          final tx3Tags = await tagsRepo.fetchAssignedTagIds(tx3);
+          expect(
+            tx3Tags.toSet(),
+            {tagA.id},
+            reason: 'a row NOT in the bulk-remove input set must not '
+                'lose any tags — the inFilter must scope the delete.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'removeTagFromMany on rows that don\'t have the tag is a no-op',
+        () async {
+          final tagsRepo = TransactionTagsRepository();
+          final tag = await tagsRepo.createTag(
+            householdId: harness.householdId,
+            name:
+                'bulk-untag-noop-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          final tx = await harness.insertTransaction(
+            description: 'bulk-untag-noop-tx',
+          );
+
+          // Tx isn't tagged with this tag — remove should not error
+          // and the row should remain untagged.
+          await tagsRepo.removeTagFromMany(
+            tagId: tag.id,
+            transactionIds: [tx],
+          );
+
+          final assigned = await tagsRepo.fetchAssignedTagIds(tx);
+          expect(assigned, isEmpty);
+        },
+        skip: reason,
+      );
+
+      test(
+        'removeTagFromMany with empty input is a no-op',
+        () async {
+          // Same as deleteMany — an empty `IN ()` would be noisy on
+          // the wire, possibly error on some PostgREST versions.
+          // The repo short-circuits before reaching the DB.
+          final tagsRepo = TransactionTagsRepository();
+          final tag = await tagsRepo.createTag(
+            householdId: harness.householdId,
+            name:
+                'bulk-untag-empty-${DateTime.now().microsecondsSinceEpoch}',
+          );
+          await tagsRepo.removeTagFromMany(tagId: tag.id, transactionIds: []);
+        },
+        skip: reason,
+      );
     });
   });
 }
