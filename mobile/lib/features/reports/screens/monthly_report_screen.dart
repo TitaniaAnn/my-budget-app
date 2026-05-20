@@ -57,7 +57,29 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     final now = DateTime.now();
     final closingAsOf = monthEnd.isBefore(now) ? monthEnd : now;
 
-    final householdInfoFuture = ref.read(householdInfoProvider.future);
+    // Pre-fetch household info + every saved rate so we know the
+    // display currency before kicking off the spending RPC (it
+    // needs `p_rates` JSONB to convert per-row). Both calls hit
+    // already-cached providers on warm reloads.
+    final info = await ref.read(householdInfoProvider.future);
+    final allRates = await ref
+        .read(fxRatesRepositoryProvider)
+        .fetchAll(householdId);
+
+    // Build ratesToDisplay using the latest rate ON OR BEFORE
+    // closingAsOf so a backdated report uses the rate that was
+    // current then — not whatever the household's set since. Only
+    // rates pointing AT the display currency are kept.
+    final cutoff = closingAsOf;
+    final ratesToDisplay = <String, double>{};
+    for (final r in allRates) {
+      if (r.toCurrency != info.displayCurrency) continue;
+      if (r.asOfDate.isAfter(cutoff)) continue;
+      // allRates is newest-first; the first row we see per
+      // from-currency is the latest at-or-before cutoff.
+      ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
+    }
+
     final transactionsFuture = txRepo.fetchTransactions(
       householdId: householdId,
       from: monthStart,
@@ -70,6 +92,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       householdId: householdId,
       from: monthStart,
       to: monthEnd,
+      ratesToDisplay: ratesToDisplay.isEmpty ? null : ratesToDisplay,
     );
     final categoriesFuture = txRepo.fetchCategories();
     final accountsFuture = accountsRepo.fetchAccounts(householdId);
@@ -86,44 +109,18 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         : Future<List<Transaction>>.value(const []);
 
     final (
-      info,
       transactions,
       spending,
       categories,
       accounts,
       postMonthTx,
     ) = await (
-      householdInfoFuture,
       transactionsFuture,
       spendingFuture,
       categoriesFuture,
       accountsFuture,
       postMonthTxFuture,
     ).wait;
-
-    // FX rates for any non-display currency appearing in this
-    // household's accounts or in-month transactions. Looked up at
-    // monthEnd (or today for an in-progress month) so a backdated
-    // report uses the rate that was current then.
-    final foreignCurrencies = {
-      for (final a in accounts)
-        if (a.currency != info.displayCurrency) a.currency,
-      for (final t in transactions)
-        if (t.currency != info.displayCurrency) t.currency,
-    };
-    final ratesToDisplay = <String, double>{};
-    if (foreignCurrencies.isNotEmpty) {
-      final fxRepo = ref.read(fxRatesRepositoryProvider);
-      for (final cur in foreignCurrencies) {
-        final fx = await fxRepo.latestRate(
-          householdId: householdId,
-          fromCurrency: cur,
-          toCurrency: info.displayCurrency,
-          asOf: closingAsOf,
-        );
-        if (fx != null) ratesToDisplay[cur] = fx.rate;
-      }
-    }
 
     return buildMonthlyReport(
       monthStart: monthStart,

@@ -332,5 +332,171 @@ void main() {
         );
       }, skip: reason);
     });
+
+    // ─── fetchSpendingByCategory FX conversion (migration 037) ────────────
+    //
+    // Pinned:
+    //   * p_rates = null (default) → legacy single-currency behaviour
+    //     (sum of raw amounts, regardless of transaction currency);
+    //   * p_rates supplied with a rate for each foreign currency →
+    //     per-row conversion, single-currency-display total;
+    //   * currency present in transactions but missing from p_rates →
+    //     those rows are EXCLUDED (rate=0 coalesce) so the total
+    //     doesn't silently lie at rate=1.
+
+    group('fetchSpendingByCategory FX conversion', () {
+      final anchor = DateTime.utc(2026, 7, 10);
+      final from = DateTime.utc(2026, 7, 1);
+      final to = DateTime.utc(2026, 7, 31);
+
+      test(
+        'no rates supplied → legacy behaviour (sums raw amounts)',
+        () async {
+          final coffeeId = await harness.systemCategoryIdByName(
+            'Coffee & Drinks',
+          );
+          final before = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+          ))[coffeeId] ?? 0;
+
+          // EUR transaction. Without rates, the RPC sums the raw
+          // amount as-is (legacy behaviour) — preserves migration
+          // 029's single-currency contract for callers that haven't
+          // upgraded.
+          await harness.client.from('transactions').insert({
+            'household_id': harness.householdId,
+            'account_id': harness.accountId,
+            'entered_by': harness.userId,
+            'amount': -2000,
+            'currency': 'EUR',
+            'description': 'LEGACY-EUR-COFFEE',
+            'transaction_date': anchor.toIso8601String().substring(0, 10),
+            'pending': false,
+            'source': 'manual',
+            'category_id': coffeeId,
+            'category_assigned_by': 'user',
+            'category_assigned_at':
+                DateTime.now().toUtc().toIso8601String(),
+          });
+
+          final after = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+          ))[coffeeId] ?? 0;
+          expect(
+            after - before,
+            2000,
+            reason:
+                'legacy path treats every row at rate=1 — raw amount '
+                'lands in the total. This is the slice-0 invariant the '
+                'FX path must preserve when p_rates is omitted.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'with rates supplied, foreign-currency rows convert per-row',
+        () async {
+          final groceriesId = await harness.systemCategoryIdByName(
+            'Groceries',
+          );
+          final before = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+            ratesToDisplay: const {'USD': 1.0, 'EUR': 1.10},
+          ))[groceriesId] ?? 0;
+
+          // €100 EUR groceries — should convert to $110 at rate
+          // 1.10 (10000 × 1.10 = 11000 cents).
+          await harness.client.from('transactions').insert({
+            'household_id': harness.householdId,
+            'account_id': harness.accountId,
+            'entered_by': harness.userId,
+            'amount': -10000,
+            'currency': 'EUR',
+            'description': 'FX-EUR-GROCERIES',
+            'transaction_date': anchor.toIso8601String().substring(0, 10),
+            'pending': false,
+            'source': 'manual',
+            'category_id': groceriesId,
+            'category_assigned_by': 'user',
+            'category_assigned_at':
+                DateTime.now().toUtc().toIso8601String(),
+          });
+
+          final after = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+            ratesToDisplay: const {'USD': 1.0, 'EUR': 1.10},
+          ))[groceriesId] ?? 0;
+          expect(
+            after - before,
+            11000,
+            reason:
+                'per-row conversion: 10000 cents × 1.10 = 11000. '
+                'The RPC multiplies BEFORE the SUM so the integer '
+                'truncation (one ROUND at the end) is on the total, '
+                'not per-row.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'missing rate excludes those rows from the total (not rate=1)',
+        () async {
+          final coffeeId = await harness.systemCategoryIdByName(
+            'Coffee & Drinks',
+          );
+          final before = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+            ratesToDisplay: const {'USD': 1.0},
+          ))[coffeeId] ?? 0;
+
+          // JPY transaction with no JPY→USD rate in p_rates. Must
+          // NOT contribute at rate=1 (that would be a silent lie).
+          await harness.client.from('transactions').insert({
+            'household_id': harness.householdId,
+            'account_id': harness.accountId,
+            'entered_by': harness.userId,
+            'amount': -500000,
+            'currency': 'JPY',
+            'description': 'FX-MISSING-JPY',
+            'transaction_date': anchor.toIso8601String().substring(0, 10),
+            'pending': false,
+            'source': 'manual',
+            'category_id': coffeeId,
+            'category_assigned_by': 'user',
+            'category_assigned_at':
+                DateTime.now().toUtc().toIso8601String(),
+          });
+
+          final after = (await repo.fetchSpendingByCategory(
+            householdId: harness.householdId,
+            from: from,
+            to: to,
+            ratesToDisplay: const {'USD': 1.0},
+          ))[coffeeId] ?? 0;
+          expect(
+            after - before,
+            0,
+            reason:
+                'the JPY row has no rate in p_rates, so the COALESCE '
+                'falls to rate=0 and the row contributes nothing to '
+                'the converted total — the Dart caller surfaces the '
+                'missing currency to the user separately.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }

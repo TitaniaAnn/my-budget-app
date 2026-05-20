@@ -42,13 +42,20 @@ class BudgetRepository {
     required String householdId,
     required DateTime from,
     required DateTime to,
+    Map<String, double>? ratesToDisplay,
   }) async {
+    // p_rates JSONB defaults to NULL on the SQL side; passing
+    // non-null tells the RPC to convert per-row to the display
+    // currency. NULL preserves migration 029's single-currency
+    // behaviour for callers that don't (yet) know about FX —
+    // every existing path stays correct for USD-only households.
     final data = await supabase.rpc(
       'get_category_spending',
       params: {
         'p_household_id': householdId,
         'p_from': from.toIso8601String().substring(0, 10),
         'p_to': to.toIso8601String().substring(0, 10),
+        'p_rates': ?ratesToDisplay,
       },
     );
     if (data == null) return {};
