@@ -124,4 +124,35 @@ class RecurringTransactionsRepository {
   Future<void> delete(String id) async {
     await supabase.from('recurring_transactions').delete().eq('id', id);
   }
+
+  /// Runs the scheduler against every active rule in [householdId]
+  /// whose `next_occurrence_date` is on or before [today]. Each due
+  /// rule emits one transaction per missed cycle and its
+  /// `next_occurrence_date` advances accordingly; pause windows
+  /// (`skipped_until_date`) are honored. Returns the count of
+  /// transactions actually inserted.
+  ///
+  /// The whole pass runs inside one SQL function (migration 032)
+  /// so a mid-call failure rolls everything back rather than
+  /// leaving the household with half-emitted state. Idempotent on
+  /// subsequent calls — once a rule's next_occurrence_date is in
+  /// the future it's skipped.
+  ///
+  /// [today] defaults to the current UTC date so the call site
+  /// doesn't have to think about local-time formatting; tests
+  /// inject a fixed date.
+  Future<int> runScheduler({
+    required String householdId,
+    DateTime? today,
+  }) async {
+    final t = today ?? DateTime.now().toUtc();
+    final result = await supabase.rpc(
+      'run_recurring_scheduler',
+      params: {
+        'p_household_id': householdId,
+        'p_today': t.toIso8601String().substring(0, 10),
+      },
+    );
+    return result as int;
+  }
 }

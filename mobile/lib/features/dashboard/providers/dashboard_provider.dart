@@ -9,6 +9,7 @@ import '../../../core/providers/household_provider.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
+import '../../recurring/providers/recurring_scheduler_provider.dart';
 import '../../scenarios/repositories/scenarios_repository.dart';
 import '../../transactions/models/category.dart';
 import '../../transactions/models/transaction.dart';
@@ -199,6 +200,14 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
       recentTransactions: [],
     );
   }
+
+  // Run the recurring scheduler before we fetch dashboard data so
+  // any rules due today materialise into transactions FIRST —
+  // otherwise the dashboard would show stale numbers for one frame
+  // until the next refresh. Riverpod caches the result (keepAlive),
+  // so this is effectively a one-shot per app process: the await
+  // is free on subsequent dashboard loads.
+  await ref.watch(runRecurringSchedulerProvider.future);
 
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);
