@@ -12,6 +12,8 @@ import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
+import '../../currency/providers/converted_net_worth_provider.dart';
+import '../../currency/services/convert.dart';
 import '../../holdings/models/holding.dart';
 import '../../holdings/providers/holdings_provider.dart';
 import '../../holdings/providers/rebalance_provider.dart';
@@ -71,7 +73,11 @@ class _DashboardBody extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
         // ── Net Worth ──────────────────────────────────────────────────────
-        _NetWorthCard(netWorthCents: data.netWorth),
+        // Card consumes the multi-currency-aware provider directly so
+        // a USD-only household sees no extra cost and a multi-currency
+        // household sees the conversion (with a missing-rate warning
+        // when the rates aren't all set yet).
+        const _NetWorthCard(),
         const SizedBox(height: 16),
 
         // ── Accounts ───────────────────────────────────────────────────────
@@ -229,13 +235,14 @@ class _DashboardBody extends ConsumerWidget {
 
 // ── Sub-widgets ────────────────────────────────────────────────────────────────
 
-class _NetWorthCard extends StatelessWidget {
-  final int netWorthCents;
-  const _NetWorthCard({required this.netWorthCents});
+class _NetWorthCard extends ConsumerWidget {
+  const _NetWorthCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
+    final convertedAsync = ref.watch(convertedNetWorthProvider);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -247,24 +254,92 @@ class _NetWorthCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Net Worth',
-            style: TextStyle(fontSize: 13, color: colors.textMuted),
+      child: convertedAsync.when(
+        // While the rate fetch is in flight, hold the gradient at a
+        // reasonable height so the dashboard doesn't reflow on
+        // first paint.
+        loading: () => SizedBox(
+          height: 70,
+          child: Center(
+            child: Text(
+              'Net Worth',
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
           ),
+        ),
+        error: (_, _) => SizedBox(
+          height: 70,
+          child: Center(
+            child: Text(
+              'Net Worth (unavailable)',
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
+          ),
+        ),
+        data: (converted) => _renderConverted(context, converted),
+      ),
+    );
+  }
+
+  Widget _renderConverted(BuildContext context, ConvertedNetWorth converted) {
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Net Worth',
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
+            const Spacer(),
+            // Show the display currency code when the household
+            // has activity in any non-display currency — it's
+            // information the user needs to interpret the headline.
+            if (converted.perCurrencyCents.length > 1 ||
+                (converted.perCurrencyCents.length == 1 &&
+                    !converted.perCurrencyCents.containsKey(
+                      converted.displayCurrency,
+                    )))
+              Text(
+                converted.displayCurrency,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSubtle,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          formatCurrency(converted.totalCents),
+          style: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            color: converted.totalCents >= 0
+                ? Theme.of(context).colorScheme.onSurface
+                : colors.expense,
+          ),
+        ),
+        if (converted.missingRateCurrencies.isNotEmpty) ...[
           const SizedBox(height: 6),
+          // Surface the gap clearly — a multi-currency household with
+          // a missing rate would otherwise see an under-counted
+          // headline with no explanation. The Settings → Currency
+          // screen is where they fix it.
           Text(
-            formatCurrency(netWorthCents),
+            'Missing FX rate: '
+            '${converted.missingRateCurrencies.join(", ")}'
+            ' → ${converted.displayCurrency}',
             style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              color: netWorthCents >= 0 ? context.cs.onSurface : colors.expense,
+              fontSize: 11,
+              color: colors.warning,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

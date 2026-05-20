@@ -382,6 +382,11 @@ mixin _$HouseholdInfo {
   bool get isOwner => throw _privateConstructorUsedError;
   List<HouseholdMember> get members => throw _privateConstructorUsedError;
 
+  /// Currency the dashboard's aggregations are shown in
+  /// (migration 036). Defaults to 'USD' on every existing row;
+  /// changed via [SettingsRepository.updateDisplayCurrency].
+  String get displayCurrency => throw _privateConstructorUsedError;
+
   /// Create a copy of HouseholdInfo
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -401,6 +406,7 @@ abstract class $HouseholdInfoCopyWith<$Res> {
     String householdName,
     bool isOwner,
     List<HouseholdMember> members,
+    String displayCurrency,
   });
 }
 
@@ -423,6 +429,7 @@ class _$HouseholdInfoCopyWithImpl<$Res, $Val extends HouseholdInfo>
     Object? householdName = null,
     Object? isOwner = null,
     Object? members = null,
+    Object? displayCurrency = null,
   }) {
     return _then(
       _value.copyWith(
@@ -442,6 +449,10 @@ class _$HouseholdInfoCopyWithImpl<$Res, $Val extends HouseholdInfo>
                 ? _value.members
                 : members // ignore: cast_nullable_to_non_nullable
                       as List<HouseholdMember>,
+            displayCurrency: null == displayCurrency
+                ? _value.displayCurrency
+                : displayCurrency // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -462,6 +473,7 @@ abstract class _$$HouseholdInfoImplCopyWith<$Res>
     String householdName,
     bool isOwner,
     List<HouseholdMember> members,
+    String displayCurrency,
   });
 }
 
@@ -483,6 +495,7 @@ class __$$HouseholdInfoImplCopyWithImpl<$Res>
     Object? householdName = null,
     Object? isOwner = null,
     Object? members = null,
+    Object? displayCurrency = null,
   }) {
     return _then(
       _$HouseholdInfoImpl(
@@ -502,6 +515,10 @@ class __$$HouseholdInfoImplCopyWithImpl<$Res>
             ? _value._members
             : members // ignore: cast_nullable_to_non_nullable
                   as List<HouseholdMember>,
+        displayCurrency: null == displayCurrency
+            ? _value.displayCurrency
+            : displayCurrency // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -515,6 +532,7 @@ class _$HouseholdInfoImpl implements _HouseholdInfo {
     required this.householdName,
     required this.isOwner,
     required final List<HouseholdMember> members,
+    this.displayCurrency = 'USD',
   }) : _members = members;
 
   @override
@@ -531,9 +549,16 @@ class _$HouseholdInfoImpl implements _HouseholdInfo {
     return EqualUnmodifiableListView(_members);
   }
 
+  /// Currency the dashboard's aggregations are shown in
+  /// (migration 036). Defaults to 'USD' on every existing row;
+  /// changed via [SettingsRepository.updateDisplayCurrency].
+  @override
+  @JsonKey()
+  final String displayCurrency;
+
   @override
   String toString() {
-    return 'HouseholdInfo(householdId: $householdId, householdName: $householdName, isOwner: $isOwner, members: $members)';
+    return 'HouseholdInfo(householdId: $householdId, householdName: $householdName, isOwner: $isOwner, members: $members, displayCurrency: $displayCurrency)';
   }
 
   @override
@@ -546,7 +571,9 @@ class _$HouseholdInfoImpl implements _HouseholdInfo {
             (identical(other.householdName, householdName) ||
                 other.householdName == householdName) &&
             (identical(other.isOwner, isOwner) || other.isOwner == isOwner) &&
-            const DeepCollectionEquality().equals(other._members, _members));
+            const DeepCollectionEquality().equals(other._members, _members) &&
+            (identical(other.displayCurrency, displayCurrency) ||
+                other.displayCurrency == displayCurrency));
   }
 
   @override
@@ -556,6 +583,7 @@ class _$HouseholdInfoImpl implements _HouseholdInfo {
     householdName,
     isOwner,
     const DeepCollectionEquality().hash(_members),
+    displayCurrency,
   );
 
   /// Create a copy of HouseholdInfo
@@ -573,6 +601,7 @@ abstract class _HouseholdInfo implements HouseholdInfo {
     required final String householdName,
     required final bool isOwner,
     required final List<HouseholdMember> members,
+    final String displayCurrency,
   }) = _$HouseholdInfoImpl;
 
   @override
@@ -583,6 +612,12 @@ abstract class _HouseholdInfo implements HouseholdInfo {
   bool get isOwner;
   @override
   List<HouseholdMember> get members;
+
+  /// Currency the dashboard's aggregations are shown in
+  /// (migration 036). Defaults to 'USD' on every existing row;
+  /// changed via [SettingsRepository.updateDisplayCurrency].
+  @override
+  String get displayCurrency;
 
   /// Create a copy of HouseholdInfo
   /// with the given fields replaced by the non-null parameter values.

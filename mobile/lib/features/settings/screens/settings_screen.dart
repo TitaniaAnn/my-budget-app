@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/currency/screens/currency_settings_screen.dart';
 import '../../../features/holdings/screens/target_allocations_screen.dart';
 import '../../../features/notifications/screens/notification_settings_screen.dart';
 import '../../../features/receipts/screens/review_ocr_lines_screen.dart';
@@ -184,6 +185,19 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const TargetAllocationsScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.currency_exchange),
+            title: const Text('Currency'),
+            subtitle: const Text(
+              'Display currency + FX rates for cross-currency totals',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CurrencySettingsScreen(),
               ),
             ),
           ),

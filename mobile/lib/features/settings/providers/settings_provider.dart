@@ -35,6 +35,11 @@ class HouseholdInfo with _$HouseholdInfo {
     required String householdName,
     required bool isOwner,
     required List<HouseholdMember> members,
+
+    /// Currency the dashboard's aggregations are shown in
+    /// (migration 036). Defaults to 'USD' on every existing row;
+    /// changed via [SettingsRepository.updateDisplayCurrency].
+    @Default('USD') String displayCurrency,
   }) = _HouseholdInfo;
 }
 
@@ -55,6 +60,20 @@ class SettingsRepository {
     await supabase
         .from('households')
         .update({'name': name})
+        .eq('id', householdId);
+  }
+
+  /// Sets the household's display currency (migration 036). Three-
+  /// letter ISO codes only; the column is CHAR(3). Used by the
+  /// dashboard's converted net worth and (in future slices) the
+  /// budget / category-spending aggregations.
+  Future<void> updateDisplayCurrency({
+    required String householdId,
+    required String currencyCode,
+  }) async {
+    await supabase
+        .from('households')
+        .update({'display_currency': currencyCode})
         .eq('id', householdId);
   }
 
@@ -124,7 +143,11 @@ Future<HouseholdInfo> householdInfo(HouseholdInfoRef ref) async {
   if (householdId == null) throw Exception('No household found');
 
   final (householdRow, membersRows) = await (
-    supabase.from('households').select('name').eq('id', householdId).single(),
+    supabase
+        .from('households')
+        .select('name, display_currency')
+        .eq('id', householdId)
+        .single(),
     supabase
         .from('household_members')
         .select('user_id, display_name, role')
@@ -150,5 +173,7 @@ Future<HouseholdInfo> householdInfo(HouseholdInfoRef ref) async {
     householdName: (householdRow['name'] as String?) ?? '',
     isOwner: isOwner,
     members: members,
+    displayCurrency:
+        (householdRow['display_currency'] as String?) ?? 'USD',
   );
 }
