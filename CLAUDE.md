@@ -80,6 +80,18 @@ A change to the model's input shape or label space typically needs:
 
 Supabase auth callbacks redirect to `mybudget://auth/callback` (see `supabase/config.toml`). The Android intent filter for this scheme lives in `mobile/android/app/src/main/AndroidManifest.xml` — keep them in sync if either changes.
 
+## Local notifications
+
+Budget-over and large-transaction alerts fire client-side from the dashboard load — there is **no FCM / APNS infrastructure** in this repo yet, and consequently **no notifications while the app is closed**. The local-notifications engine has three layers, all under [`mobile/lib/features/notifications/`](mobile/lib/features/notifications/):
+
+- **Pure trigger logic.** [`evaluateNotifications`](mobile/lib/features/notifications/services/notification_engine.dart) takes settings + budgets + recent transactions + the last-fired dedup map + `now` and returns a list of `PendingNotification`s. Pure function, unit-testable. Dedup keys are namespaced (`budget_over:<id>:<period_from>`, `large_tx:<tx_id>`) so the same kind of event in a new period or on a new row fires again. The budget trigger has a $1 noise-floor and the large-tx trigger has a 24-hour `created_at` gate so a fresh install doesn't dump months of historical alerts on first dashboard load.
+- **State persistence.** [`notification_settings_provider.dart`](mobile/lib/features/notifications/providers/notification_settings_provider.dart) holds toggles + threshold in SharedPreferences and exposes `loadLastFired` / `recordFired` helpers for the dedup map. `recordFired` prunes anything older than 90 days so the JSON blob doesn't grow unbounded.
+- **Platform wrapper.** [`NotificationService`](mobile/lib/features/notifications/services/notification_service.dart) is the thin layer over `flutter_local_notifications` — idempotent `ensureInitialized`, explicit `requestPermission` driven by the settings toggle (not by `initialize`, so the OS prompt lands at a moment the user expects). Notification id is `tag.hashCode` so a same-tag re-fire updates in place.
+
+Wiring: `dashboardDataProvider` does `ref.read(runNotificationsProvider.future)` (fire-and-forget) AFTER the recurring scheduler resolves, so today's emissions can be their own trigger. The runner provider is `keepAlive` so subsequent dashboard loads in the same app process don't re-evaluate the engine unless the inputs change.
+
+When adding a new trigger: extend `NotificationSettings` with a toggle, add a branch in `evaluateNotifications` that produces a `PendingNotification` with a fresh key namespace, write unit tests covering enabled / disabled / dedup / freshness. The platform service, settings screen, and dedup map don't need changes — they're already trigger-agnostic.
+
 ## OCR: production lives outside, stub lives here
 
 The `receipts.ocr_status` enum advances `pending → processing → complete | failed`. The Dart upload path inserts rows at `'pending'` and never advances them — that's the OCR Edge Function's job.
