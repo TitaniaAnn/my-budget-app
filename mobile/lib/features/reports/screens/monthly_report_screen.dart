@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../features/budget/repositories/budget_repository.dart';
+import '../../../features/currency/repositories/fx_rates_repository.dart';
 import '../../../features/settings/providers/settings_provider.dart';
 import '../../../features/transactions/models/transaction.dart';
 import '../../../features/transactions/repositories/transactions_repository.dart';
@@ -100,6 +101,30 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       postMonthTxFuture,
     ).wait;
 
+    // FX rates for any non-display currency appearing in this
+    // household's accounts or in-month transactions. Looked up at
+    // monthEnd (or today for an in-progress month) so a backdated
+    // report uses the rate that was current then.
+    final foreignCurrencies = {
+      for (final a in accounts)
+        if (a.currency != info.displayCurrency) a.currency,
+      for (final t in transactions)
+        if (t.currency != info.displayCurrency) t.currency,
+    };
+    final ratesToDisplay = <String, double>{};
+    if (foreignCurrencies.isNotEmpty) {
+      final fxRepo = ref.read(fxRatesRepositoryProvider);
+      for (final cur in foreignCurrencies) {
+        final fx = await fxRepo.latestRate(
+          householdId: householdId,
+          fromCurrency: cur,
+          toCurrency: info.displayCurrency,
+          asOf: closingAsOf,
+        );
+        if (fx != null) ratesToDisplay[cur] = fx.rate;
+      }
+    }
+
     return buildMonthlyReport(
       monthStart: monthStart,
       monthEnd: monthEnd,
@@ -110,6 +135,8 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       accounts: accounts,
       transactionsAfterMonth: postMonthTx,
       closingAsOf: closingAsOf,
+      displayCurrency: info.displayCurrency,
+      ratesToDisplay: ratesToDisplay,
     );
   }
 
@@ -224,25 +251,38 @@ class _Preview extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 16),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SummaryCell(
-                  label: 'Income',
-                  value: formatCurrency(data.incomeCents),
-                  color: colors.income,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _SummaryCell(
+                      label: 'Income',
+                      value: formatCurrency(data.incomeCents),
+                      color: colors.income,
+                    ),
+                    _SummaryCell(
+                      label: 'Expenses',
+                      value: formatCurrency(data.expensesCents),
+                      color: colors.expense,
+                    ),
+                    _SummaryCell(
+                      label: 'Net',
+                      value: formatCurrency(data.netChangeCents),
+                      color: data.netChangeCents >= 0
+                          ? colors.income
+                          : colors.expense,
+                    ),
+                  ],
                 ),
-                _SummaryCell(
-                  label: 'Expenses',
-                  value: formatCurrency(data.expensesCents),
-                  color: colors.expense,
-                ),
-                _SummaryCell(
-                  label: 'Net',
-                  value: formatCurrency(data.netChangeCents),
-                  color: data.netChangeCents >= 0
-                      ? colors.income
-                      : colors.expense,
+                const SizedBox(height: 4),
+                Text(
+                  'totals in ${data.displayCurrency}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: colors.textSubtle,
+                  ),
                 ),
               ],
             ),
@@ -308,7 +348,14 @@ class _Preview extends StatelessWidget {
                 style: TextStyle(fontSize: 11, color: colors.textSubtle),
               ),
               trailing: Text(
-                formatCurrency(row.balanceCents),
+                // Native-currency suffix matches the PDF — closing
+                // balances stay in each account's own currency so
+                // mixed-currency households see real per-account
+                // values, not a misleading aggregated total.
+                row.nativeCurrency == data.displayCurrency
+                    ? formatCurrency(row.balanceCents)
+                    : '${formatCurrency(row.balanceCents)} '
+                          '${row.nativeCurrency}',
                 style: TextStyle(
                   color: row.balanceCents < 0 ? colors.expense : null,
                 ),
@@ -324,6 +371,18 @@ class _Preview extends StatelessWidget {
               'account-to-account transaction legs were left out of '
               'income and expense totals.',
               style: TextStyle(fontSize: 11, color: colors.textMuted),
+            ),
+          ),
+        if (data.missingRateCurrencies.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            child: Text(
+              'Missing FX rates: '
+              '${data.missingRateCurrencies.join(", ")} → '
+              '${data.displayCurrency}. Transactions in these '
+              'currencies were excluded from totals. Set rates in '
+              'Settings → Currency.',
+              style: TextStyle(fontSize: 11, color: colors.warning),
             ),
           ),
       ],

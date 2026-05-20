@@ -20,11 +20,23 @@ import '../models/monthly_report_data.dart';
 
 Future<Uint8List> renderMonthlyReportPdf(MonthlyReportData data) async {
   final doc = pw.Document();
+  // Symbol-prefixed formatting falls back to a leading "$" for any
+  // currency we don't have a glyph for — fine for the PDF surface,
+  // and we suffix the actual ISO code on the totals so the user
+  // sees what currency is in play.
   final money = NumberFormat.currency(symbol: r'$', decimalDigits: 2);
   final monthLabel = DateFormat.yMMMM().format(data.monthStart);
   final generatedAt = DateFormat.yMMMd().add_jm().format(DateTime.now());
 
   String fmt(int cents) => money.format(cents / 100.0);
+
+  /// Formats with the source-currency suffix when it differs from
+  /// the display currency — used by closing-balance rows that stay
+  /// in their native currency.
+  String fmtIn(int cents, String currency) {
+    if (currency == data.displayCurrency) return fmt(cents);
+    return '${fmt(cents)} $currency';
+  }
 
   doc.addPage(
     pw.MultiPage(
@@ -43,7 +55,7 @@ Future<Uint8List> renderMonthlyReportPdf(MonthlyReportData data) async {
         ),
         pw.SizedBox(height: 2),
         pw.Text(
-          'Generated $generatedAt',
+          'Generated $generatedAt · totals in ${data.displayCurrency}',
           style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
         ),
         pw.SizedBox(height: 24),
@@ -172,7 +184,7 @@ Future<Uint8List> renderMonthlyReportPdf(MonthlyReportData data) async {
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 4),
                       child: pw.Text(
-                        fmt(row.balanceCents),
+                        fmtIn(row.balanceCents, row.nativeCurrency),
                         textAlign: pw.TextAlign.right,
                         style: pw.TextStyle(
                           color: row.balanceCents < 0
@@ -196,6 +208,17 @@ Future<Uint8List> renderMonthlyReportPdf(MonthlyReportData data) async {
             'of income and expense totals.',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
           ),
+        if (data.missingRateCurrencies.isNotEmpty) ...[
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Missing FX rates: '
+            '${data.missingRateCurrencies.join(", ")} → '
+            '${data.displayCurrency}. Transactions in these '
+            'currencies were excluded from the totals — add rates in '
+            'Settings → Currency to include them next time.',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.amber800),
+          ),
+        ],
       ],
     ),
   );

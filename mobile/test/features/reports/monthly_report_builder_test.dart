@@ -35,6 +35,8 @@ MonthlyReportData _build({
   List<Account> accounts = const [],
   List<Transaction> transactionsAfterMonth = const [],
   DateTime? closingAsOf,
+  String displayCurrency = 'USD',
+  Map<String, double> ratesToDisplay = const {},
 }) {
   return buildMonthlyReport(
     monthStart: monthStart,
@@ -46,6 +48,8 @@ MonthlyReportData _build({
     accounts: accounts,
     transactionsAfterMonth: transactionsAfterMonth,
     closingAsOf: closingAsOf ?? monthEnd,
+    displayCurrency: displayCurrency,
+    ratesToDisplay: ratesToDisplay,
   );
 }
 
@@ -64,6 +68,7 @@ Transaction _tx({
   String? transferId,
   String? categoryId,
   String? receiptId,
+  String currency = 'USD',
 }) {
   final ts = DateTime(2026, 1, 1);
   return Transaction(
@@ -71,7 +76,7 @@ Transaction _tx({
     householdId: 'h',
     accountId: 'a',
     amount: amount,
-    currency: 'USD',
+    currency: currency,
     description: 'desc',
     transactionDate: date,
     pending: false,
@@ -243,6 +248,152 @@ void main() {
         categoryLookup: const {},
       );
       expect(r.byCategory, isEmpty);
+    });
+
+    // ── Multi-currency conversion (slice 2 of the multi-currency arc) ──
+    //
+    // The report converts per-transaction amounts to the display
+    // currency before aggregating income/expenses/uncategorized.
+    // Transactions in a currency that has no rate to the display
+    // currency are EXCLUDED from those totals (silently including
+    // them at rate=1 would lie) and their currency surfaces in
+    // missingRateCurrencies so the renderer can footnote the gap.
+
+    group('multi-currency aggregation', () {
+      test('converts foreign-currency transactions via the rate map', () {
+        // $1,000 USD salary + €500 EUR side-income. Display USD,
+        // EUR→USD 1.0573. Income should sum the converted amounts.
+        final r = _build(
+          monthStart: monthStart,
+          monthEnd: monthEnd,
+          householdName: 'Test',
+          transactionsInMonth: [
+            _tx(amount: 100000, date: anyDay, id: 'us-salary'),
+            _tx(
+              amount: 50000,
+              date: anyDay,
+              id: 'eu-side',
+              currency: 'EUR',
+            ),
+          ],
+          spendingByCategory: const {},
+          categoryLookup: const {},
+          displayCurrency: 'USD',
+          ratesToDisplay: const {'EUR': 1.0573},
+        );
+        expect(r.incomeCents, 100000 + 52865); // 50000 × 1.0573
+        expect(r.displayCurrency, 'USD');
+        expect(r.missingRateCurrencies, isEmpty);
+      });
+
+      test(
+        'missing-rate transactions are EXCLUDED from totals and surface '
+        'in missingRateCurrencies',
+        () {
+          // ¥10,000 JPY expense with no JPY→USD rate. The total
+          // must NOT silently include it (would imply rate=1).
+          final r = _build(
+            monthStart: monthStart,
+            monthEnd: monthEnd,
+            householdName: 'Test',
+            transactionsInMonth: [
+              _tx(amount: -3500, date: anyDay, id: 'us-groceries'),
+              _tx(
+                amount: -1000000,
+                date: anyDay,
+                id: 'jp-noodles',
+                currency: 'JPY',
+              ),
+            ],
+            spendingByCategory: const {},
+            categoryLookup: const {},
+            displayCurrency: 'USD',
+            ratesToDisplay: const {},
+          );
+          expect(
+            r.expensesCents,
+            3500,
+            reason: 'JPY must not contribute at rate=1; only the USD '
+                'expense counts toward the converted total.',
+          );
+          expect(r.missingRateCurrencies, {'JPY'});
+        },
+      );
+
+      test('uncategorized bucket converts too', () {
+        // Unpaired, uncategorised EUR expense — must convert via
+        // the rate map before counting toward Uncategorized.
+        final r = _build(
+          monthStart: monthStart,
+          monthEnd: monthEnd,
+          householdName: 'Test',
+          transactionsInMonth: [
+            _tx(
+              amount: -10000,
+              date: anyDay,
+              id: 'eu-misc',
+              currency: 'EUR',
+            ),
+          ],
+          spendingByCategory: const {},
+          categoryLookup: const {},
+          displayCurrency: 'USD',
+          ratesToDisplay: const {'EUR': 1.05},
+        );
+        // 10000 × 1.05 = 10500 cents converted.
+        expect(r.byCategory.single.name, 'Uncategorized');
+        expect(r.byCategory.single.cents, 10500);
+      });
+
+      test('USD-only household with USD display sees no conversion', () {
+        // Slice 1 promise: a single-currency household is unaffected.
+        // No rates supplied, no missing-rate warnings emitted.
+        final r = _build(
+          monthStart: monthStart,
+          monthEnd: monthEnd,
+          householdName: 'Test',
+          transactionsInMonth: [
+            _tx(amount: 100000, date: anyDay, id: 'salary'),
+            _tx(amount: -3500, date: anyDay, id: 'groceries'),
+          ],
+          spendingByCategory: const {},
+          categoryLookup: const {},
+          // Defaults: displayCurrency='USD', ratesToDisplay={}.
+        );
+        expect(r.incomeCents, 100000);
+        expect(r.expensesCents, 3500);
+        expect(r.missingRateCurrencies, isEmpty);
+      });
+
+      test(
+        'transfer legs are still excluded regardless of currency / rate',
+        () {
+          // A transfer leg in EUR (uncommon but legal) must not
+          // count as income/expense even when a rate IS available.
+          // The transfer exclusion supersedes the FX path.
+          final r = _build(
+            monthStart: monthStart,
+            monthEnd: monthEnd,
+            householdName: 'Test',
+            transactionsInMonth: [
+              _tx(amount: 100000, date: anyDay, id: 'real-income'),
+              _tx(
+                amount: 50000,
+                date: anyDay,
+                id: 'eu-leg',
+                currency: 'EUR',
+                transferId: 'X',
+              ),
+            ],
+            spendingByCategory: const {},
+            categoryLookup: const {},
+            displayCurrency: 'USD',
+            ratesToDisplay: const {'EUR': 1.05},
+          );
+          expect(r.incomeCents, 100000);
+          expect(r.transferLegCount, 1);
+        },
+      );
     });
   });
 }

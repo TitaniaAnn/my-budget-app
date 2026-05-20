@@ -22,11 +22,33 @@
 // and why transfer legs are NOT excluded from that walkback.
 
 import '../../accounts/models/account.dart';
+import '../../currency/services/convert.dart';
 import '../../transactions/models/category.dart';
 import '../../transactions/models/transaction.dart';
 import '../models/monthly_report_data.dart';
 import 'closing_balances.dart';
 
+/// Builds a monthly report.
+///
+/// Multi-currency: when [displayCurrency] is supplied along with a
+/// [ratesToDisplay] map, the income / expenses / uncategorized
+/// totals are converted from each transaction's native currency
+/// to [displayCurrency] before aggregation. Transactions in a
+/// currency missing from [ratesToDisplay] are EXCLUDED from those
+/// totals (including them at rate=1 would silently lie) and their
+/// native currency surfaces in [MonthlyReportData.missingRateCurrencies]
+/// so the renderer can footnote the gap.
+///
+/// Closing-balance rows are NOT converted — each is shown in its
+/// account's native currency so the user sees real per-account
+/// values. The PDF + preview format each row with its own currency.
+///
+/// `spendingByCategory` comes pre-aggregated from the
+/// [get_category_spending] RPC, which in slice 1 does NOT yet
+/// FX-convert across currencies. Slice 2 of the multi-currency arc
+/// owes this rewrite. For now, a multi-currency household's
+/// by-category figures may be wrong — the dashboard footnote on
+/// the report flags the gap.
 MonthlyReportData buildMonthlyReport({
   required DateTime monthStart,
   required DateTime monthEnd,
@@ -37,19 +59,38 @@ MonthlyReportData buildMonthlyReport({
   required List<Account> accounts,
   required List<Transaction> transactionsAfterMonth,
   required DateTime closingAsOf,
+  String displayCurrency = 'USD',
+  Map<String, double> ratesToDisplay = const {},
 }) {
   var income = 0;
   var expenses = 0;
   var transferLegs = 0;
+  final missing = <String>{};
+
+  /// Converts a transaction's signed amount into the display
+  /// currency, or returns null when no rate is available. Tracks
+  /// the source currency in [missing] so the caller can warn.
+  int? convertOrTrack(Transaction t) {
+    if (t.currency == displayCurrency) return t.amount;
+    final rate = ratesToDisplay[t.currency];
+    if (rate == null) {
+      missing.add(t.currency);
+      return null;
+    }
+    return convertCents(t.amount, rate);
+  }
+
   for (final t in transactionsInMonth) {
     if (t.transferId != null) {
       transferLegs++;
       continue;
     }
-    if (t.amount > 0) {
-      income += t.amount;
-    } else if (t.amount < 0) {
-      expenses += t.amount.abs();
+    final converted = convertOrTrack(t);
+    if (converted == null) continue;
+    if (converted > 0) {
+      income += converted;
+    } else if (converted < 0) {
+      expenses += converted.abs();
     }
   }
 
@@ -71,13 +112,16 @@ MonthlyReportData buildMonthlyReport({
   // Uncategorised bucket — only counts unpaired transactions, mirroring
   // the dashboard. Paired-but-uncategorised would be double-counted as
   // soon as the user fills in line item categories on the receipt.
+  // Converted to display currency the same way income/expenses are.
   var uncategorised = 0;
   for (final t in transactionsInMonth) {
     if (t.transferId != null) continue;
     if (t.amount >= 0) continue;
     if (t.categoryId != null) continue;
     if (t.receiptId != null) continue;
-    uncategorised += t.amount.abs();
+    final converted = convertOrTrack(t);
+    if (converted == null) continue;
+    uncategorised += converted.abs();
   }
   if (uncategorised > 0) {
     rows.add(MonthlyReportCategoryRow(
@@ -104,5 +148,7 @@ MonthlyReportData buildMonthlyReport({
     transferLegCount: transferLegs,
     closingBalances: closingBalances,
     closingAsOf: closingAsOf,
+    displayCurrency: displayCurrency,
+    missingRateCurrencies: missing,
   );
 }

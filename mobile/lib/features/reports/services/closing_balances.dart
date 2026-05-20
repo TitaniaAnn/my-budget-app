@@ -64,6 +64,11 @@ List<MonthlyReportAccountBalance> closingBalancesAtMonthEnd({
         accountName: a.name,
         accountType: a.accountType,
         balanceCents: a.currentBalance - delta,
+        // Carry the account's own currency through so the renderer
+        // formats each row in its native units. A multi-currency
+        // household sees "Checking: $1,234.56 / Savings: €567.89"
+        // rather than a misleading aggregated USD figure per row.
+        nativeCurrency: a.currency,
       ),
     );
   }
