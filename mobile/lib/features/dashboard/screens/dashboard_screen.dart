@@ -14,7 +14,9 @@ import '../../accounts/models/account.dart';
 import '../../budget/providers/budget_provider.dart';
 import '../../holdings/models/holding.dart';
 import '../../holdings/providers/holdings_provider.dart';
+import '../../holdings/providers/rebalance_provider.dart';
 import '../../holdings/screens/holdings_by_class_screen.dart';
+import '../../holdings/services/rebalance.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -162,6 +164,13 @@ class _DashboardBody extends ConsumerWidget {
         // household that doesn't use the holdings feature doesn't see
         // an empty section header.
         const _AssetAllocationSection(),
+
+        // ── Rebalance suggestions ──────────────────────────────────────────
+        // Surfaces any asset class drifted more than 5 percentage
+        // points from its user-set target. Quiet by default — only
+        // renders when targets are configured AND at least one class
+        // is out of band.
+        const _RebalanceSection(),
 
         // ── Top Categories ─────────────────────────────────────────────────
         if (data.topCategories.isNotEmpty) ...[
@@ -975,6 +984,129 @@ class _LegendRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: row,
+      ),
+    );
+  }
+}
+
+// ── Rebalance section ──────────────────────────────────────────────────────
+//
+// Quiet when no targets are set OR when nothing is meaningfully
+// drifted (≥ 500bp == 5 percentage points). When at least one
+// class IS off, renders a small card per row with the drift and
+// the suggested dollar movement. Tapping leads to the target
+// editor so the user can either adjust their target or act on the
+// trade.
+
+const int _kRebalanceThresholdBp = 500;
+
+class _RebalanceSection extends ConsumerWidget {
+  const _RebalanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reportAsync = ref.watch(rebalanceReportProvider);
+    return reportAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (report) {
+        final drifted = report.rowsDriftedBy(_kRebalanceThresholdBp);
+        if (drifted.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionHeader(title: 'Rebalance Suggestions'),
+            const SizedBox(height: 10),
+            for (final row in drifted)
+              _RebalanceTile(row: row, portfolioTotalCents: report.totalCents),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RebalanceTile extends StatelessWidget {
+  const _RebalanceTile({required this.row, required this.portfolioTotalCents});
+
+  final RebalanceRow row;
+  final int portfolioTotalCents;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final isOverweight = row.driftBp > 0;
+    // Use the existing income/expense palette by direction —
+    // overweight (needs to sell) reads as the same colour family
+    // as expense; underweight (needs to buy) as income. Not a
+    // literal P&L statement, just consistent visual language.
+    final accent = isOverweight ? colors.expense : colors.income;
+    final driftCents = row.driftCentsAgainst(portfolioTotalCents);
+    final driftPct = row.driftBp / 100;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: row.assetClass.sliceColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  row.assetClass.displayName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  isOverweight
+                      ? 'Overweight by ${driftPct.toStringAsFixed(1)}% — '
+                          'sell ~${formatCurrency(driftCents.abs())}'
+                      : 'Underweight by ${driftPct.abs().toStringAsFixed(1)}% — '
+                          'buy ~${formatCurrency(driftCents.abs())}',
+                  style: TextStyle(fontSize: 11, color: accent),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${(row.currentPctBp / 100).toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
+                ),
+              ),
+              Text(
+                'target ${(row.targetPctBp / 100).toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: colors.textSubtle,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

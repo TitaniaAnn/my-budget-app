@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/holdings/screens/target_allocations_screen.dart';
 import '../../../features/notifications/screens/notification_settings_screen.dart';
 import '../../../features/receipts/screens/review_ocr_lines_screen.dart';
 import '../../../features/recurring/screens/recurring_transactions_screen.dart';
@@ -170,6 +171,19 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const NotificationSettingsScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.pie_chart_outline),
+            title: const Text('Target Allocation'),
+            subtitle: const Text(
+              'Set per-asset-class targets to surface rebalance drift',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TargetAllocationsScreen(),
               ),
             ),
           ),
