@@ -151,6 +151,80 @@ class ReceiptsRepository {
         .toList();
   }
 
+  /// Fetches line items whose OCR confidence (basis points) falls in
+  /// the "uncertain" band — by default, anything at or below
+  /// [maxConfidenceBp]. Joined with the parent receipt to surface
+  /// the receipt date and (when present) merchant in the review
+  /// screen without a second round-trip.
+  ///
+  /// Scoped to the caller's household via the receipts join — RLS
+  /// on `receipts` does the gating. Rows the user has manually
+  /// edited are still surfaced because we don't (yet) track a
+  /// "reviewed" flag separate from the confidence value; a future
+  /// migration could add `ocr_reviewed_at` for that.
+  ///
+  /// Default 5500 mirrors the [Categorizer]'s ML uncertain band so
+  /// the OCR review surface feels consistent with the existing
+  /// "Review uncertain ML guesses" screen.
+  Future<List<UncertainLineItem>> fetchUncertainLineItems({
+    required String householdId,
+    int maxConfidenceBp = 5500,
+    int limit = 100,
+  }) async {
+    final data = await supabase
+        .from('receipt_line_items')
+        .select(
+          'id, receipt_id, description, amount, '
+          'category_id, is_tax, is_tip, is_discount, '
+          'ocr_confidence_bp, sort_order, '
+          'receipt:receipts!inner(household_id, receipt_date, merchant_name)',
+        )
+        .eq('receipt.household_id', householdId)
+        .not('ocr_confidence_bp', 'is', null)
+        .lte('ocr_confidence_bp', maxConfidenceBp)
+        .order('ocr_confidence_bp', ascending: true)
+        .limit(limit);
+
+    return data.map<UncertainLineItem>((row) {
+      final r = row;
+      final receipt = r['receipt'] as Map<String, dynamic>;
+      final dateStr = receipt['receipt_date'] as String?;
+      return UncertainLineItem(
+        lineItem: ReceiptLineItem.fromJson({
+          ...r,
+          // quantity / unit_price aren't selected — fill nulls so
+          // fromJson is happy. The review surface doesn't show them.
+          'quantity': r['quantity'],
+          'unit_price': r['unit_price'],
+        }),
+        receiptDate: dateStr == null ? null : DateTime.parse(dateStr),
+        merchant: receipt['merchant_name'] as String?,
+      );
+    }).toList();
+  }
+
+  /// Confirms or corrects a line item via the review surface.
+  /// Clears `ocr_confidence_bp` so the row stops surfacing in the
+  /// uncertain list — the act of editing or confirming IS the
+  /// review. Optionally accepts new field values for inline edits
+  /// (description / amount / category).
+  Future<void> confirmLineItem({
+    required String lineItemId,
+    String? description,
+    int? amountCents,
+    String? categoryId,
+  }) async {
+    await supabase
+        .from('receipt_line_items')
+        .update({
+          'ocr_confidence_bp': null,
+          'description': ?description,
+          'amount': ?amountCents,
+          'category_id': ?categoryId,
+        })
+        .eq('id', lineItemId);
+  }
+
   /// Generates a short-lived signed URL for displaying a private receipt image.
   /// URLs expire after 1 hour.
   Future<String> getSignedUrl(String storagePath) async {

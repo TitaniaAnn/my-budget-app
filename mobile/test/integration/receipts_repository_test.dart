@@ -536,5 +536,195 @@ void main() {
         expect(items, isEmpty);
       }, skip: reason);
     });
+
+    // ── fetchUncertainLineItems + confirmLineItem (migration 034) ──────
+    //
+    // The OCR review surface filters on ocr_confidence_bp <= threshold.
+    // Pinned:
+    //   * fetch returns only rows below the threshold, ordered by
+    //     confidence ascending (most uncertain first);
+    //   * rows with null confidence (manual entries) are excluded;
+    //   * confirmLineItem clears the confidence so the same row
+    //     doesn't keep resurfacing — and field overrides apply when
+    //     provided.
+
+    group('OCR uncertain review (migration 034)', () {
+      Future<String> insertReceipt({DateTime? receiptDate}) async {
+        final row = await harness.client
+            .from('receipts')
+            .insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path':
+                  '${harness.householdId}/uncertain-${DateTime.now().microsecondsSinceEpoch}.jpg',
+              'ocr_status': 'complete',
+              'receipt_date': receiptDate
+                  ?.toIso8601String()
+                  .substring(0, 10),
+              'merchant_name': 'CONFIDENCE TEST CO',
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      Future<String> insertLineItem({
+        required String receiptId,
+        required String description,
+        required int amount,
+        int? confidenceBp,
+      }) async {
+        final row = await harness.client
+            .from('receipt_line_items')
+            .insert({
+              'receipt_id': receiptId,
+              'description': description,
+              'amount': amount,
+              'is_tax': false,
+              'is_tip': false,
+              'is_discount': false,
+              'sort_order': 0,
+              'ocr_confidence_bp': confidenceBp,
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'fetchUncertainLineItems returns only rows below threshold, '
+        'most-uncertain first; null-confidence rows are excluded',
+        () async {
+          final receiptId = await insertReceipt(
+            receiptDate: DateTime.utc(2026, 5, 14),
+          );
+          // 25% — well below the 55% default threshold.
+          final lowId = await insertLineItem(
+            receiptId: receiptId,
+            description: 'fetch-low',
+            amount: 100,
+            confidenceBp: 2500,
+          );
+          // 50% — also below.
+          final midId = await insertLineItem(
+            receiptId: receiptId,
+            description: 'fetch-mid',
+            amount: 200,
+            confidenceBp: 5000,
+          );
+          // 75% — above. Must NOT surface.
+          await insertLineItem(
+            receiptId: receiptId,
+            description: 'fetch-high',
+            amount: 300,
+            confidenceBp: 7500,
+          );
+          // No confidence — user typed it manually. Must NOT surface.
+          await insertLineItem(
+            receiptId: receiptId,
+            description: 'fetch-manual',
+            amount: 400,
+            confidenceBp: null,
+          );
+
+          final result = await repo.fetchUncertainLineItems(
+            householdId: harness.householdId,
+          );
+          // Filter to the ids we created so sibling tests can't
+          // pollute the assertion.
+          final ours = result
+              .where((u) => [lowId, midId].contains(u.lineItem.id))
+              .toList();
+          expect(
+            ours.map((u) => u.lineItem.id),
+            [lowId, midId],
+            reason: 'ordered ascending by confidence — the lowest '
+                'confidence (most uncertain) row surfaces first.',
+          );
+          // Receipt context joined in.
+          expect(ours.first.merchant, 'CONFIDENCE TEST CO');
+          expect(
+            ours.first.receiptDate?.toIso8601String().substring(0, 10),
+            '2026-05-14',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'confirmLineItem clears confidence so the row stops surfacing',
+        () async {
+          final receiptId = await insertReceipt();
+          final lineId = await insertLineItem(
+            receiptId: receiptId,
+            description: 'confirm-clear',
+            amount: 999,
+            confidenceBp: 3000,
+          );
+
+          await repo.confirmLineItem(lineItemId: lineId);
+
+          final all = await repo.fetchUncertainLineItems(
+            householdId: harness.householdId,
+          );
+          expect(
+            all.any((u) => u.lineItem.id == lineId),
+            isFalse,
+            reason: 'the confirm action is the review — once cleared, '
+                'the row must not resurface on the next fetch.',
+          );
+          // Verify the underlying column is actually NULL (and the
+          // description / amount survived unchanged because we didn't
+          // pass overrides).
+          final row = await harness.client
+              .from('receipt_line_items')
+              .select('description, amount, ocr_confidence_bp')
+              .eq('id', lineId)
+              .single();
+          expect(row['ocr_confidence_bp'], isNull);
+          expect(row['description'], 'confirm-clear');
+          expect(row['amount'], 999);
+        },
+        skip: reason,
+      );
+
+      test(
+        'confirmLineItem applies field overrides when provided',
+        () async {
+          final groceriesId = await harness.systemCategoryIdByName('Groceries');
+          final receiptId = await insertReceipt();
+          final lineId = await insertLineItem(
+            receiptId: receiptId,
+            description: 'misspeled',
+            amount: 100,
+            confidenceBp: 3000,
+          );
+
+          await repo.confirmLineItem(
+            lineItemId: lineId,
+            description: 'corrected',
+            amountCents: 555,
+            categoryId: groceriesId,
+          );
+
+          final row = await harness.client
+              .from('receipt_line_items')
+              .select('description, amount, category_id, ocr_confidence_bp')
+              .eq('id', lineId)
+              .single();
+          expect(row['description'], 'corrected');
+          expect(row['amount'], 555);
+          expect(row['category_id'], groceriesId);
+          expect(
+            row['ocr_confidence_bp'],
+            isNull,
+            reason: 'a correction-with-overrides path must STILL clear '
+                'confidence — otherwise the row resurfaces and the '
+                'user re-corrects forever.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }

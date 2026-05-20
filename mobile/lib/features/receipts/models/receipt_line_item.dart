@@ -34,8 +34,38 @@ class ReceiptLineItem with _$ReceiptLineItem {
     /// True if this line is a discount (coupon, promo, etc.) — negative value.
     required bool isDiscount,
     required int sortOrder,
+
+    /// Per-line OCR confidence in basis points (0–10000, where 10000
+    /// == 1.00). Null when no recognizer ran (user typed the line in
+    /// manually). The "Review uncertain OCR lines" surface filters
+    /// on this; user edits don't update the value, so a row the user
+    /// already corrected won't keep resurfacing for review.
+    int? ocrConfidenceBp,
   }) = _ReceiptLineItem;
 
   factory ReceiptLineItem.fromJson(Map<String, dynamic> json) =>
       _$ReceiptLineItemFromJson(json);
+}
+
+/// A line item joined with light receipt context, returned by the
+/// uncertain-review fetch. Plain class (not freezed) — it isn't
+/// persisted, just rendered. The review screen needs the receipt
+/// date and merchant to give each row enough context for the user
+/// to recognise it without having to drill into the parent receipt.
+class UncertainLineItem {
+  const UncertainLineItem({
+    required this.lineItem,
+    this.receiptDate,
+    this.merchant,
+  });
+
+  final ReceiptLineItem lineItem;
+
+  /// Date written on the receipt, when OCR / the user captured one.
+  /// Null when the receipt is still pending and the date isn't
+  /// known yet.
+  final DateTime? receiptDate;
+
+  /// Optional merchant name from the parent receipt row.
+  final String? merchant;
 }

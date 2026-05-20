@@ -45,6 +45,13 @@ mixin _$ReceiptLineItem {
   bool get isDiscount => throw _privateConstructorUsedError;
   int get sortOrder => throw _privateConstructorUsedError;
 
+  /// Per-line OCR confidence in basis points (0–10000, where 10000
+  /// == 1.00). Null when no recognizer ran (user typed the line in
+  /// manually). The "Review uncertain OCR lines" surface filters
+  /// on this; user edits don't update the value, so a row the user
+  /// already corrected won't keep resurfacing for review.
+  int? get ocrConfidenceBp => throw _privateConstructorUsedError;
+
   /// Serializes this ReceiptLineItem to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -74,6 +81,7 @@ abstract class $ReceiptLineItemCopyWith<$Res> {
     bool isTip,
     bool isDiscount,
     int sortOrder,
+    int? ocrConfidenceBp,
   });
 }
 
@@ -103,6 +111,7 @@ class _$ReceiptLineItemCopyWithImpl<$Res, $Val extends ReceiptLineItem>
     Object? isTip = null,
     Object? isDiscount = null,
     Object? sortOrder = null,
+    Object? ocrConfidenceBp = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -150,6 +159,10 @@ class _$ReceiptLineItemCopyWithImpl<$Res, $Val extends ReceiptLineItem>
                 ? _value.sortOrder
                 : sortOrder // ignore: cast_nullable_to_non_nullable
                       as int,
+            ocrConfidenceBp: freezed == ocrConfidenceBp
+                ? _value.ocrConfidenceBp
+                : ocrConfidenceBp // ignore: cast_nullable_to_non_nullable
+                      as int?,
           )
           as $Val,
     );
@@ -177,6 +190,7 @@ abstract class _$$ReceiptLineItemImplCopyWith<$Res>
     bool isTip,
     bool isDiscount,
     int sortOrder,
+    int? ocrConfidenceBp,
   });
 }
 
@@ -205,6 +219,7 @@ class __$$ReceiptLineItemImplCopyWithImpl<$Res>
     Object? isTip = null,
     Object? isDiscount = null,
     Object? sortOrder = null,
+    Object? ocrConfidenceBp = freezed,
   }) {
     return _then(
       _$ReceiptLineItemImpl(
@@ -252,6 +267,10 @@ class __$$ReceiptLineItemImplCopyWithImpl<$Res>
             ? _value.sortOrder
             : sortOrder // ignore: cast_nullable_to_non_nullable
                   as int,
+        ocrConfidenceBp: freezed == ocrConfidenceBp
+            ? _value.ocrConfidenceBp
+            : ocrConfidenceBp // ignore: cast_nullable_to_non_nullable
+                  as int?,
       ),
     );
   }
@@ -272,6 +291,7 @@ class _$ReceiptLineItemImpl implements _ReceiptLineItem {
     required this.isTip,
     required this.isDiscount,
     required this.sortOrder,
+    this.ocrConfidenceBp,
   });
 
   factory _$ReceiptLineItemImpl.fromJson(Map<String, dynamic> json) =>
@@ -312,9 +332,17 @@ class _$ReceiptLineItemImpl implements _ReceiptLineItem {
   @override
   final int sortOrder;
 
+  /// Per-line OCR confidence in basis points (0–10000, where 10000
+  /// == 1.00). Null when no recognizer ran (user typed the line in
+  /// manually). The "Review uncertain OCR lines" surface filters
+  /// on this; user edits don't update the value, so a row the user
+  /// already corrected won't keep resurfacing for review.
+  @override
+  final int? ocrConfidenceBp;
+
   @override
   String toString() {
-    return 'ReceiptLineItem(id: $id, receiptId: $receiptId, description: $description, amount: $amount, quantity: $quantity, unitPrice: $unitPrice, categoryId: $categoryId, isTax: $isTax, isTip: $isTip, isDiscount: $isDiscount, sortOrder: $sortOrder)';
+    return 'ReceiptLineItem(id: $id, receiptId: $receiptId, description: $description, amount: $amount, quantity: $quantity, unitPrice: $unitPrice, categoryId: $categoryId, isTax: $isTax, isTip: $isTip, isDiscount: $isDiscount, sortOrder: $sortOrder, ocrConfidenceBp: $ocrConfidenceBp)';
   }
 
   @override
@@ -339,7 +367,9 @@ class _$ReceiptLineItemImpl implements _ReceiptLineItem {
             (identical(other.isDiscount, isDiscount) ||
                 other.isDiscount == isDiscount) &&
             (identical(other.sortOrder, sortOrder) ||
-                other.sortOrder == sortOrder));
+                other.sortOrder == sortOrder) &&
+            (identical(other.ocrConfidenceBp, ocrConfidenceBp) ||
+                other.ocrConfidenceBp == ocrConfidenceBp));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -357,6 +387,7 @@ class _$ReceiptLineItemImpl implements _ReceiptLineItem {
     isTip,
     isDiscount,
     sortOrder,
+    ocrConfidenceBp,
   );
 
   /// Create a copy of ReceiptLineItem
@@ -389,6 +420,7 @@ abstract class _ReceiptLineItem implements ReceiptLineItem {
     required final bool isTip,
     required final bool isDiscount,
     required final int sortOrder,
+    final int? ocrConfidenceBp,
   }) = _$ReceiptLineItemImpl;
 
   factory _ReceiptLineItem.fromJson(Map<String, dynamic> json) =
@@ -428,6 +460,14 @@ abstract class _ReceiptLineItem implements ReceiptLineItem {
   bool get isDiscount;
   @override
   int get sortOrder;
+
+  /// Per-line OCR confidence in basis points (0–10000, where 10000
+  /// == 1.00). Null when no recognizer ran (user typed the line in
+  /// manually). The "Review uncertain OCR lines" surface filters
+  /// on this; user edits don't update the value, so a row the user
+  /// already corrected won't keep resurfacing for review.
+  @override
+  int? get ocrConfidenceBp;
 
   /// Create a copy of ReceiptLineItem
   /// with the given fields replaced by the non-null parameter values.

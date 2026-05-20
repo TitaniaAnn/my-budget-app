@@ -8,6 +8,7 @@ import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/notifications/screens/notification_settings_screen.dart';
+import '../../../features/receipts/screens/review_ocr_lines_screen.dart';
 import '../../../features/recurring/screens/recurring_transactions_screen.dart';
 import '../../../features/reports/screens/monthly_report_screen.dart';
 import '../../../features/transactions/screens/manage_tags_screen.dart';
@@ -118,6 +119,19 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const ReviewCategorisationsScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: const Text('Review OCR lines'),
+            subtitle: const Text(
+              'Confirm or correct line items the recognizer was unsure about',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ReviewOcrLinesScreen(),
               ),
             ),
           ),

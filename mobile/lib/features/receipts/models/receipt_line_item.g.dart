@@ -20,6 +20,7 @@ _$ReceiptLineItemImpl _$$ReceiptLineItemImplFromJson(
   isTip: json['is_tip'] as bool,
   isDiscount: json['is_discount'] as bool,
   sortOrder: (json['sort_order'] as num).toInt(),
+  ocrConfidenceBp: (json['ocr_confidence_bp'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$$ReceiptLineItemImplToJson(
@@ -36,4 +37,5 @@ Map<String, dynamic> _$$ReceiptLineItemImplToJson(
   'is_tip': instance.isTip,
   'is_discount': instance.isDiscount,
   'sort_order': instance.sortOrder,
+  'ocr_confidence_bp': instance.ocrConfidenceBp,
 };

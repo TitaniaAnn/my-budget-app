@@ -40,6 +40,11 @@ interface ReceiptLineItemInput {
   // tests exercising the rollup must supply it. Production OCR
   // populates this via the categorizer after extracting items.
   category_id?: string;
+  // OCR per-line confidence as integer basis points (0–10000) —
+  // mirrors transactions.ml_model_confidence. The stub synthesises
+  // values when callers don't supply one; production OCR carries
+  // Cloud Vision's per-item score (or a derived measure).
+  ocr_confidence_bp?: number;
 }
 
 const DEFAULT_ITEMS: ReceiptLineItemInput[] = [
@@ -104,9 +109,14 @@ async function processReceipt(
     .eq("id", receiptId);
   if (pErr) throw pErr;
 
-  // 2. Insert line items via the atomic RPC (migration 018) so a failure
+  // 2. Insert line items via the atomic RPC (migration 028) so a failure
   //    half-way through doesn't leave the receipt with partial items.
-  const itemPayloads = items.map((it) => ({
+  //    When the caller doesn't pass an explicit ocr_confidence_bp we
+  //    synthesise one from item index — varied values give the review
+  //    surface something to surface without requiring fixture data to
+  //    specify confidence per row. Production OCR replaces this with
+  //    Cloud Vision's per-line score.
+  const itemPayloads = items.map((it, i) => ({
     description: it.description,
     amount: it.amount,
     quantity: it.quantity ?? null,
@@ -115,6 +125,7 @@ async function processReceipt(
     is_tip: it.is_tip ?? false,
     is_discount: it.is_discount ?? false,
     category_id: it.category_id ?? null,
+    ocr_confidence_bp: it.ocr_confidence_bp ?? _synthesiseConfidenceBp(i),
   }));
   const { data: lineItems, error: liErr } = await supabase.rpc(
     "save_receipt_line_items",
@@ -162,4 +173,14 @@ async function processReceipt(
 
 function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
+}
+
+// Synthesises a stub OCR confidence per line index. Cycles through a
+// spread of values (high → low → mid → high → very-low) so a
+// typical 3–5 item receipt produces at least one row in the
+// "uncertain" review band. Deterministic per index so tests can
+// pin behaviour without mocking randomness.
+function _synthesiseConfidenceBp(index: number): number {
+  const ladder = [9800, 4200, 7500, 9500, 2100];
+  return ladder[index % ladder.length];
 }
