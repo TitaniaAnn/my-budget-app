@@ -23,14 +23,23 @@ Response shape:
 ```json
 {
   "household_id": "...",
+  "evaluated": 3,
   "pending": 2,
-  "sent": 0,
+  "sent": 1,
+  "invalidated": 1,
   "preview": [{ "key": "...", "title": "...", "body": "..." }]
 }
 ```
 
-`preview` is only present when `FIREBASE_SERVER_KEY` is unset — useful
-for verifying the engine without provisioned Firebase.
+- `evaluated` — how many notifications the engine produced before dedup
+- `pending` — how many keys we claimed in `notification_log` (and would
+  push, if Firebase is configured)
+- `sent` — successful FCM POSTs
+- `invalidated` — tokens FCM said were dead (`NotRegistered` /
+  `InvalidRegistration`) and that this pass removed from
+  `device_push_tokens`
+- `preview` — only present when `FIREBASE_SERVER_KEY` is unset; useful
+  for verifying the engine without provisioned Firebase
 
 ## What's stubbed vs. live
 
@@ -93,6 +102,8 @@ When changing trigger logic, change both files in the same commit.
 
 ## What this does NOT do (yet)
 
-- **No token-invalidation pruning.** If FCM returns an error indicating
-  a token is stale, this function ignores it. A retry/cleanup pass is
-  a follow-up.
+- **No transient-error retry.** A `RateLimit` / `InternalServerError`
+  / `Unavailable` from FCM is logged-and-dropped, not queued for a
+  later retry. The next scheduled invocation will re-evaluate and
+  re-claim through `notification_log` — keys already pushed stay
+  pushed, anything still pending gets another shot.

@@ -82,15 +82,21 @@ serve(async (req) => {
     // first wins; the loser sees its INSERT skipped by ON CONFLICT
     // and doesn't fire. See migration 039.
     const claimed = await claimUnfired(supabase, body.household_id, evaluated);
-    const sent = await deliverViaFcm(supabase, body.household_id, claimed);
+    const delivery = await deliverViaFcm(supabase, body.household_id, claimed);
     return Response.json({
       household_id: body.household_id,
       evaluated: evaluated.length,
       pending: claimed.length,
-      sent,
+      sent: delivery.sent,
+      // Tokens FCM said were dead and that we removed from
+      // device_push_tokens. Surfaced so a scheduler can flag noisy
+      // households (lots of stale tokens) for follow-up.
+      invalidated: delivery.invalidated,
       // When FIREBASE_SERVER_KEY is unset we surface the payload
       // so callers can verify the evaluation without real FCM.
-      preview: sent === 0 && claimed.length > 0 ? claimed : undefined,
+      preview: delivery.sent === 0 && claimed.length > 0
+        ? claimed
+        : undefined,
     }, { status: 200 });
   } catch (err) {
     return jsonError(500, String(err));
@@ -337,31 +343,41 @@ function currentPeriodRange(period: string): { from: string; to: string } {
 
 // ─── FCM delivery ──────────────────────────────────────────────
 
+interface DeliveryReport {
+  sent: number;
+  invalidated: number;
+}
+
 async function deliverViaFcm(
   supabase: SupabaseClient,
   householdId: string,
   pending: PendingNotification[],
-): Promise<number> {
-  if (pending.length === 0) return 0;
+): Promise<DeliveryReport> {
+  if (pending.length === 0) return { sent: 0, invalidated: 0 };
   const serverKey = Deno.env.get("FIREBASE_SERVER_KEY");
   if (!serverKey) {
-    // No Firebase yet — log + return 0, the caller sees `preview`
-    // in the response so tests can assert on what would have been
-    // sent. Treats this path as "stubbed" rather than "failed."
+    // No Firebase yet — log + return zeros, the caller sees
+    // `preview` in the response so tests can assert on what would
+    // have been sent. Treats this path as "stubbed" rather than
+    // "failed."
     console.log(
       `[send-notification] FIREBASE_SERVER_KEY unset; would send ${pending.length} notifications`,
     );
-    return 0;
+    return { sent: 0, invalidated: 0 };
   }
 
   const { data: tokens } = await supabase
     .from("device_push_tokens")
     .select("token")
     .eq("household_id", householdId);
-  if (!tokens || tokens.length === 0) return 0;
+  if (!tokens || tokens.length === 0) return { sent: 0, invalidated: 0 };
 
   let sent = 0;
+  // Tokens FCM tells us are dead — collected here so we can do one
+  // batch DELETE at the end rather than one per failure.
+  const invalidTokens = new Set<string>();
   for (const t of tokens) {
+    if (invalidTokens.has(t.token)) continue;
     for (const n of pending) {
       // Legacy FCM HTTP API — Firebase has a v1 OAuth-scoped API
       // we'd ideally use, but the legacy server-key form is the
@@ -382,10 +398,47 @@ async function deliverViaFcm(
           data: { tag: n.key },
         }),
       });
-      if (res.ok) sent += 1;
+      if (!res.ok) continue;
+      // FCM returns 200 even for known-bad tokens; the real verdict
+      // is in the body's `results[].error`. Pull it out and decide.
+      const body = await res.json().catch(() => null);
+      if (isFcmTokenInvalid(body)) {
+        invalidTokens.add(t.token);
+        // Don't waste the remaining notifications on this token.
+        break;
+      }
+      sent += 1;
     }
   }
-  return sent;
+
+  // Prune any tokens FCM flagged as dead so we stop pushing to
+  // uninstalled / unregistered devices. The Edge Function uses the
+  // service role so this DELETE bypasses RLS (the table is
+  // user-scoped via RLS for clients).
+  if (invalidTokens.size > 0) {
+    await supabase
+      .from("device_push_tokens")
+      .delete()
+      .in("token", [...invalidTokens]);
+  }
+
+  return { sent, invalidated: invalidTokens.size };
+}
+
+/// True when the FCM response body indicates the token is dead.
+/// Legacy FCM HTTP returns 200 with one of these error codes:
+///   * NotRegistered — token was unregistered (user uninstalled,
+///     cleared data, etc.)
+///   * InvalidRegistration — token is malformed
+///
+/// Both mean the row should leave device_push_tokens. Other errors
+/// (RateLimit, InternalServerError, MismatchSenderId, ...) are
+/// transient or our problem, not the token's; leave the row alone.
+function isFcmTokenInvalid(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const results = (body as { results?: Array<{ error?: string }> }).results;
+  const err = results?.[0]?.error;
+  return err === "NotRegistered" || err === "InvalidRegistration";
 }
 
 function jsonError(status: number, message: string): Response {
