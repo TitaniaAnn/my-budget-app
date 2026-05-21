@@ -46,6 +46,7 @@ Transaction _tx({
   String? merchant,
   String description = 'TEST',
   String currency = 'USD',
+  String accountId = 'a',
 }) {
   // Monotonic counter so multiple test rows sharing a date still get
   // unique ids — the rule under test groups by merchant + month, but
@@ -55,7 +56,7 @@ Transaction _tx({
   return Transaction(
     id: 'tx-$_txCounter',
     householdId: 'h',
-    accountId: 'a',
+    accountId: accountId,
     amount: amountCents,
     currency: currency,
     description: description,
@@ -75,10 +76,12 @@ DashboardData _data({
   required List<Account> accounts,
   required int spendCents,
   int ytdRothContributionsCents = 0,
+  List<Transaction> extraTxs = const [],
 }) {
-  final txs = spendCents > 0
-      ? [_tx(amountCents: -spendCents, date: _now())]
-      : <Transaction>[];
+  final txs = <Transaction>[
+    if (spendCents > 0) _tx(amountCents: -spendCents, date: _now()),
+    ...extraTxs,
+  ];
   return DashboardData(
     accounts: accounts,
     recentTransactions90d: txs,
@@ -559,53 +562,43 @@ void main() {
       },
     );
 
-    test(
-      'missing-rate rows are excluded from the drift comparison',
-      () {
-        // Spotify in EUR with no rate, plus Netflix in USD that
-        // recurs but isn't growing. Without the exclusion the
-        // EUR rows would mix into the recurring total at face
-        // value and create phantom growth.
-        final data = DashboardData(
-          accounts: const [],
-          recentTransactions: const [],
-          recentTransactions90d: [
-            _tx(
-              amountCents: -10000,
-              date: _monthsAgo(2),
-              merchant: 'EU-Spotify',
-              currency: 'EUR',
-            ),
-            _tx(
-              amountCents: -10000,
-              date: _monthsAgo(0),
-              merchant: 'EU-Spotify',
-              currency: 'EUR',
-            ),
-            _tx(
-              amountCents: -1500,
-              date: _monthsAgo(2),
-              merchant: 'Netflix',
-            ),
-            _tx(
-              amountCents: -1500,
-              date: _monthsAgo(0),
-              merchant: 'Netflix',
-            ),
-          ],
-          // No EUR rate.
-          ratesToDisplay: const {},
-        );
-        final s = const SubscriptionDriftRule().evaluate(data);
-        expect(
-          s,
-          isNull,
-          reason: 'EU-Spotify rows are excluded for lack of rate; '
-              'Netflix at \$15/month is steady, so no drift signal '
-              'remains — the rule stays silent.',
-        );
-      },
-    );
+    test('missing-rate rows are excluded from the drift comparison', () {
+      // Spotify in EUR with no rate, plus Netflix in USD that
+      // recurs but isn't growing. Without the exclusion the
+      // EUR rows would mix into the recurring total at face
+      // value and create phantom growth.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions: const [],
+        recentTransactions90d: [
+          _tx(
+            amountCents: -10000,
+            date: _monthsAgo(2),
+            merchant: 'EU-Spotify',
+            currency: 'EUR',
+          ),
+          _tx(
+            amountCents: -10000,
+            date: _monthsAgo(0),
+            merchant: 'EU-Spotify',
+            currency: 'EUR',
+          ),
+          _tx(amountCents: -1500, date: _monthsAgo(2), merchant: 'Netflix'),
+          _tx(amountCents: -1500, date: _monthsAgo(0), merchant: 'Netflix'),
+        ],
+        // No EUR rate.
+        ratesToDisplay: const {},
+      );
+      final s = const SubscriptionDriftRule().evaluate(data);
+      expect(
+        s,
+        isNull,
+        reason:
+            'EU-Spotify rows are excluded for lack of rate; '
+            'Netflix at \$15/month is steady, so no drift signal '
+            'remains — the rule stays silent.',
+      );
+    });
   });
 
   group('NetWorthTrajectoryRule', () {
@@ -713,6 +706,121 @@ void main() {
       );
       expect(const IdleCashRule().evaluate(data), isNull);
     });
+
+    test('stays silent when the user has contributed to investments '
+        'in the last 90 days', () {
+      // Cash level would normally fire (20 months); the qualifier
+      // suppresses the suggestion because there's a positive
+      // contribution on the brokerage account in the recent window.
+      final brokerage = _account(
+        type: AccountType.brokerage,
+        currentBalance: 100000,
+      );
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.savings, currentBalance: 2000000),
+          brokerage,
+        ],
+        spendCents: 100000,
+        extraTxs: [
+          _tx(
+            amountCents: 50000,
+            date: _now().subtract(const Duration(days: 14)),
+            accountId: brokerage.id,
+            description: 'Auto-invest',
+          ),
+        ],
+      );
+      expect(
+        const IdleCashRule().evaluate(data),
+        isNull,
+        reason:
+            'an active investor with idle cash has likely chosen '
+            'the cash level deliberately (savings goal, big purchase) '
+            '— the nag would be noise.',
+      );
+    });
+
+    test('still fires when the recent investment movement is an OUTFLOW', () {
+      // A withdrawal from a brokerage doesn't qualify as a
+      // contribution. The rule must still fire.
+      final brokerage = _account(
+        type: AccountType.brokerage,
+        currentBalance: 100000,
+      );
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.savings, currentBalance: 2000000),
+          brokerage,
+        ],
+        spendCents: 100000,
+        extraTxs: [
+          _tx(
+            amountCents: -50000, // withdrawal
+            date: _now().subtract(const Duration(days: 14)),
+            accountId: brokerage.id,
+            description: 'Withdrawal',
+          ),
+        ],
+      );
+      final s = const IdleCashRule().evaluate(data);
+      expect(
+        s,
+        isNotNull,
+        reason:
+            'outflows from an investment account are the OPPOSITE '
+            'of contributing; they should not suppress the rule.',
+      );
+    });
+
+    test('still fires when the user has no investment accounts at all', () {
+      // Edge case: no investment accounts → no possible
+      // contributions → qualifier vacuously passes → rule fires.
+      // The suggestion text "Consider moving the excess into
+      // investments" is the right nudge for this user.
+      final data = _data(
+        accounts: [
+          _account(type: AccountType.savings, currentBalance: 2000000),
+        ],
+        spendCents: 100000,
+      );
+      expect(const IdleCashRule().evaluate(data), isNotNull);
+    });
+
+    test(
+      'still fires when investment contribution is on an INACTIVE account',
+      () {
+        // Inactive accounts are excluded from the investmentAccountIds
+        // set, so a positive tx on an archived brokerage is just noise.
+        final dead = _account(
+          type: AccountType.brokerage,
+          currentBalance: 0,
+          isActive: false,
+        );
+        final data = _data(
+          accounts: [
+            _account(type: AccountType.savings, currentBalance: 2000000),
+            dead,
+          ],
+          spendCents: 100000,
+          extraTxs: [
+            _tx(
+              amountCents: 50000,
+              date: _now(),
+              accountId: dead.id,
+              description: 'Closing entry',
+            ),
+          ],
+        );
+        expect(
+          const IdleCashRule().evaluate(data),
+          isNotNull,
+          reason:
+              'a contribution to a closed account doesn\'t signal active '
+              'investing — the user can\'t access that money anyway.',
+        );
+      },
+    );
   });
 
   group('GrowthAdvisor.evaluate', () {

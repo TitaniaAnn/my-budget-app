@@ -193,16 +193,27 @@ class CreditCardCarryRule implements GrowthRule {
 }
 
 /// Cash so far above the emergency-fund target that the excess is
-/// almost certainly idle. The audit pairs this with a
-/// "no-investment-contributions in 90 days" qualifier; v1 skipped
-/// that qualifier and just flagged the cash level. The dashboard's
-/// transaction window is now 90 days (extended for the subscription
-/// drift rule) so the qualifier is implementable as a follow-up —
-/// today's behaviour is still threshold-only.
+/// almost certainly idle.
 ///
 /// Threshold: cash > 12 × monthly spending. A year of expenses in
 /// checking is the cutoff between "comfortable cushion" and "this is
 /// a savings-rate problem in disguise."
+///
+/// Qualifier: stays silent when the household has been moving money
+/// into investments in the last 90 days. A user who's already
+/// contributing regularly has likely chosen the cash level
+/// deliberately (savings goal, big purchase coming, market timing).
+/// Flagging them would be noise — the original audit called this
+/// out as the "no-investment-contributions in 90 days" guard, now
+/// implemented here.
+///
+/// "Contribution" = any positive transaction on an investment
+/// account in the last 90 days. This deliberately matches the Roth
+/// rule's broader definition: it counts dividend reinvestments and
+/// capital-gains distributions as contributions too. The
+/// over-counting cuts the other way for this rule (it makes the
+/// guard MORE forgiving — easier to suppress the nag), which is the
+/// right bias when the alternative is annoying a passive investor.
 class IdleCashRule implements GrowthRule {
   const IdleCashRule();
 
@@ -220,6 +231,17 @@ class IdleCashRule implements GrowthRule {
 
     final months = liquid / data.monthlySpending;
     if (months <= 12) return null;
+
+    // No-investment-contributions qualifier. recentTransactions90d
+    // covers the 90-day window the audit specified.
+    final investmentAccountIds = {
+      for (final a in data.accounts)
+        if (a.isActive && a.accountType.group == AccountGroup.investments) a.id,
+    };
+    final hasRecentContribution = data.recentTransactions90d.any(
+      (t) => t.amount > 0 && investmentAccountIds.contains(t.accountId),
+    );
+    if (hasRecentContribution) return null;
 
     final dollars = _formatDollars(liquid);
     return GrowthSuggestion(
