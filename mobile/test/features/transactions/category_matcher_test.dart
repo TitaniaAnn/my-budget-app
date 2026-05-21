@@ -189,6 +189,109 @@ void main() {
     });
   });
 
+  group('edge cases', () {
+    test('empty description returns null', () {
+      // A blank description hits no keywords in any rule. The matcher
+      // must return null rather than crashing on the contains() loop.
+      expect(matcher.match('', isIncome: false), isNull);
+      expect(matcher.match('', isIncome: true), isNull);
+    });
+
+    test('whitespace-only description returns null', () {
+      expect(matcher.match('   ', isIncome: false), isNull);
+    });
+  });
+
+  group('income-side rule precedence', () {
+    test(
+      '"payroll refund" matches Salary (declared first), not Other Income',
+      () {
+        // Both 'payroll' (Salary) and 'refund' (Other Income) appear
+        // in the description. Salary is declared first in _incomeRules,
+        // so it wins. A future reorder of the income table would flip
+        // this — pinning it makes the regression obvious.
+        expect(
+          matcher.match('PAYROLL REFUND ADJUSTMENT', isIncome: true),
+          'id-Salary',
+        );
+      },
+    );
+
+    test('investment-income keywords beat the more generic "deposit" '
+        'because there is no generic deposit rule', () {
+      // Sanity check: 'fidelity dep' on the income side routes to
+      // Investment Income, not Other Income. Pins that the more
+      // specific keyword in the earlier rule wins.
+      expect(
+        matcher.match('FIDELITY DEPOSIT', isIncome: true),
+        'id-Investment Income',
+      );
+    });
+  });
+
+  group('keyword specificity guards', () {
+    test('plain "CVS" does NOT match Prescriptions — needs "cvs pharm"', () {
+      // The Prescriptions rule has 'cvs pharm', not bare 'cvs', so
+      // a CVS convenience-store transaction (snacks / household
+      // items) doesn't get force-categorised as medical.
+      expect(matcher.match('CVS #4521 PURCHASE', isIncome: false), isNull);
+      // The pharmacy variant still does match.
+      expect(
+        matcher.match('CVS PHARMACY #4521', isIncome: false),
+        'id-Prescriptions',
+      );
+    });
+
+    test(
+      'plain "walgreens" matches Prescriptions (the rule keyword IS bare)',
+      () {
+        // Contrast with CVS: walgreens is intentionally a bare keyword
+        // because the chain is overwhelmingly pharmacy-led, so the
+        // false-positive rate of categorising a snack purchase as
+        // Prescriptions is judged acceptable.
+        expect(
+          matcher.match('WALGREENS #1234', isIncome: false),
+          'id-Prescriptions',
+        );
+      },
+    );
+
+    test('AMAZON KINDLE STORE goes to Subscriptions, not Books — pinned', () {
+      // 'kindle' is a Subscriptions keyword (Kindle Unlimited).
+      // 'amazon kindle' is a Books keyword. Subscriptions is
+      // declared first in _expenseRules, so the substring match
+      // for 'kindle' fires before Books even gets evaluated.
+      //
+      // This is the kind of cross-rule ambiguity that's easy to
+      // re-introduce by accident on a rule reorder. Pinned as the
+      // current behavior so a future change has to acknowledge it.
+      expect(
+        matcher.match('AMAZON KINDLE STORE', isIncome: false),
+        'id-Subscriptions',
+      );
+    });
+  });
+
+  group('income/expense routing of same-merchant strings', () {
+    test('"schwab" on the income side is Investment Income', () {
+      // The same broker name appears under Investment Income (income)
+      // AND 401k/Retirement (expense). The matcher dispatches on
+      // isIncome, so the user's transaction sign determines which
+      // rule table is even consulted.
+      expect(
+        matcher.match('SCHWAB DIVIDEND 0123', isIncome: true),
+        'id-Investment Income',
+      );
+    });
+
+    test('"schwab" on the expense side is 401k / Retirement', () {
+      expect(
+        matcher.match('SCHWAB BUY VTI', isIncome: false),
+        'id-401k / Retirement',
+      );
+    });
+  });
+
   group('missing categories', () {
     test('returns null when the matched rule has no category in the list', () {
       // Build a matcher with only one category so rules that fire for other
