@@ -19,6 +19,7 @@
 // else reads, so it'll get its own data path when added.
 
 import '../../accounts/models/account.dart';
+import '../../transactions/models/transaction.dart';
 import '../providers/dashboard_provider.dart';
 
 /// Severity of a growth suggestion. Controls the chip color in the
@@ -355,22 +356,30 @@ class SubscriptionDriftRule implements GrowthRule {
     // merchant column when present, falling back to description so a
     // hand-entered "Spotify" without a cleaned merchant still groups
     // with its peers.
+    //
+    // Amounts are converted to the household's display currency via
+    // ratesToDisplay so a multi-currency household compares like with
+    // like. Foreign-currency rows with no rate are EXCLUDED — the
+    // alternative (treating them at rate=1) would manufacture noise
+    // by mixing currencies inside the same monthly bucket.
     final spendByMerchantByMonth = <String, Map<String, int>>{};
     for (final t in data.recentTransactions90d) {
       if (t.amount >= 0) continue;
       // Transfer legs (migration 030) aren't real spending — a recurring
       // checking → savings sweep would otherwise look like a subscription.
       if (t.transferId != null) continue;
+      final converted = _convertedAmount(t, data);
+      if (converted == null) continue;
       final raw = (t.merchant ?? t.description).trim();
       if (raw.isEmpty) continue;
       final key = raw.toLowerCase();
       final ym = _ym(t.transactionDate);
+      // Hoist into a non-nullable local — Dart's flow analysis
+      // doesn't carry the null-check on `converted` into the
+      // closures below.
+      final abs = converted.abs();
       final months = spendByMerchantByMonth.putIfAbsent(key, () => {});
-      months.update(
-        ym,
-        (v) => v + t.amount.abs(),
-        ifAbsent: () => t.amount.abs(),
-      );
+      months.update(ym, (v) => v + abs, ifAbsent: () => abs);
     }
 
     // Recurring: appears in ≥ 2 distinct months in the window.
@@ -534,4 +543,21 @@ String _formatDollars(int cents) {
     buf.write(digits[i]);
   }
   return '${negative ? '-' : ''}\$$buf';
+}
+
+/// Converts a transaction's signed amount into the household's
+/// display currency, using the FX rates carried on the dashboard
+/// data. Returns null when the row is in a foreign currency with
+/// no rate available — callers EXCLUDE it from aggregations
+/// rather than silently apply rate=1.
+///
+/// Mirrors the same contract `DashboardData` uses for its monthly
+/// aggregations and `evaluateNotifications` doesn't need (it
+/// reads `t.amount` directly because notifications fire on a per-
+/// transaction basis, not in aggregate).
+int? _convertedAmount(Transaction t, DashboardData data) {
+  if (t.currency == data.displayCurrency) return t.amount;
+  final rate = data.ratesToDisplay[t.currency];
+  if (rate == null) return null;
+  return (t.amount * rate).round();
 }

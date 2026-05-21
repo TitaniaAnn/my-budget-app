@@ -269,15 +269,40 @@ class TransactionsRepository {
   Future<int> sumPositiveAmountsForAccountsSince({
     required List<String> accountIds,
     required DateTime from,
+    String displayCurrency = 'USD',
+    Map<String, double>? ratesToDisplay,
   }) async {
     if (accountIds.isEmpty) return 0;
     final rows = await supabase
         .from('transactions')
-        .select('amount')
+        .select('amount, currency')
         .inFilter('account_id', accountIds)
         .gt('amount', 0)
         .gte('transaction_date', from.toIso8601String().substring(0, 10));
-    return rows.fold<int>(0, (sum, row) => sum + (row['amount'] as int));
+
+    // Multi-currency contract matches the rest of the FX-aware
+    // surfaces: rows in `displayCurrency` count at face value;
+    // foreign rows convert via `ratesToDisplay`; rows in a
+    // currency missing from the map are EXCLUDED (rate=0). A
+    // null `ratesToDisplay` preserves legacy single-currency
+    // behaviour — sum raw amounts regardless of currency.
+    var sum = 0;
+    for (final row in rows) {
+      final amount = row['amount'] as int;
+      final currency = (row['currency'] as String?) ?? displayCurrency;
+      if (ratesToDisplay == null) {
+        sum += amount;
+        continue;
+      }
+      if (currency == displayCurrency) {
+        sum += amount;
+        continue;
+      }
+      final rate = ratesToDisplay[currency];
+      if (rate == null) continue;
+      sum += (amount * rate).round();
+    }
+    return sum;
   }
 
   /// Fetches all transactions within a date range for dashboard summaries.

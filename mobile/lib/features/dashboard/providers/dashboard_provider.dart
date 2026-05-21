@@ -341,6 +341,13 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final ytdRothContributions = await txRepo.sumPositiveAmountsForAccountsSince(
     accountIds: rothAccountIds,
     from: yearStart,
+    displayCurrency: info.displayCurrency,
+    // Empty rate map means "no rates available" — every USD-only
+    // Roth contribution still sums at face value since its
+    // currency matches display. A foreign-currency Roth (rare)
+    // gets converted via the household's saved rate, or excluded
+    // when no rate exists.
+    ratesToDisplay: ratesToDisplay.isEmpty ? null : ratesToDisplay,
   );
 
   // Net-worth trajectory series. fetchHistoricalNetWorth walks

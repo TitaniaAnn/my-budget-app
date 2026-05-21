@@ -45,6 +45,7 @@ Transaction _tx({
   required DateTime date,
   String? merchant,
   String description = 'TEST',
+  String currency = 'USD',
 }) {
   // Monotonic counter so multiple test rows sharing a date still get
   // unique ids — the rule under test groups by merchant + month, but
@@ -56,7 +57,7 @@ Transaction _tx({
     householdId: 'h',
     accountId: 'a',
     amount: amountCents,
-    currency: 'USD',
+    currency: currency,
     description: description,
     merchant: merchant,
     transactionDate: date,
@@ -519,6 +520,92 @@ void main() {
       final s = const SubscriptionDriftRule().evaluate(data);
       expect(s, isNotNull);
     });
+
+    test(
+      'foreign-currency rows convert via ratesToDisplay before grouping',
+      () {
+        // €10 EUR Spotify for two months, then €20 EUR this month
+        // at 1.10 → $11 baseline, $22 current. 100% growth, fires.
+        // Without conversion the rule would compare raw 1000 cents
+        // with display-currency rows and mis-grow the totals.
+        final data = DashboardData(
+          accounts: const [],
+          recentTransactions: const [],
+          recentTransactions90d: [
+            _tx(
+              amountCents: -1000,
+              date: _monthsAgo(2),
+              merchant: 'Spotify',
+              currency: 'EUR',
+            ),
+            _tx(
+              amountCents: -1000,
+              date: _monthsAgo(1),
+              merchant: 'Spotify',
+              currency: 'EUR',
+            ),
+            _tx(
+              amountCents: -2000,
+              date: _monthsAgo(0),
+              merchant: 'Spotify',
+              currency: 'EUR',
+            ),
+          ],
+          ratesToDisplay: const {'EUR': 1.10},
+        );
+        final s = const SubscriptionDriftRule().evaluate(data);
+        expect(s, isNotNull);
+        expect(s!.detail, contains('100%'));
+      },
+    );
+
+    test(
+      'missing-rate rows are excluded from the drift comparison',
+      () {
+        // Spotify in EUR with no rate, plus Netflix in USD that
+        // recurs but isn't growing. Without the exclusion the
+        // EUR rows would mix into the recurring total at face
+        // value and create phantom growth.
+        final data = DashboardData(
+          accounts: const [],
+          recentTransactions: const [],
+          recentTransactions90d: [
+            _tx(
+              amountCents: -10000,
+              date: _monthsAgo(2),
+              merchant: 'EU-Spotify',
+              currency: 'EUR',
+            ),
+            _tx(
+              amountCents: -10000,
+              date: _monthsAgo(0),
+              merchant: 'EU-Spotify',
+              currency: 'EUR',
+            ),
+            _tx(
+              amountCents: -1500,
+              date: _monthsAgo(2),
+              merchant: 'Netflix',
+            ),
+            _tx(
+              amountCents: -1500,
+              date: _monthsAgo(0),
+              merchant: 'Netflix',
+            ),
+          ],
+          // No EUR rate.
+          ratesToDisplay: const {},
+        );
+        final s = const SubscriptionDriftRule().evaluate(data);
+        expect(
+          s,
+          isNull,
+          reason: 'EU-Spotify rows are excluded for lack of rate; '
+              'Netflix at \$15/month is steady, so no drift signal '
+              'remains — the rule stays silent.',
+        );
+      },
+    );
   });
 
   group('NetWorthTrajectoryRule', () {
