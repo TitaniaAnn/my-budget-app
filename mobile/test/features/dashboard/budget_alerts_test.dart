@@ -40,6 +40,10 @@ BudgetWithSpending _bws({
     categoryName: categoryName,
     categoryColor: null,
     categoryIcon: null,
+    // Default cap to the budget amount so single-currency tests
+    // don't have to thread FX through; multi-currency cases (none
+    // here) would override.
+    capCents: budgetCents,
   );
 }
 

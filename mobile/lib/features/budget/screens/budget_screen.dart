@@ -229,7 +229,11 @@ class _BudgetCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'of ${fmt.format(item.budget.amount / 100)}',
+                    // Cap in display currency — capCents already
+                    // applies the FX conversion for foreign-currency
+                    // budgets, so the figure here matches the spent
+                    // side and the progress bar.
+                    'of ${fmt.format(item.capCents / 100)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.outline,
                     ),

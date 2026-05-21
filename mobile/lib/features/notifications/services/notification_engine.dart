@@ -46,7 +46,10 @@ List<PendingNotification> evaluateNotifications({
   if (settings.budgetOverEnabled) {
     for (final b in budgets) {
       if (!b.isOverBudget) continue;
-      final overBy = b.spentCents - b.budget.amount;
+      // Both sides in the household's display currency — capCents
+      // is the budget amount converted via FX (slice 3 of the
+      // multi-currency arc), spentCents is what the RPC returned.
+      final overBy = b.spentCents - b.capCents;
       if (overBy < _budgetOverFloorCents) continue;
 
       // Period-scoped key so a fresh cycle of the same budget can
@@ -62,7 +65,7 @@ List<PendingNotification> evaluateNotifications({
           title: 'Over budget: ${b.categoryName}',
           body:
               '\$${(overBy / 100).toStringAsFixed(2)} over the '
-              '\$${(b.budget.amount / 100).toStringAsFixed(2)} '
+              '\$${(b.capCents / 100).toStringAsFixed(2)} '
               '${b.budget.period.label.toLowerCase()} cap.',
         ),
       );

@@ -25,8 +25,16 @@ mixin _$Budget {
   String get householdId => throw _privateConstructorUsedError;
   String get categoryId => throw _privateConstructorUsedError;
 
-  /// Spending limit in cents for the given [period].
+  /// Spending limit in cents for the given [period], denominated
+  /// in [currency]. Multi-currency households can have a EUR
+  /// budget alongside a USD budget — the comparison against
+  /// spending happens in the household's display currency
+  /// after both sides convert (see BudgetWithSpending).
   int get amount => throw _privateConstructorUsedError;
+
+  /// 3-letter ISO code [amount] is denominated in. Defaults to
+  /// 'USD' so existing rows + USD-only callers stay correct.
+  String get currency => throw _privateConstructorUsedError;
   BudgetPeriod get period => throw _privateConstructorUsedError;
   DateTime get startDate => throw _privateConstructorUsedError;
 
@@ -53,6 +61,7 @@ abstract class $BudgetCopyWith<$Res> {
     String householdId,
     String categoryId,
     int amount,
+    String currency,
     BudgetPeriod period,
     DateTime startDate,
     DateTime? endDate,
@@ -79,6 +88,7 @@ class _$BudgetCopyWithImpl<$Res, $Val extends Budget>
     Object? householdId = null,
     Object? categoryId = null,
     Object? amount = null,
+    Object? currency = null,
     Object? period = null,
     Object? startDate = null,
     Object? endDate = freezed,
@@ -102,6 +112,10 @@ class _$BudgetCopyWithImpl<$Res, $Val extends Budget>
                 ? _value.amount
                 : amount // ignore: cast_nullable_to_non_nullable
                       as int,
+            currency: null == currency
+                ? _value.currency
+                : currency // ignore: cast_nullable_to_non_nullable
+                      as String,
             period: null == period
                 ? _value.period
                 : period // ignore: cast_nullable_to_non_nullable
@@ -137,6 +151,7 @@ abstract class _$$BudgetImplCopyWith<$Res> implements $BudgetCopyWith<$Res> {
     String householdId,
     String categoryId,
     int amount,
+    String currency,
     BudgetPeriod period,
     DateTime startDate,
     DateTime? endDate,
@@ -162,6 +177,7 @@ class __$$BudgetImplCopyWithImpl<$Res>
     Object? householdId = null,
     Object? categoryId = null,
     Object? amount = null,
+    Object? currency = null,
     Object? period = null,
     Object? startDate = null,
     Object? endDate = freezed,
@@ -185,6 +201,10 @@ class __$$BudgetImplCopyWithImpl<$Res>
             ? _value.amount
             : amount // ignore: cast_nullable_to_non_nullable
                   as int,
+        currency: null == currency
+            ? _value.currency
+            : currency // ignore: cast_nullable_to_non_nullable
+                  as String,
         period: null == period
             ? _value.period
             : period // ignore: cast_nullable_to_non_nullable
@@ -214,6 +234,7 @@ class _$BudgetImpl implements _Budget {
     required this.householdId,
     required this.categoryId,
     required this.amount,
+    this.currency = 'USD',
     required this.period,
     required this.startDate,
     this.endDate,
@@ -230,9 +251,19 @@ class _$BudgetImpl implements _Budget {
   @override
   final String categoryId;
 
-  /// Spending limit in cents for the given [period].
+  /// Spending limit in cents for the given [period], denominated
+  /// in [currency]. Multi-currency households can have a EUR
+  /// budget alongside a USD budget — the comparison against
+  /// spending happens in the household's display currency
+  /// after both sides convert (see BudgetWithSpending).
   @override
   final int amount;
+
+  /// 3-letter ISO code [amount] is denominated in. Defaults to
+  /// 'USD' so existing rows + USD-only callers stay correct.
+  @override
+  @JsonKey()
+  final String currency;
   @override
   final BudgetPeriod period;
   @override
@@ -246,7 +277,7 @@ class _$BudgetImpl implements _Budget {
 
   @override
   String toString() {
-    return 'Budget(id: $id, householdId: $householdId, categoryId: $categoryId, amount: $amount, period: $period, startDate: $startDate, endDate: $endDate, createdBy: $createdBy)';
+    return 'Budget(id: $id, householdId: $householdId, categoryId: $categoryId, amount: $amount, currency: $currency, period: $period, startDate: $startDate, endDate: $endDate, createdBy: $createdBy)';
   }
 
   @override
@@ -260,6 +291,8 @@ class _$BudgetImpl implements _Budget {
             (identical(other.categoryId, categoryId) ||
                 other.categoryId == categoryId) &&
             (identical(other.amount, amount) || other.amount == amount) &&
+            (identical(other.currency, currency) ||
+                other.currency == currency) &&
             (identical(other.period, period) || other.period == period) &&
             (identical(other.startDate, startDate) ||
                 other.startDate == startDate) &&
@@ -276,6 +309,7 @@ class _$BudgetImpl implements _Budget {
     householdId,
     categoryId,
     amount,
+    currency,
     period,
     startDate,
     endDate,
@@ -302,6 +336,7 @@ abstract class _Budget implements Budget {
     required final String householdId,
     required final String categoryId,
     required final int amount,
+    final String currency,
     required final BudgetPeriod period,
     required final DateTime startDate,
     final DateTime? endDate,
@@ -317,9 +352,18 @@ abstract class _Budget implements Budget {
   @override
   String get categoryId;
 
-  /// Spending limit in cents for the given [period].
+  /// Spending limit in cents for the given [period], denominated
+  /// in [currency]. Multi-currency households can have a EUR
+  /// budget alongside a USD budget — the comparison against
+  /// spending happens in the household's display currency
+  /// after both sides convert (see BudgetWithSpending).
   @override
   int get amount;
+
+  /// 3-letter ISO code [amount] is denominated in. Defaults to
+  /// 'USD' so existing rows + USD-only callers stay correct.
+  @override
+  String get currency;
   @override
   BudgetPeriod get period;
   @override

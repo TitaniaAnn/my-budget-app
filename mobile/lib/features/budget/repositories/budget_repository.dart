@@ -66,12 +66,19 @@ class BudgetRepository {
   }
 
   /// Creates a new budget and returns it.
+  ///
+  /// [currency] defaults to 'USD' so existing callers keep their
+  /// pre-multi-currency behaviour. The add-budget UI lets the user
+  /// pick a 3-letter ISO code so a household with mixed-currency
+  /// accounts can think in whichever currency is most natural per
+  /// category.
   Future<Budget> createBudget({
     required String householdId,
     required String categoryId,
     required int amountCents,
     required BudgetPeriod period,
     required String createdBy,
+    String currency = 'USD',
     DateTime? startDate,
   }) async {
     final data = await supabase
@@ -80,6 +87,7 @@ class BudgetRepository {
           'household_id': householdId,
           'category_id': categoryId,
           'amount': amountCents,
+          'currency': currency,
           'period': period.dbValue,
           'start_date': (startDate ?? DateTime.now())
               .toIso8601String()
@@ -92,15 +100,20 @@ class BudgetRepository {
     return Budget.fromJson(data);
   }
 
-  /// Updates the amount and/or period of an existing budget.
+  /// Updates the amount, currency, and/or period of an existing budget.
   Future<Budget> updateBudget({
     required String budgetId,
     int? amountCents,
+    String? currency,
     BudgetPeriod? period,
   }) async {
     final data = await supabase
         .from('budgets')
-        .update({'amount': ?amountCents, 'period': ?period?.dbValue})
+        .update({
+          'amount': ?amountCents,
+          'currency': ?currency,
+          'period': ?period?.dbValue,
+        })
         .eq('id', budgetId)
         .select()
         .single();

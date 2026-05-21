@@ -5,6 +5,8 @@
 // period total is also computed from the current daily spend rate.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../currency/repositories/fx_rates_repository.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../models/budget.dart';
 import '../repositories/budget_repository.dart';
@@ -22,11 +24,15 @@ class BudgetWithSpending {
     required this.categoryName,
     required this.categoryColor,
     required this.categoryIcon,
+    required this.capCents,
+    this.capIsMissingRate = false,
   });
 
   final Budget budget;
 
-  /// Actual debits so far this period, in cents (always positive).
+  /// Actual debits so far this period, in cents — already in the
+  /// household's display currency (the [BudgetRepository.fetchSpendingByCategory]
+  /// RPC converts when rates are configured).
   final int spentCents;
 
   /// Projected spend by end of period based on current daily rate, in cents.
@@ -41,19 +47,35 @@ class BudgetWithSpending {
   final String? categoryColor;
   final String? categoryIcon;
 
+  /// Budget cap converted to the household's display currency. For
+  /// a USD budget in a USD household this is identical to
+  /// `budget.amount`; for a EUR budget compared in USD this is
+  /// budget.amount × the EUR→USD rate. The comparison getters
+  /// below operate on this rather than `budget.amount` directly so
+  /// the math is currency-symmetric.
+  final int capCents;
+
+  /// True when the budget is in a foreign currency and the
+  /// household doesn't have a rate to convert it. The UI shows a
+  /// "needs FX rate" indicator instead of a meaningless progress
+  /// bar in this case. [progress] / [isOverBudget] etc. still
+  /// return safe values (treated as 0% / not-over) so call sites
+  /// don't have to special-case.
+  final bool capIsMissingRate;
+
   /// Remaining budget in cents (may be negative when over-budget).
-  int get remainingCents => budget.amount - spentCents;
+  int get remainingCents => capCents - spentCents;
 
   /// Fraction of budget consumed by actual spend, clamped to [0, 1].
   double get progress =>
-      budget.amount == 0 ? 0 : (spentCents / budget.amount).clamp(0.0, 1.0);
+      capCents == 0 ? 0 : (spentCents / capCents).clamp(0.0, 1.0);
 
   /// Fraction of budget the projection fills, clamped to [0, 1].
   double get projectedProgress =>
-      budget.amount == 0 ? 0 : (projectedCents / budget.amount).clamp(0.0, 1.0);
+      capCents == 0 ? 0 : (projectedCents / capCents).clamp(0.0, 1.0);
 
-  bool get isOverBudget => spentCents > budget.amount;
-  bool get isProjectedOver => projectedCents > budget.amount;
+  bool get isOverBudget => capCents > 0 && spentCents > capCents;
+  bool get isProjectedOver => capCents > 0 && projectedCents > capCents;
 }
 
 /// Computes the projected end-of-period spending given the amount spent so far,
@@ -90,14 +112,30 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
 
   final repo = ref.read(budgetRepositoryProvider);
 
-  final (budgets, cats) = await (
+  // Pre-fetch household info + FX rates so the spending RPC can
+  // convert per-row (slice 2-2) AND the budget caps can convert
+  // for comparison (slice 3). Same pattern as the dashboard
+  // provider — empty rate map short-circuits to legacy single-
+  // currency behaviour.
+  final (budgets, cats, info, allRates) = await (
     repo.fetchBudgets(householdId),
     ref.read(categoriesProvider.future),
+    ref.read(householdInfoProvider.future),
+    ref.read(fxRatesRepositoryProvider).fetchAll(householdId),
   ).wait;
 
   if (budgets.isEmpty) return [];
 
   final catMap = {for (final c in cats) c.id: c};
+
+  // Latest rate per (from → display) — newest-first ordering from
+  // fetchAll means putIfAbsent picks the latest.
+  final ratesToDisplay = <String, double>{};
+  for (final r in allRates) {
+    if (r.toCurrency != info.displayCurrency) continue;
+    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
+  }
+  final rpcRates = ratesToDisplay.isEmpty ? null : ratesToDisplay;
 
   // Fetch spending for every budget in parallel — each uses its own range.
   final spendingFutures = budgets.map((b) {
@@ -106,6 +144,7 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
       householdId: householdId,
       from: from,
       to: to,
+      ratesToDisplay: rpcRates,
     );
   }).toList();
 
@@ -125,6 +164,24 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
     );
     final cat = catMap[b.categoryId];
 
+    // Convert the budget's cap to display currency for comparison.
+    // Same exclude-not-lie contract: missing rate → capCents=0 +
+    // flagged, the UI shows "needs FX rate" rather than a phantom
+    // 0% bar that looks like the user has full headroom.
+    int capCents;
+    var capIsMissingRate = false;
+    if (b.currency == info.displayCurrency) {
+      capCents = b.amount;
+    } else {
+      final rate = ratesToDisplay[b.currency];
+      if (rate == null) {
+        capCents = 0;
+        capIsMissingRate = true;
+      } else {
+        capCents = (b.amount * rate).round();
+      }
+    }
+
     return BudgetWithSpending(
       budget: b,
       spentCents: spent,
@@ -134,6 +191,8 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
       categoryName: cat?.name ?? 'Unknown',
       categoryColor: cat?.color,
       categoryIcon: cat?.icon,
+      capCents: capCents,
+      capIsMissingRate: capIsMissingRate,
     );
   });
 }

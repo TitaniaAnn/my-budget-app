@@ -6,6 +6,7 @@ import '../../../core/providers/household_provider.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/settings/providers/settings_provider.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
 import '../../../features/transactions/widgets/add_category_sheet.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -33,6 +34,13 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
   final _amountCtrl = TextEditingController();
   String? _selectedCategoryId;
   BudgetPeriod _period = BudgetPeriod.monthly;
+  /// 3-letter ISO code the cap is denominated in. Defaults to
+  /// the household's display currency on first open; the user
+  /// can override when they want a foreign-currency cap (e.g.
+  /// "€500/month groceries" for someone with EUR accounts).
+  /// Initialised from the household info provider on first build
+  /// since defaults must be set before the controller exists.
+  String _currency = 'USD';
   bool _saving = false;
   String? _error;
 
@@ -46,6 +54,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
       _amountCtrl.text = (b.amount / 100).toStringAsFixed(2);
       _selectedCategoryId = b.categoryId;
       _period = b.period;
+      _currency = b.currency;
     }
   }
 
@@ -78,6 +87,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
         await repo.updateBudget(
           budgetId: widget.existing!.id,
           amountCents: cents,
+          currency: _currency,
           period: _period,
         );
       } else {
@@ -91,6 +101,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
           householdId: householdId,
           categoryId: _selectedCategoryId!,
           amountCents: cents,
+          currency: _currency,
           period: _period,
           createdBy: user.id,
         );
@@ -109,6 +120,21 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final categoriesAsync = ref.watch(categoriesProvider);
+    // Default the picker to the household's display currency on
+    // first build — saves the user from re-typing 'USD' when they
+    // never asked for a multi-currency setup. Only kicks in when
+    // we haven't initialised from an existing budget AND the
+    // current value is still the placeholder default.
+    if (!_isEditing && _currency == 'USD') {
+      final info = ref.read(householdInfoProvider).valueOrNull;
+      if (info != null && info.displayCurrency != _currency) {
+        // Schedule a state update for after this build frame —
+        // mutating state during build would throw.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _currency = info.displayCurrency);
+        });
+      }
+    }
 
     return AppSheetScaffold(
       title: _isEditing ? 'Edit Budget' : 'New Budget',
@@ -170,9 +196,34 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
           ),
           const SizedBox(height: 14),
 
-          // Amount field
+          // Amount field + currency picker side-by-side.
+          // The currency code is a free-text 3-char input rather
+          // than a dropdown so a household using a less common
+          // currency isn't blocked by our incomplete list. Defaults
+          // to the household's display currency (set above in build).
           const FieldLabel('Amount'),
-          MoneyTextField(controller: _amountCtrl),
+          Row(
+            children: [
+              Expanded(child: MoneyTextField(controller: _amountCtrl)),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 84,
+                child: TextFormField(
+                  initialValue: _currency,
+                  textCapitalization: TextCapitalization.characters,
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    hintText: 'USD',
+                    helperText: 'Currency',
+                  ),
+                  onChanged: (v) {
+                    final upper = v.trim().toUpperCase();
+                    if (upper.length == 3) _currency = upper;
+                  },
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
 
           // Period selector — dropdown so all 4 options fit comfortably.

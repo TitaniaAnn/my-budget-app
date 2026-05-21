@@ -24,6 +24,8 @@ BudgetWithSpending _bws({
   required int budgetCents,
   required int spentCents,
   int? projectedCents,
+  int? capCents,
+  bool capIsMissingRate = false,
 }) {
   final b = _budget(amount: budgetCents);
   return BudgetWithSpending(
@@ -35,6 +37,11 @@ BudgetWithSpending _bws({
     categoryName: 'Groceries',
     categoryColor: null,
     categoryIcon: null,
+    // Default cap to budget.amount so existing single-currency
+    // tests don't have to think about FX conversion. Tests that
+    // exercise the multi-currency path pass capCents explicitly.
+    capCents: capCents ?? budgetCents,
+    capIsMissingRate: capIsMissingRate,
   );
 }
 
@@ -168,6 +175,57 @@ void main() {
         ),
         0,
       );
+    });
+  });
+
+  // ── Multi-currency cap comparison (migration 038 / slice 3) ──
+  //
+  // The budget's amount is denominated in `budget.currency`; the
+  // spending RPC returns numbers in the household's DISPLAY
+  // currency; the BudgetWithSpending compares them via `capCents`
+  // (= budget.amount converted to display). These tests pin the
+  // conversion-aware contract.
+
+  group('BudgetWithSpending multi-currency comparison', () {
+    test(
+      'capCents matters for progress / over-budget — capIsMissingRate '
+      'safely returns 0% / not-over',
+      () {
+        // Budget of €500 in a USD household, EUR→USD rate 1.20 →
+        // capCents = 60000 (in USD). spentCents=70000 (returned
+        // from the RPC in USD already) → over by 10000.
+        final overConverted = _bws(
+          budgetCents: 50000,
+          spentCents: 70000,
+          capCents: 60000,
+        );
+        expect(overConverted.isOverBudget, isTrue);
+        expect(overConverted.remainingCents, -10000);
+        expect(overConverted.progress, 1.0); // clamped
+
+        // No rate → cap=0, missing flag set. The getters must
+        // return safe values (0% / not-over) so the UI can render
+        // a placeholder rather than crashing.
+        final unconvertible = _bws(
+          budgetCents: 50000,
+          spentCents: 12000,
+          capCents: 0,
+          capIsMissingRate: true,
+        );
+        expect(unconvertible.isOverBudget, isFalse);
+        expect(unconvertible.isProjectedOver, isFalse);
+        expect(unconvertible.progress, 0);
+        expect(unconvertible.projectedProgress, 0);
+        expect(unconvertible.capIsMissingRate, isTrue);
+      },
+    );
+
+    test('legacy single-currency tests still work via capCents default', () {
+      // _bws defaults capCents to budgetCents, so existing tests
+      // that omit the new parameter keep their meaning.
+      final b = _bws(budgetCents: 50000, spentCents: 75000);
+      expect(b.isOverBudget, isTrue);
+      expect(b.remainingCents, -25000);
     });
   });
 }

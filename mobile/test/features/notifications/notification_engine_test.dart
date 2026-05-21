@@ -49,6 +49,10 @@ BudgetWithSpending _bws({
     categoryName: categoryName,
     categoryColor: null,
     categoryIcon: null,
+    // Single-currency default — the notification engine doesn't
+    // exercise the multi-currency conversion path directly; it
+    // sees the already-converted spent + cap from upstream.
+    capCents: budgetCents,
   );
 }
 

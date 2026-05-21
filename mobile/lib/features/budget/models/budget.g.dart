@@ -11,6 +11,7 @@ _$BudgetImpl _$$BudgetImplFromJson(Map<String, dynamic> json) => _$BudgetImpl(
   householdId: json['household_id'] as String,
   categoryId: json['category_id'] as String,
   amount: (json['amount'] as num).toInt(),
+  currency: json['currency'] as String? ?? 'USD',
   period: $enumDecode(_$BudgetPeriodEnumMap, json['period']),
   startDate: DateTime.parse(json['start_date'] as String),
   endDate: json['end_date'] == null
@@ -25,6 +26,7 @@ Map<String, dynamic> _$$BudgetImplToJson(_$BudgetImpl instance) =>
       'household_id': instance.householdId,
       'category_id': instance.categoryId,
       'amount': instance.amount,
+      'currency': instance.currency,
       'period': _$BudgetPeriodEnumMap[instance.period]!,
       'start_date': instance.startDate.toIso8601String(),
       'end_date': instance.endDate?.toIso8601String(),

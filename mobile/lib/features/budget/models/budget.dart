@@ -111,8 +111,16 @@ class Budget with _$Budget {
     required String householdId,
     required String categoryId,
 
-    /// Spending limit in cents for the given [period].
+    /// Spending limit in cents for the given [period], denominated
+    /// in [currency]. Multi-currency households can have a EUR
+    /// budget alongside a USD budget — the comparison against
+    /// spending happens in the household's display currency
+    /// after both sides convert (see BudgetWithSpending).
     required int amount,
+
+    /// 3-letter ISO code [amount] is denominated in. Defaults to
+    /// 'USD' so existing rows + USD-only callers stay correct.
+    @Default('USD') String currency,
     required BudgetPeriod period,
     required DateTime startDate,
 

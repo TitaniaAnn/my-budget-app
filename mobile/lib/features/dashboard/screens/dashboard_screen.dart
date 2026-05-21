@@ -608,21 +608,25 @@ class _BudgetAlertTile extends StatelessWidget {
         ? context.appColors.expense
         : context.appColors.warning;
     final pct = (budget.progress * 100).round();
-    final projectedPct = budget.budget.amount == 0
+    // Compare in the household's display currency — capCents is
+    // budget.amount converted via the household's FX rate (slice 3
+    // of the multi-currency arc). For single-currency households
+    // it's identical to budget.amount.
+    final projectedPct = budget.capCents == 0
         ? 0
-        : (budget.projectedCents / budget.budget.amount * 100).round();
+        : (budget.projectedCents / budget.capCents * 100).round();
 
     final bodyText = switch (alert.state) {
       BudgetAlertState.overBudget =>
-        '${formatCurrency(budget.spentCents - budget.budget.amount)} '
+        '${formatCurrency(budget.spentCents - budget.capCents)} '
             'over budget',
       BudgetAlertState.projectedOver =>
         'On pace for ${formatCurrency(budget.projectedCents)} '
             '($projectedPct%) — '
-            '${formatCurrency(budget.projectedCents - budget.budget.amount)} '
+            '${formatCurrency(budget.projectedCents - budget.capCents)} '
             'over by period end',
       BudgetAlertState.approachingLimit =>
-        '${formatCurrency(budget.budget.amount - budget.spentCents)} '
+        '${formatCurrency(budget.capCents - budget.spentCents)} '
             'remaining ($pct% used)',
     };
 
@@ -672,7 +676,7 @@ class _BudgetAlertTile extends StatelessWidget {
                 ),
               ),
               Text(
-                'of ${formatCurrency(budget.budget.amount)}',
+                'of ${formatCurrency(budget.capCents)}',
                 style: TextStyle(
                   fontSize: 11,
                   color: context.appColors.textSubtle,
