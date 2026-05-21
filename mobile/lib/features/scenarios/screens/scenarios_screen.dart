@@ -141,7 +141,10 @@ class _ScenarioCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final accent = _accent;
-    final detailAsync = ref.watch(scenarioDetailProvider(scenario.id));
+    // Cards use the cheap summary provider (no historical walkback).
+    // The full detail provider runs when the user navigates into
+    // a scenario, not here.
+    final detailAsync = ref.watch(scenarioCardSummaryProvider(scenario.id));
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return GestureDetector(

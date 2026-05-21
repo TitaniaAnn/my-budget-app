@@ -173,6 +173,91 @@ Future<List<Scenario>> scenarios(ScenariosRef ref) async {
   return ref.read(scenariosRepositoryProvider).fetchScenarios(householdId);
 }
 
+/// Summary numbers shown on each scenario card in the list view —
+/// just the projected end balance and the net change against today.
+class ScenarioCardSummary {
+  const ScenarioCardSummary({
+    required this.finalBalance,
+    required this.netChange,
+  });
+  final int finalBalance;
+  final int netChange;
+}
+
+/// Cheap card-view companion to [scenarioDetailProvider].
+///
+/// Each list card needs only the projected end balance + net
+/// change. The full detail provider, by contrast, also fetches a
+/// 365-day historical walkback (one transactions round-trip per
+/// scenario) which the card never displays.
+///
+/// This provider:
+///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+///     so N cards share one fetch of each;
+///   * still fetches accounts + FX + this-scenario events itself
+///     (the scenarios list view is the only consumer right now —
+///     extracting more shared providers can come if a third call
+///     site appears);
+///   * skips the historical walkback entirely.
+///
+/// Net effect for a household with 10 plans: 5x fewer round-trips
+/// to Supabase on the scenarios screen.
+@riverpod
+Future<ScenarioCardSummary> scenarioCardSummary(
+  ScenarioCardSummaryRef ref,
+  String scenarioId,
+) async {
+  final householdId = await ref.watch(householdIdProvider.future);
+  if (householdId == null) throw StateError('No household');
+
+  final repo = ref.read(scenariosRepositoryProvider);
+  final accountsRepo = ref.read(accountsRepositoryProvider);
+  final fxRepo = ref.read(fxRatesRepositoryProvider);
+
+  final (scenariosList, events, accounts, info, allRates) = await (
+    ref.watch(scenariosProvider.future),
+    repo.fetchEvents(scenarioId),
+    accountsRepo.fetchAccounts(householdId),
+    ref.watch(householdInfoProvider.future),
+    fxRepo.fetchAll(householdId),
+  ).wait;
+
+  final scenario = scenariosList.firstWhere((s) => s.id == scenarioId);
+
+  final ratesToDisplay = <String, double>{};
+  for (final r in allRates) {
+    if (r.toCurrency != info.displayCurrency) continue;
+    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
+  }
+  final netWorth = multiCurrencyNetWorth(
+    accounts: accounts,
+    displayCurrency: info.displayCurrency,
+    ratesToDisplay: ratesToDisplay,
+  ).totalCents;
+
+  final from = DateTime.now();
+  var windowDays = _projectionDays;
+  if (scenario.isGoal && scenario.targetDate != null) {
+    final goalDays = scenario.targetDate!.difference(from).inDays;
+    if (goalDays > 0) windowDays = goalDays;
+  }
+
+  final projection = buildProjection(
+    startingBalance: netWorth,
+    events: events,
+    from: from,
+    windowDays: windowDays,
+  );
+
+  final finalBalance = projection.isEmpty
+      ? netWorth
+      : projection.last.balanceCents;
+  return ScenarioCardSummary(
+    finalBalance: finalBalance,
+    netChange: finalBalance - netWorth,
+  );
+}
+
 /// Full detail for a single scenario: events + projection.
 ///
 /// The projection starts from the household's current net worth (sum of

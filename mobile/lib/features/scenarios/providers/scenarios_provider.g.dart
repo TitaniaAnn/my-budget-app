@@ -25,7 +25,8 @@ final scenariosProvider = AutoDisposeFutureProvider<List<Scenario>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ScenariosRef = AutoDisposeFutureProviderRef<List<Scenario>>;
-String _$scenarioDetailHash() => r'0ded30aab9af40ad1180249cf0601d9ad7a07b93';
+String _$scenarioCardSummaryHash() =>
+    r'aa382ed1b108b1e9f3c96fce005afa2a59eeacc9';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -47,6 +48,245 @@ class _SystemHash {
     return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
   }
 }
+
+/// Cheap card-view companion to [scenarioDetailProvider].
+///
+/// Each list card needs only the projected end balance + net
+/// change. The full detail provider, by contrast, also fetches a
+/// 365-day historical walkback (one transactions round-trip per
+/// scenario) which the card never displays.
+///
+/// This provider:
+///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+///     so N cards share one fetch of each;
+///   * still fetches accounts + FX + this-scenario events itself
+///     (the scenarios list view is the only consumer right now —
+///     extracting more shared providers can come if a third call
+///     site appears);
+///   * skips the historical walkback entirely.
+///
+/// Net effect for a household with 10 plans: 5x fewer round-trips
+/// to Supabase on the scenarios screen.
+///
+/// Copied from [scenarioCardSummary].
+@ProviderFor(scenarioCardSummary)
+const scenarioCardSummaryProvider = ScenarioCardSummaryFamily();
+
+/// Cheap card-view companion to [scenarioDetailProvider].
+///
+/// Each list card needs only the projected end balance + net
+/// change. The full detail provider, by contrast, also fetches a
+/// 365-day historical walkback (one transactions round-trip per
+/// scenario) which the card never displays.
+///
+/// This provider:
+///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+///     so N cards share one fetch of each;
+///   * still fetches accounts + FX + this-scenario events itself
+///     (the scenarios list view is the only consumer right now —
+///     extracting more shared providers can come if a third call
+///     site appears);
+///   * skips the historical walkback entirely.
+///
+/// Net effect for a household with 10 plans: 5x fewer round-trips
+/// to Supabase on the scenarios screen.
+///
+/// Copied from [scenarioCardSummary].
+class ScenarioCardSummaryFamily
+    extends Family<AsyncValue<ScenarioCardSummary>> {
+  /// Cheap card-view companion to [scenarioDetailProvider].
+  ///
+  /// Each list card needs only the projected end balance + net
+  /// change. The full detail provider, by contrast, also fetches a
+  /// 365-day historical walkback (one transactions round-trip per
+  /// scenario) which the card never displays.
+  ///
+  /// This provider:
+  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+  ///     so N cards share one fetch of each;
+  ///   * still fetches accounts + FX + this-scenario events itself
+  ///     (the scenarios list view is the only consumer right now —
+  ///     extracting more shared providers can come if a third call
+  ///     site appears);
+  ///   * skips the historical walkback entirely.
+  ///
+  /// Net effect for a household with 10 plans: 5x fewer round-trips
+  /// to Supabase on the scenarios screen.
+  ///
+  /// Copied from [scenarioCardSummary].
+  const ScenarioCardSummaryFamily();
+
+  /// Cheap card-view companion to [scenarioDetailProvider].
+  ///
+  /// Each list card needs only the projected end balance + net
+  /// change. The full detail provider, by contrast, also fetches a
+  /// 365-day historical walkback (one transactions round-trip per
+  /// scenario) which the card never displays.
+  ///
+  /// This provider:
+  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+  ///     so N cards share one fetch of each;
+  ///   * still fetches accounts + FX + this-scenario events itself
+  ///     (the scenarios list view is the only consumer right now —
+  ///     extracting more shared providers can come if a third call
+  ///     site appears);
+  ///   * skips the historical walkback entirely.
+  ///
+  /// Net effect for a household with 10 plans: 5x fewer round-trips
+  /// to Supabase on the scenarios screen.
+  ///
+  /// Copied from [scenarioCardSummary].
+  ScenarioCardSummaryProvider call(String scenarioId) {
+    return ScenarioCardSummaryProvider(scenarioId);
+  }
+
+  @override
+  ScenarioCardSummaryProvider getProviderOverride(
+    covariant ScenarioCardSummaryProvider provider,
+  ) {
+    return call(provider.scenarioId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'scenarioCardSummaryProvider';
+}
+
+/// Cheap card-view companion to [scenarioDetailProvider].
+///
+/// Each list card needs only the projected end balance + net
+/// change. The full detail provider, by contrast, also fetches a
+/// 365-day historical walkback (one transactions round-trip per
+/// scenario) which the card never displays.
+///
+/// This provider:
+///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+///     so N cards share one fetch of each;
+///   * still fetches accounts + FX + this-scenario events itself
+///     (the scenarios list view is the only consumer right now —
+///     extracting more shared providers can come if a third call
+///     site appears);
+///   * skips the historical walkback entirely.
+///
+/// Net effect for a household with 10 plans: 5x fewer round-trips
+/// to Supabase on the scenarios screen.
+///
+/// Copied from [scenarioCardSummary].
+class ScenarioCardSummaryProvider
+    extends AutoDisposeFutureProvider<ScenarioCardSummary> {
+  /// Cheap card-view companion to [scenarioDetailProvider].
+  ///
+  /// Each list card needs only the projected end balance + net
+  /// change. The full detail provider, by contrast, also fetches a
+  /// 365-day historical walkback (one transactions round-trip per
+  /// scenario) which the card never displays.
+  ///
+  /// This provider:
+  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+  ///     so N cards share one fetch of each;
+  ///   * still fetches accounts + FX + this-scenario events itself
+  ///     (the scenarios list view is the only consumer right now —
+  ///     extracting more shared providers can come if a third call
+  ///     site appears);
+  ///   * skips the historical walkback entirely.
+  ///
+  /// Net effect for a household with 10 plans: 5x fewer round-trips
+  /// to Supabase on the scenarios screen.
+  ///
+  /// Copied from [scenarioCardSummary].
+  ScenarioCardSummaryProvider(String scenarioId)
+    : this._internal(
+        (ref) => scenarioCardSummary(ref as ScenarioCardSummaryRef, scenarioId),
+        from: scenarioCardSummaryProvider,
+        name: r'scenarioCardSummaryProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$scenarioCardSummaryHash,
+        dependencies: ScenarioCardSummaryFamily._dependencies,
+        allTransitiveDependencies:
+            ScenarioCardSummaryFamily._allTransitiveDependencies,
+        scenarioId: scenarioId,
+      );
+
+  ScenarioCardSummaryProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.scenarioId,
+  }) : super.internal();
+
+  final String scenarioId;
+
+  @override
+  Override overrideWith(
+    FutureOr<ScenarioCardSummary> Function(ScenarioCardSummaryRef provider)
+    create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ScenarioCardSummaryProvider._internal(
+        (ref) => create(ref as ScenarioCardSummaryRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        scenarioId: scenarioId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<ScenarioCardSummary> createElement() {
+    return _ScenarioCardSummaryProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ScenarioCardSummaryProvider &&
+        other.scenarioId == scenarioId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, scenarioId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ScenarioCardSummaryRef
+    on AutoDisposeFutureProviderRef<ScenarioCardSummary> {
+  /// The parameter `scenarioId` of this provider.
+  String get scenarioId;
+}
+
+class _ScenarioCardSummaryProviderElement
+    extends AutoDisposeFutureProviderElement<ScenarioCardSummary>
+    with ScenarioCardSummaryRef {
+  _ScenarioCardSummaryProviderElement(super.provider);
+
+  @override
+  String get scenarioId => (origin as ScenarioCardSummaryProvider).scenarioId;
+}
+
+String _$scenarioDetailHash() => r'ac3f09264afba971753b4ed759cc9deba951caca';
 
 /// Full detail for a single scenario: events + projection.
 ///
