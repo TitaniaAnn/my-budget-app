@@ -31,10 +31,6 @@ mixin _$FxRate {
   /// string on the JSON wire to avoid float loss in transit, so
   /// [_rateFromJson] coerces it to a double here. The math
   /// downstream uses plain `num` multipliers.
-  // Analyzer flags @JsonKey on a freezed constructor param even
-  // though json_serializable consumes it correctly — same shape
-  // as the freezed README's "custom fromJson" example.
-  // ignore: invalid_annotation_target
   @JsonKey(fromJson: _rateFromJson)
   double get rate => throw _privateConstructorUsedError;
   String? get createdBy => throw _privateConstructorUsedError;
@@ -244,10 +240,6 @@ class _$FxRateImpl implements _FxRate {
   /// string on the JSON wire to avoid float loss in transit, so
   /// [_rateFromJson] coerces it to a double here. The math
   /// downstream uses plain `num` multipliers.
-  // Analyzer flags @JsonKey on a freezed constructor param even
-  // though json_serializable consumes it correctly — same shape
-  // as the freezed README's "custom fromJson" example.
-  // ignore: invalid_annotation_target
   @override
   @JsonKey(fromJson: _rateFromJson)
   final double rate;
@@ -341,10 +333,6 @@ abstract class _FxRate implements FxRate {
   /// string on the JSON wire to avoid float loss in transit, so
   /// [_rateFromJson] coerces it to a double here. The math
   /// downstream uses plain `num` multipliers.
-  // Analyzer flags @JsonKey on a freezed constructor param even
-  // though json_serializable consumes it correctly — same shape
-  // as the freezed README's "custom fromJson" example.
-  // ignore: invalid_annotation_target
   @override
   @JsonKey(fromJson: _rateFromJson)
   double get rate;
