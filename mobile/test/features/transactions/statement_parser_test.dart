@@ -310,75 +310,66 @@ void main() {
   //     (a "Date " vs "date" round-trip mustn't invalidate a saved preset).
 
   group('parseStatementCsv — manual column mapping override', () {
-    test(
-      'skips auto-detect and parses headers the heuristic would reject',
-      () {
-        // Header row uses non-standard names that the auto-detect
-        // candidate lists wouldn't match. With a manual mapping the
-        // parser should still produce rows.
-        const csv =
-            'when,who,how_much\n'
-            '2026-05-01,COFFEE SHOP,-4.50\n'
-            '2026-05-02,PAYDAY,2500.00\n';
-        const mapping = ColumnMapping.signed(
-          dateIdx: 0,
-          descIdx: 1,
-          amountIdx: 2,
-        );
-        final result = parseStatementCsv(csv, mapping: mapping);
-        expect(result.rows, hasLength(2));
-        expect(result.rows.first.description, 'COFFEE SHOP');
-        expect(result.rows.first.amountCents, -450);
-        expect(result.rows.last.amountCents, 250000);
-      },
-    );
+    test('skips auto-detect and parses headers the heuristic would reject', () {
+      // Header row uses non-standard names that the auto-detect
+      // candidate lists wouldn't match. With a manual mapping the
+      // parser should still produce rows.
+      const csv =
+          'when,who,how_much\n'
+          '2026-05-01,COFFEE SHOP,-4.50\n'
+          '2026-05-02,PAYDAY,2500.00\n';
+      const mapping = ColumnMapping.signed(
+        dateIdx: 0,
+        descIdx: 1,
+        amountIdx: 2,
+      );
+      final result = parseStatementCsv(csv, mapping: mapping);
+      expect(result.rows, hasLength(2));
+      expect(result.rows.first.description, 'COFFEE SHOP');
+      expect(result.rows.first.amountCents, -450);
+      expect(result.rows.last.amountCents, 250000);
+    });
 
-    test(
-      'mapping override path also handles the split-debit/credit shape',
-      () {
-        const csv =
-            'd,desc,out,in\n'
-            '2026-05-01,GROCERIES,42.10,\n'
-            '2026-05-02,REFUND,,15.00\n';
-        const mapping = ColumnMapping.split(
-          dateIdx: 0,
-          descIdx: 1,
-          debitIdx: 2,
-          creditIdx: 3,
-        );
-        final result = parseStatementCsv(csv, mapping: mapping);
-        expect(result.rows.map((r) => r.amountCents), [-4210, 1500]);
-      },
-    );
+    test('mapping override path also handles the split-debit/credit shape', () {
+      const csv =
+          'd,desc,out,in\n'
+          '2026-05-01,GROCERIES,42.10,\n'
+          '2026-05-02,REFUND,,15.00\n';
+      const mapping = ColumnMapping.split(
+        dateIdx: 0,
+        descIdx: 1,
+        debitIdx: 2,
+        creditIdx: 3,
+      );
+      final result = parseStatementCsv(csv, mapping: mapping);
+      expect(result.rows.map((r) => r.amountCents), [-4210, 1500]);
+    });
 
-    test(
-      'ColumnDetectionFailure exposes headers and is a FormatException',
-      () {
-        // Headers the heuristic can't lock onto. The exception must
-        // carry the parsed headers so the override sheet can populate
-        // its dropdowns from them.
-        const csv =
-            'when,who,how_much\n'
-            '2026-05-01,COFFEE SHOP,-4.50\n';
-        ColumnDetectionFailure? caught;
-        try {
-          parseStatementCsv(csv);
-        } on ColumnDetectionFailure catch (e) {
-          caught = e;
-        }
-        expect(caught, isNotNull);
-        expect(caught!.headers, ['when', 'who', 'how_much']);
-        expect(
-          caught,
-          isA<FormatException>(),
-          reason:
-              'subclassing FormatException keeps existing callers '
-              'catching FormatException working; this is the bridge '
-              'between the old single-error API and the new '
-              'headers-aware override flow.',
-        );
-      },
-    );
+    test('ColumnDetectionFailure exposes headers and is a FormatException', () {
+      // Headers the heuristic can't lock onto. The exception must
+      // carry the parsed headers so the override sheet can populate
+      // its dropdowns from them.
+      const csv =
+          'when,who,how_much\n'
+          '2026-05-01,COFFEE SHOP,-4.50\n';
+      ColumnDetectionFailure? caught;
+      try {
+        parseStatementCsv(csv);
+      } on ColumnDetectionFailure catch (e) {
+        caught = e;
+      }
+      expect(caught, isNotNull);
+      expect(caught!.headers, ['when', 'who', 'how_much']);
+      expect(
+        caught,
+        isA<FormatException>(),
+        reason:
+            'subclassing FormatException keeps existing callers '
+            'catching FormatException working; this is the bridge '
+            'between the old single-error API and the new '
+            'headers-aware override flow.',
+      );
+    });
   });
 
   group('headerFingerprint', () {
@@ -415,19 +406,147 @@ void main() {
       expect(m.amountIdx, 2);
     });
 
-    test('returns a split mapping when only debit/credit columns are present', () {
-      final m = detectColumnMapping(['date', 'description', 'debit', 'credit']);
-      expect(m, isNotNull);
-      expect(m!.isSplit, isTrue);
-      expect(m.debitIdx, 2);
-      expect(m.creditIdx, 3);
-    });
+    test(
+      'returns a split mapping when only debit/credit columns are present',
+      () {
+        final m = detectColumnMapping([
+          'date',
+          'description',
+          'debit',
+          'credit',
+        ]);
+        expect(m, isNotNull);
+        expect(m!.isSplit, isTrue);
+        expect(m.debitIdx, 2);
+        expect(m.creditIdx, 3);
+      },
+    );
 
     test('returns null when the heuristic can\'t lock on', () {
       // Missing description column — the auto-detect can't proceed.
       // The UI uses this null to know it needs the override sheet.
       final m = detectColumnMapping(['when', 'who', 'how_much']);
       expect(m, isNull);
+    });
+  });
+
+  group('extractHeaders', () {
+    test('returns lowercased + trimmed headers from the first row', () {
+      // The UI's override sheet uses this to populate its dropdowns
+      // and to feed headerFingerprint for preset lookup. Casing /
+      // whitespace MUST be normalised so the fingerprint stays
+      // stable across re-exports of the same statement.
+      const csv = ' Date , Description , Amount\n01/15/2026,X,1.00\n';
+      expect(extractHeaders(csv), ['date', 'description', 'amount']);
+    });
+
+    test('handles a file with only a header row (no data)', () {
+      // An empty statement export is rare but legal — header line
+      // with nothing under it. The UI still wants the header list
+      // for the override sheet.
+      expect(extractHeaders('Date,Description,Amount\n'), [
+        'date',
+        'description',
+        'amount',
+      ]);
+    });
+
+    test('returns empty list when the file is totally empty', () {
+      expect(extractHeaders(''), isEmpty);
+    });
+
+    test('normalises CRLF line endings before extracting', () {
+      // Same Windows-CRLF case as the parser proper — the header
+      // extractor must agree, otherwise the fingerprint could shift
+      // between platforms.
+      expect(extractHeaders('Date,Amount\r\n01/15/2026,1.00\r\n'), [
+        'date',
+        'amount',
+      ]);
+    });
+  });
+
+  group('parseStatementCsv — 2-digit year pivot', () {
+    test('"01/15/26" pivots to 2026, not year 0026', () {
+      // intl's M/d/yy happily parses "26" as year 0026 unless we
+      // explicitly pivot. The parser shifts any sub-100 year up to
+      // 20xx — bank statements never show pre-2000 dates. Without
+      // this guard, transactions would land 2000 years in the past
+      // and never appear in the recent-window queries.
+      const csv = '''
+Date,Description,Amount
+01/15/26,Test,1.00
+''';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, hasLength(1));
+      expect(result.rows.single.date, DateTime(2026, 1, 15));
+    });
+
+    test('"1/5/30" pivots to 2030 (single-digit M/d shape)', () {
+      const csv = '''
+Date,Description,Amount
+1/5/30,Test,1.00
+''';
+      final result = parseStatementCsv(csv);
+      expect(result.rows.single.date, DateTime(2030, 1, 5));
+    });
+  });
+
+  group('parseStatementCsv — line endings', () {
+    test('handles bare CR (old Mac / OFX-converted exports)', () {
+      // Some legacy export pipelines use \r-only line endings. The
+      // parser normalises CR → LF before handing to csv. Without
+      // this the whole file looks like a single row to the CSV
+      // tokenizer and the parser throws "appears empty".
+      const csv =
+          'Date,Description,Amount\r01/15/2026,A,1.00\r01/16/2026,B,2.00\r';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, hasLength(2));
+      expect(result.rows[0].description, 'A');
+      expect(result.rows[1].description, 'B');
+    });
+  });
+
+  group('parseStatementCsv — split-column edge cases', () {
+    test('both columns present as "0" returns 0 cents (not skipped)', () {
+      // A row with explicit zeros in both debit and credit columns
+      // is rare but legal — e.g., a fee-waived placeholder posted
+      // by some banks. The parser imports it as 0 cents so the
+      // ledger still records the activity rather than silently
+      // dropping it.
+      const csv = '''
+Date,Description,Debit,Credit
+01/15/2026,Fee waived,0,0
+''';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, hasLength(1));
+      expect(result.rows.single.amountCents, 0);
+      expect(result.skipped, isEmpty);
+    });
+  });
+
+  group('parseStatementCsv — whitespace-only field handling', () {
+    test('row with whitespace-only date is skipped', () {
+      // .trim() on the cell collapses " " to "", which the
+      // empty-string guard catches. Pin so a future refactor that
+      // moves the trim doesn't silently let bad rows through.
+      const csv = '''
+Date,Description,Amount
+   ,Test,1.00
+''';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, isEmpty);
+      expect(result.skipped.single, contains('empty date'));
+    });
+
+    test('row with whitespace-only description is skipped', () {
+      const csv = '''
+Date,Description,Amount
+01/15/2026,   ,1.00
+''';
+      final result = parseStatementCsv(csv);
+      expect(result.rows, isEmpty);
+      expect(result.skipped.single, contains('empty date or description'));
     });
   });
 }
