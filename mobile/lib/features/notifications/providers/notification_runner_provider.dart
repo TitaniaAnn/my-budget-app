@@ -13,6 +13,8 @@
 //     our row and skips the FCM send (and vice versa). Both sides
 //     racing on the same key resolves to exactly one delivery.
 
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/household_provider.dart';
@@ -111,5 +113,11 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
     newKeys: toShow.map((n) => n.key),
     now: now,
   );
+  // Prune the shared dedup log post-show so a long-running install
+  // doesn't accumulate dead keys. Fire-and-forget: the user has
+  // already seen their notifications and shouldn't wait on this.
+  // keepAlive means this runs at most once per app process, which
+  // matches the in-app 90-day cap on lastFiredByKey.
+  unawaited(logRepo.pruneOlderThan(householdId: householdId));
   return toShow.length;
 }

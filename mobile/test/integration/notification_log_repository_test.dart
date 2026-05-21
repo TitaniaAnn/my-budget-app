@@ -151,5 +151,70 @@ void main() {
       );
       expect(foreign, isEmpty);
     }, skip: reason);
+
+    test('pruneOlderThan deletes rows past the retention window', () async {
+      // Insert one stale row + two fresh rows. After prune at 90
+      // days only the fresh ones survive.
+      final stale = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(days: 100))
+          .toIso8601String();
+      await harness.client.from('notification_log').insert([
+        {
+          'household_id': harness.householdId,
+          'dedup_key': 'stale',
+          'fired_at': stale,
+          'source': 'server',
+        },
+      ]);
+      await repo.claimKeys(
+        householdId: harness.householdId,
+        keys: ['fresh1', 'fresh2'],
+      );
+
+      final deleted = await repo.pruneOlderThan(
+        householdId: harness.householdId,
+      );
+      expect(
+        deleted,
+        1,
+        reason:
+            'exactly one row crossed the 90-day cutoff; the prune '
+            'function must report it.',
+      );
+
+      // The two fresh rows must survive — pruning is strictly by age.
+      final remaining = await repo.recentKeys(
+        householdId: harness.householdId,
+        since: DateTime.now().toUtc().subtract(const Duration(days: 365)),
+      );
+      expect(remaining, {'fresh1', 'fresh2'});
+    }, skip: reason);
+
+    test(
+      'pruneOlderThan with a short retention drops everything past it',
+      () async {
+        await repo.claimKeys(
+          householdId: harness.householdId,
+          keys: ['a', 'b', 'c'],
+        );
+
+        // Pretend the retention is 0 days — everything is "older
+        // than the cutoff" except rows fired at exactly now(), which
+        // postgres's `<` strictness should treat as not-yet-expired.
+        // Use 1 day so we don't race against millisecond timing.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final deleted = await repo.pruneOlderThan(
+          householdId: harness.householdId,
+          retention: Duration.zero,
+        );
+        // All three rows fired ~now, so a 0-day retention puts the
+        // cutoff at "now" — STRICT less-than means rows at exactly
+        // now() survive, but our 50ms delay above made them
+        // fractionally older than the new cutoff.
+        expect(deleted, 3);
+      },
+      skip: reason,
+    );
   });
 }

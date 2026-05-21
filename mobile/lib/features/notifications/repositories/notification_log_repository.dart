@@ -38,6 +38,24 @@ class NotificationLogRepository {
     return {for (final row in data) row['dedup_key'] as String};
   }
 
+  /// Deletes log rows older than [retention] for the current
+  /// household. Mirrors the in-app `lastFiredByKey` 90-day cap so
+  /// the dedup table can't grow unbounded. Returns the number of
+  /// rows deleted — fire-and-forget callers can ignore it.
+  Future<int> pruneOlderThan({
+    required String householdId,
+    Duration retention = const Duration(days: 90),
+  }) async {
+    final res = await supabase.rpc(
+      'prune_notification_log',
+      params: {
+        'p_household_id': householdId,
+        'p_retention_days': retention.inDays,
+      },
+    );
+    return (res as int?) ?? 0;
+  }
+
   /// Atomically claims [keys] for [householdId]. The set of keys
   /// the caller actually inserted comes back — anything missing was
   /// already in the log (server fired it first, or a previous in-app
