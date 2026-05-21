@@ -3,6 +3,7 @@
 // The projection engine walks forward from today's net worth, applying each
 // scenario event (and expanding recurring events) day-by-day to produce a
 // list of (date, balanceCents) data points for the chart.
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../accounts/repositories/accounts_repository.dart';
@@ -64,8 +65,11 @@ const _projectionDays = 365 * 5;
 ///
 /// For non-recurring events this returns just [event.eventDate].
 /// For recurring events it parses the RRULE and generates dates.
-/// Currently supports FREQ=DAILY, WEEKLY, MONTHLY, YEARLY with optional COUNT.
-List<DateTime> _expandDates(ScenarioEvent event, DateTime windowEnd) {
+/// Currently supports FREQ=DAILY, WEEKLY, MONTHLY, YEARLY with optional
+/// COUNT and UNTIL. INTERVAL, BYDAY, and other RRULE qualifiers are
+/// not supported — the parser silently ignores them.
+@visibleForTesting
+List<DateTime> expandRecurrenceDates(ScenarioEvent event, DateTime windowEnd) {
   final start = DateTime(
     event.eventDate.year,
     event.eventDate.month,
@@ -115,7 +119,8 @@ List<DateTime> _expandDates(ScenarioEvent event, DateTime windowEnd) {
 ///
 /// Produces one [ProjectionPoint] per day from [from] to [from + windowDays].
 /// Events that fall on a day are applied as a lump sum to the running balance.
-List<ProjectionPoint> _buildProjection({
+@visibleForTesting
+List<ProjectionPoint> buildProjection({
   required int startingBalance,
   required List<ScenarioEvent> events,
   required DateTime from,
@@ -127,7 +132,7 @@ List<ProjectionPoint> _buildProjection({
   final deltas = <DateTime, int>{};
   for (final event in events) {
     final int delta = event.eventType.isPositive ? event.amount : -event.amount;
-    for (final date in _expandDates(event, windowEnd)) {
+    for (final date in expandRecurrenceDates(event, windowEnd)) {
       final key = DateTime(date.year, date.month, date.day);
       deltas[key] = (deltas[key] ?? 0) + delta;
     }
@@ -223,7 +228,7 @@ Future<ScenarioDetail> scenarioDetail(
       currentNetWorth: netWorth,
     ),
     Future.value(
-      _buildProjection(
+      buildProjection(
         startingBalance: netWorth,
         events: events,
         from: from,
