@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../accounts/repositories/accounts_repository.dart';
-import '../../currency/repositories/fx_rates_repository.dart';
+import '../../currency/providers/rates_to_display_provider.dart';
 import '../../currency/services/convert.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../models/scenario.dart';
@@ -212,23 +212,17 @@ Future<ScenarioCardSummary> scenarioCardSummary(
 
   final repo = ref.read(scenariosRepositoryProvider);
   final accountsRepo = ref.read(accountsRepositoryProvider);
-  final fxRepo = ref.read(fxRatesRepositoryProvider);
 
-  final (scenariosList, events, accounts, info, allRates) = await (
+  final (scenariosList, events, accounts, info, ratesToDisplay) = await (
     ref.watch(scenariosProvider.future),
     repo.fetchEvents(scenarioId),
     accountsRepo.fetchAccounts(householdId),
     ref.watch(householdInfoProvider.future),
-    fxRepo.fetchAll(householdId),
+    ref.watch(ratesToDisplayProvider.future),
   ).wait;
 
   final scenario = scenariosList.firstWhere((s) => s.id == scenarioId);
 
-  final ratesToDisplay = <String, double>{};
-  for (final r in allRates) {
-    if (r.toCurrency != info.displayCurrency) continue;
-    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
-  }
   final netWorth = multiCurrencyNetWorth(
     accounts: accounts,
     displayCurrency: info.displayCurrency,
@@ -272,30 +266,20 @@ Future<ScenarioDetail> scenarioDetail(
 
   final repo = ref.read(scenariosRepositoryProvider);
   final accountsRepo = ref.read(accountsRepositoryProvider);
-  final fxRepo = ref.read(fxRatesRepositoryProvider);
 
   // Same FX context the dashboard uses so a multi-currency
   // household's starting net worth matches between the two surfaces
   // — and so a JPY brokerage account doesn't get summed at face
   // value into a USD scenario.
-  final (scenariosList, events, accounts, info, allRates) = await (
+  final (scenariosList, events, accounts, info, ratesToDisplay) = await (
     repo.fetchScenarios(householdId),
     repo.fetchEvents(scenarioId),
     accountsRepo.fetchAccounts(householdId),
     ref.watch(householdInfoProvider.future),
-    fxRepo.fetchAll(householdId),
+    ref.watch(ratesToDisplayProvider.future),
   ).wait;
 
   final scenario = scenariosList.firstWhere((s) => s.id == scenarioId);
-
-  // Build the {from → rate} map for the household's display
-  // currency, mirroring dashboard_provider.dart. fetchAll orders
-  // newest-first, so putIfAbsent latches onto the most recent rate.
-  final ratesToDisplay = <String, double>{};
-  for (final r in allRates) {
-    if (r.toCurrency != info.displayCurrency) continue;
-    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
-  }
 
   // Net worth via the shared FX-aware aggregator. Credit-card
   // balances are stored as negative cents (project convention), so

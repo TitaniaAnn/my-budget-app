@@ -9,7 +9,7 @@ import '../../../core/providers/household_provider.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
-import '../../currency/repositories/fx_rates_repository.dart';
+import '../../currency/providers/rates_to_display_provider.dart';
 import '../../notifications/providers/notification_runner_provider.dart';
 import '../../recurring/providers/recurring_scheduler_provider.dart';
 import '../../scenarios/repositories/scenarios_repository.dart';
@@ -273,24 +273,16 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);
   final budgetRepo = ref.read(budgetRepositoryProvider);
-  final fxRepo = ref.read(fxRatesRepositoryProvider);
 
   // Pre-fetch display currency + FX rates so the category-spending
   // RPC receives a `p_rates` JSONB and converts per-row. For a
   // USD-only household with display='USD' this resolves to an
   // empty map and the RPC takes the NULL-rates path (= legacy
-  // single-currency behaviour). Both calls hit cached providers
-  // on warm reloads, so the extra round-trips only land on the
-  // first dashboard load per session.
+  // single-currency behaviour). The cached ratesToDisplayProvider
+  // shares one fx_rates fetch across the dashboard / budget /
+  // scenarios / runner / monthly report.
   final info = await ref.watch(householdInfoProvider.future);
-  final allRates = await fxRepo.fetchAll(householdId);
-  final ratesToDisplay = <String, double>{};
-  for (final r in allRates) {
-    if (r.toCurrency != info.displayCurrency) continue;
-    // fetchAll orders newest-first by as_of_date; the first row we
-    // see per from-currency is the latest. Skip subsequent rows.
-    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
-  }
+  final ratesToDisplay = await ref.watch(ratesToDisplayProvider.future);
 
   final now = DateTime.now();
   // 90-day window covers both the 30-day sparkline/monthly summary

@@ -5,7 +5,7 @@
 // period total is also computed from the current daily spend rate.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
-import '../../currency/repositories/fx_rates_repository.dart';
+import '../../currency/providers/rates_to_display_provider.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../models/budget.dart';
@@ -112,29 +112,22 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
 
   final repo = ref.read(budgetRepositoryProvider);
 
-  // Pre-fetch household info + FX rates so the spending RPC can
-  // convert per-row (slice 2-2) AND the budget caps can convert
-  // for comparison (slice 3). Same pattern as the dashboard
-  // provider — empty rate map short-circuits to legacy single-
-  // currency behaviour.
-  final (budgets, cats, info, allRates) = await (
+  // Pre-fetch household info + the shared FX rate map so the
+  // spending RPC can convert per-row (slice 2-2) AND the budget
+  // caps can convert for comparison (slice 3). ratesToDisplayProvider
+  // is cached across the dashboard / budget / scenarios / runner /
+  // monthly report so the underlying fx_rates fetch runs once per
+  // session.
+  final (budgets, cats, info, ratesToDisplay) = await (
     repo.fetchBudgets(householdId),
     ref.read(categoriesProvider.future),
     ref.read(householdInfoProvider.future),
-    ref.read(fxRatesRepositoryProvider).fetchAll(householdId),
+    ref.watch(ratesToDisplayProvider.future),
   ).wait;
 
   if (budgets.isEmpty) return [];
 
   final catMap = {for (final c in cats) c.id: c};
-
-  // Latest rate per (from → display) — newest-first ordering from
-  // fetchAll means putIfAbsent picks the latest.
-  final ratesToDisplay = <String, double>{};
-  for (final r in allRates) {
-    if (r.toCurrency != info.displayCurrency) continue;
-    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
-  }
   final rpcRates = ratesToDisplay.isEmpty ? null : ratesToDisplay;
 
   // Fetch spending for every budget in parallel — each uses its own range.
