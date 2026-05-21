@@ -29,6 +29,15 @@ import '../services/notification_service.dart';
 
 part 'notification_runner_provider.g.dart';
 
+/// Indirection so tests can swap in a fake dispatcher. Production
+/// returns the real flutter_local_notifications-backed singleton.
+@riverpod
+LocalNotificationDispatcher notificationDispatcher(
+  NotificationDispatcherRef ref,
+) {
+  return NotificationService.instance;
+}
+
 /// How far back to read the server-side dedup log when merging into
 /// the in-app last-fired map. Matches the local 90-day retention so
 /// nothing falls between the cracks.
@@ -96,7 +105,7 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
   final toShow = pending.where((n) => claimed.contains(n.key)).toList();
   if (toShow.isEmpty) return 0;
 
-  final service = NotificationService.instance;
+  final service = ref.read(notificationDispatcherProvider);
   await service.ensureInitialized();
   for (final n in toShow) {
     await service.show(tag: n.key, title: n.title, body: n.body);

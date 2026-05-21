@@ -6,7 +6,30 @@ part of 'notification_runner_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$runNotificationsHash() => r'0a877687776bffde4e8716ae3b935b58d65343a5';
+String _$notificationDispatcherHash() =>
+    r'af970aa6229148807d13e6273b849a0f5d271df9';
+
+/// Indirection so tests can swap in a fake dispatcher. Production
+/// returns the real flutter_local_notifications-backed singleton.
+///
+/// Copied from [notificationDispatcher].
+@ProviderFor(notificationDispatcher)
+final notificationDispatcherProvider =
+    AutoDisposeProvider<LocalNotificationDispatcher>.internal(
+      notificationDispatcher,
+      name: r'notificationDispatcherProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$notificationDispatcherHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NotificationDispatcherRef =
+    AutoDisposeProviderRef<LocalNotificationDispatcher>;
+String _$runNotificationsHash() => r'269b1dea84894f2ae734f53b2e0a457fb31c0473';
 
 /// See also [runNotifications].
 @ProviderFor(runNotifications)

@@ -13,7 +13,21 @@
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-class NotificationService {
+/// Narrow surface the runner provider depends on — just the two
+/// methods it actually calls. Exists so a unit test can override
+/// the dispatcher without dragging in the real
+/// flutter_local_notifications plugin (which crashes outside the
+/// platform binding).
+abstract class LocalNotificationDispatcher {
+  Future<void> ensureInitialized();
+  Future<void> show({
+    required String tag,
+    required String title,
+    required String body,
+  });
+}
+
+class NotificationService implements LocalNotificationDispatcher {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
@@ -33,6 +47,7 @@ class NotificationService {
   /// Initialises the platform plugin. Idempotent — repeated calls
   /// are no-ops, so wiring this from multiple cold-start paths is
   /// safe.
+  @override
   Future<void> ensureInitialized() async {
     if (_initialized) return;
     const settings = InitializationSettings(
@@ -99,6 +114,7 @@ class NotificationService {
   /// id is the [hashCode] of [tag] — same tag fires update-in-place
   /// rather than stacking duplicates if the engine somehow asked
   /// twice in quick succession.
+  @override
   Future<void> show({
     required String tag,
     required String title,
