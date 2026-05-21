@@ -218,6 +218,135 @@ void main() {
       );
       expect(expandRecurrenceDates(e, windowEnd), [DateTime(2026, 6, 1)]);
     });
+
+    // ── INTERVAL=N "every N units" ────────────────────────────
+    //
+    // INTERVAL multiplies the cadence step. Real-world examples:
+    // biweekly paychecks (WEEKLY;INTERVAL=2), quarterly bonuses
+    // (MONTHLY;INTERVAL=3), even-year property reassessments
+    // (YEARLY;INTERVAL=2). Without these the user would have to
+    // enumerate every occurrence individually.
+
+    test('WEEKLY with INTERVAL=2 yields biweekly dates', () {
+      final e = _event(
+        type: EventType.income,
+        date: DateTime(2026, 6, 1),
+        amount: 200000,
+        isRecurring: true,
+        rrule: 'FREQ=WEEKLY;INTERVAL=2;COUNT=4',
+      );
+      expect(expandRecurrenceDates(e, windowEnd), [
+        DateTime(2026, 6, 1),
+        DateTime(2026, 6, 15),
+        DateTime(2026, 6, 29),
+        DateTime(2026, 7, 13),
+      ]);
+    });
+
+    test('MONTHLY with INTERVAL=3 yields quarterly dates', () {
+      final e = _event(
+        type: EventType.income,
+        date: DateTime(2026, 1, 15),
+        amount: 100000,
+        isRecurring: true,
+        rrule: 'FREQ=MONTHLY;INTERVAL=3;COUNT=4',
+      );
+      expect(expandRecurrenceDates(e, windowEnd), [
+        DateTime(2026, 1, 15),
+        DateTime(2026, 4, 15),
+        DateTime(2026, 7, 15),
+        DateTime(2026, 10, 15),
+      ]);
+    });
+
+    test('DAILY with INTERVAL=2 yields every-other-day dates', () {
+      final e = _event(
+        type: EventType.expense,
+        date: DateTime(2026, 6, 1),
+        amount: 500,
+        isRecurring: true,
+        rrule: 'FREQ=DAILY;INTERVAL=2;COUNT=4',
+      );
+      expect(expandRecurrenceDates(e, windowEnd), [
+        DateTime(2026, 6, 1),
+        DateTime(2026, 6, 3),
+        DateTime(2026, 6, 5),
+        DateTime(2026, 6, 7),
+      ]);
+    });
+
+    test('YEARLY with INTERVAL=2 yields every-other-year dates', () {
+      final e = _event(
+        type: EventType.expense,
+        date: DateTime(2026, 4, 1),
+        amount: 500000,
+        isRecurring: true,
+        rrule: 'FREQ=YEARLY;INTERVAL=2;COUNT=3',
+      );
+      expect(expandRecurrenceDates(e, DateTime(2032, 1, 1)), [
+        DateTime(2026, 4, 1),
+        DateTime(2028, 4, 1),
+        DateTime(2030, 4, 1),
+      ]);
+    });
+
+    test('INTERVAL=1 is the same as omitting INTERVAL', () {
+      // Pins that explicit INTERVAL=1 doesn't accidentally change
+      // the cadence — proves the default-vs-explicit code paths
+      // converge.
+      final withInterval = _event(
+        type: EventType.income,
+        date: DateTime(2026, 6, 1),
+        amount: 1000,
+        isRecurring: true,
+        rrule: 'FREQ=WEEKLY;INTERVAL=1;COUNT=3',
+      );
+      final withoutInterval = _event(
+        type: EventType.income,
+        date: DateTime(2026, 6, 1),
+        amount: 1000,
+        isRecurring: true,
+        rrule: 'FREQ=WEEKLY;COUNT=3',
+      );
+      expect(
+        expandRecurrenceDates(withInterval, windowEnd),
+        expandRecurrenceDates(withoutInterval, windowEnd),
+      );
+    });
+
+    test('INTERVAL=0 clamps to 1 — does not spin the loop forever', () {
+      // INTERVAL=0 would advance `current` by zero days and loop
+      // infinitely. The parser clamps to >=1, so a malformed
+      // INTERVAL behaves like a normal once-per-unit cadence.
+      final e = _event(
+        type: EventType.expense,
+        date: DateTime(2026, 6, 1),
+        amount: 1000,
+        isRecurring: true,
+        rrule: 'FREQ=WEEKLY;INTERVAL=0;COUNT=2',
+      );
+      expect(expandRecurrenceDates(e, windowEnd), [
+        DateTime(2026, 6, 1),
+        DateTime(2026, 6, 8),
+      ]);
+    });
+
+    test('INTERVAL=-3 clamps to 1 (negative is treated as malformed)', () {
+      // A negative INTERVAL is meaningless; clamp to 1 rather than
+      // doing the wrong thing (advancing backwards) or hanging.
+      final e = _event(
+        type: EventType.expense,
+        date: DateTime(2026, 6, 1),
+        amount: 1000,
+        isRecurring: true,
+        rrule: 'FREQ=DAILY;INTERVAL=-3;COUNT=3',
+      );
+      expect(expandRecurrenceDates(e, windowEnd), [
+        DateTime(2026, 6, 1),
+        DateTime(2026, 6, 2),
+        DateTime(2026, 6, 3),
+      ]);
+    });
   });
 
   group('buildProjection', () {

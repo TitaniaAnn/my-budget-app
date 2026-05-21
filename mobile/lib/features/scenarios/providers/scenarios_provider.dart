@@ -65,9 +65,11 @@ const _projectionDays = 365 * 5;
 ///
 /// For non-recurring events this returns just [event.eventDate].
 /// For recurring events it parses the RRULE and generates dates.
-/// Currently supports FREQ=DAILY, WEEKLY, MONTHLY, YEARLY with optional
-/// COUNT and UNTIL. INTERVAL, BYDAY, and other RRULE qualifiers are
-/// not supported — the parser silently ignores them.
+/// Supports FREQ=DAILY, WEEKLY, MONTHLY, YEARLY with optional
+/// COUNT, UNTIL, and INTERVAL ("every N units"). BYDAY and other
+/// RRULE qualifiers are not supported — the parser silently
+/// ignores them. INTERVAL is clamped to >= 1 to prevent
+/// infinite loops on malformed input.
 @visibleForTesting
 List<DateTime> expandRecurrenceDates(ScenarioEvent event, DateTime windowEnd) {
   final start = DateTime(
@@ -88,6 +90,11 @@ List<DateTime> expandRecurrenceDates(ScenarioEvent event, DateTime windowEnd) {
 
   final freq = rruleVal('FREQ');
   final count = int.tryParse(rruleVal('COUNT'));
+  // INTERVAL multiplies the step between occurrences ("every N").
+  // Defaults to 1 if absent or non-positive — INTERVAL=0 would
+  // never advance `current` and spin the loop forever.
+  final intervalRaw = int.tryParse(rruleVal('INTERVAL')) ?? 1;
+  final interval = intervalRaw < 1 ? 1 : intervalRaw;
   final untilStr = rruleVal('UNTIL');
   DateTime? until;
   if (untilStr.isNotEmpty && untilStr.length >= 8) {
@@ -105,10 +112,14 @@ List<DateTime> expandRecurrenceDates(ScenarioEvent event, DateTime windowEnd) {
     if (count != null && dates.length >= count) break;
     dates.add(current);
     current = switch (freq) {
-      'DAILY' => current.add(const Duration(days: 1)),
-      'WEEKLY' => current.add(const Duration(days: 7)),
-      'MONTHLY' => DateTime(current.year, current.month + 1, current.day),
-      'YEARLY' => DateTime(current.year + 1, current.month, current.day),
+      'DAILY' => current.add(Duration(days: interval)),
+      'WEEKLY' => current.add(Duration(days: 7 * interval)),
+      'MONTHLY' => DateTime(
+        current.year,
+        current.month + interval,
+        current.day,
+      ),
+      'YEARLY' => DateTime(current.year + interval, current.month, current.day),
       _ => effectiveEnd.add(const Duration(days: 1)), // unknown — stop
     };
   }
