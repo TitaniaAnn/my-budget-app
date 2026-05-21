@@ -10,13 +10,11 @@
 // rather than free-form ML output: every rule can be unit-tested in
 // isolation, and removing a noisy rule is a one-line change.
 //
-// Rules read from [DashboardData], which currently carries 90 days
-// of transactions plus a YTD Roth-contribution rollup. Adding a new
-// rule that needs other data should expand DashboardData and the
-// dashboard provider together — the rule itself stays a pure
-// function. Net-worth trajectory is the remaining audit item not
-// yet covered; it needs a time-series of balances that nothing
-// else reads, so it'll get its own data path when added.
+// Rules read from [DashboardData], which carries 90 days of
+// transactions, a YTD Roth-contribution rollup, and a monthly
+// net-worth series. Adding a new rule that needs other data should
+// expand DashboardData and the dashboard provider together — the
+// rule itself stays a pure function.
 
 import '../../accounts/models/account.dart';
 import '../../transactions/models/transaction.dart';
