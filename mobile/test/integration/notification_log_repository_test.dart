@@ -191,6 +191,35 @@ void main() {
       expect(remaining, {'fresh1', 'fresh2'});
     }, skip: reason);
 
+    test('clearAll wipes every row for the household', () async {
+      await repo.claimKeys(
+        householdId: harness.householdId,
+        keys: ['k1', 'k2', 'k3'],
+      );
+
+      await repo.clearAll(householdId: harness.householdId);
+
+      final remaining = await repo.recentKeys(
+        householdId: harness.householdId,
+        since: DateTime.now().toUtc().subtract(const Duration(days: 365)),
+      );
+      expect(
+        remaining,
+        isEmpty,
+        reason:
+            'Reset notification history must clear every dedup row '
+            'so previously-fired alerts can fire again.',
+      );
+
+      // And after a clear, the same keys can be re-claimed (proves
+      // the rows really left, not just stale-flagged).
+      final reclaimed = await repo.claimKeys(
+        householdId: harness.householdId,
+        keys: ['k1', 'k2', 'k3'],
+      );
+      expect(reclaimed, {'k1', 'k2', 'k3'});
+    }, skip: reason);
+
     test(
       'pruneOlderThan with a short retention drops everything past it',
       () async {

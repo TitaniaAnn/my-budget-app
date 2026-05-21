@@ -10,10 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
+import '../../../shared/widgets/dialogs.dart';
 import '../providers/notification_settings_provider.dart';
+import '../repositories/notification_log_repository.dart';
 import '../services/notification_service.dart';
 
 class NotificationSettingsScreen extends ConsumerWidget {
@@ -85,9 +88,50 @@ class NotificationSettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _editThreshold(context, ref),
             ),
+
+          const Divider(),
+          _SectionHeader('Maintenance'),
+          ListTile(
+            title: const Text('Reset notification history'),
+            subtitle: Text(
+              'Clear the dedup log so previously-fired alerts can '
+              'fire again. Useful after testing or a mistaken silence.',
+              style: TextStyle(color: context.appColors.textSubtle),
+            ),
+            trailing: Icon(
+              Icons.restart_alt,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            onTap: () => _resetHistory(context, ref),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _resetHistory(BuildContext context, WidgetRef ref) async {
+    final confirmed = await confirmDestructive(
+      context,
+      title: 'Reset notification history?',
+      message:
+          'Previously-fired alerts will be able to fire again. '
+          'This affects every device in the household.',
+      confirmLabel: 'Reset',
+    );
+    if (!confirmed) return;
+
+    final householdId = await ref.read(householdIdProvider.future);
+    if (householdId == null) return;
+
+    // Clear server-side ledger first; if it fails, we don't want to
+    // half-reset by wiping just the local map.
+    await ref
+        .read(notificationLogRepositoryProvider)
+        .clearAll(householdId: householdId);
+    await clearLastFired();
+
+    if (!context.mounted) return;
+    context.showSnackBar('Notification history cleared.');
   }
 
   Future<void> _editThreshold(BuildContext context, WidgetRef ref) async {

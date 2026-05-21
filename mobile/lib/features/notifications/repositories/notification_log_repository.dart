@@ -38,6 +38,20 @@ class NotificationLogRepository {
     return {for (final row in data) row['dedup_key'] as String};
   }
 
+  /// Removes every notification_log row for the household. Used by
+  /// the "Reset notification history" affordance in Settings — the
+  /// caller is expected to also clear the in-app lastFiredByKey
+  /// SharedPreferences map, otherwise the merge step in the runner
+  /// will repopulate the dedup map from scratch on the next pass
+  /// anyway. Returning void: a deletion of 0 rows is a valid no-op
+  /// (already-empty household), not a failure.
+  Future<void> clearAll({required String householdId}) async {
+    await supabase
+        .from('notification_log')
+        .delete()
+        .eq('household_id', householdId);
+  }
+
   /// Deletes log rows older than [retention] for the current
   /// household. Mirrors the in-app `lastFiredByKey` 90-day cap so
   /// the dedup table can't grow unbounded. Returns the number of

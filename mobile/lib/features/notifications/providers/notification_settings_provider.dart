@@ -107,6 +107,16 @@ Future<Map<String, DateTime>> loadLastFired() async {
   }
 }
 
+/// Wipes the persisted last-fired map. Paired with
+/// `NotificationLogRepository.clearAll` for the "Reset notification
+/// history" affordance — without clearing both, the runner's merge
+/// step would repopulate the local map from the server-side log on
+/// the next pass.
+Future<void> clearLastFired() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(_kLastFiredKey);
+}
+
 /// Appends [newlyFired] (key → now) to the persisted last-fired map
 /// and prunes anything older than the retention window so the JSON
 /// blob doesn't grow unbounded.
