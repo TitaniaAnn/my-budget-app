@@ -62,6 +62,19 @@ class DashboardData {
   /// tests don't have to populate it.
   final List<({DateTime monthEnd, int balanceCents})> monthlyNetWorth;
 
+  /// Display currency the [monthlyIncome] / [monthlySpending] /
+  /// [topCategories] / [spendingByDay] aggregations are denominated
+  /// in. Defaults to 'USD' so existing tests + USD-only households
+  /// see no behavioural change.
+  final String displayCurrency;
+
+  /// `{currency: rate-to-display}` map used to convert each
+  /// transaction before summing into the monthly aggregations.
+  /// Empty in single-currency households; transactions in
+  /// currencies missing from this map are EXCLUDED from the
+  /// totals (silently including them at rate=1 would lie).
+  final Map<String, double> ratesToDisplay;
+
   const DashboardData({
     required this.accounts,
     required this.recentTransactions90d,
@@ -70,7 +83,20 @@ class DashboardData {
     this.categoryLookup = const {},
     this.ytdRothContributionsCents = 0,
     this.monthlyNetWorth = const [],
+    this.displayCurrency = 'USD',
+    this.ratesToDisplay = const {},
   });
+
+  /// Converts a transaction's signed amount into [displayCurrency].
+  /// Returns null when no rate is available and the transaction is
+  /// in a foreign currency — callers skip those rows from
+  /// aggregations.
+  int? _converted(Transaction t) {
+    if (t.currency == displayCurrency) return t.amount;
+    final rate = ratesToDisplay[t.currency];
+    if (rate == null) return null;
+    return (t.amount * rate).round();
+  }
 
   // ── Monthly summary (current calendar month) ──────────────────────────────
 
@@ -96,15 +122,31 @@ class DashboardData {
   /// without any per-type special-casing.
   int get netWorth => accounts.fold<int>(0, (sum, a) => sum + a.currentBalance);
 
-  /// Total spending this month (expenses only, as positive cents).
-  int get monthlySpending => _monthTransactions
-      .where((t) => t.amount < 0)
-      .fold<int>(0, (sum, t) => sum + t.amount.abs());
+  /// Total spending this month in [displayCurrency] (expenses only,
+  /// positive cents). Foreign-currency transactions convert via
+  /// [ratesToDisplay]; missing-rate ones are skipped — including
+  /// them at rate=1 would lie about cash flow.
+  int get monthlySpending {
+    var sum = 0;
+    for (final t in _monthTransactions) {
+      final c = _converted(t);
+      if (c == null || c >= 0) continue;
+      sum += c.abs();
+    }
+    return sum;
+  }
 
-  /// Total income this month.
-  int get monthlyIncome => _monthTransactions
-      .where((t) => t.amount > 0)
-      .fold<int>(0, (sum, t) => sum + t.amount);
+  /// Total income this month in [displayCurrency]. Same FX rules
+  /// as [monthlySpending].
+  int get monthlyIncome {
+    var sum = 0;
+    for (final t in _monthTransactions) {
+      final c = _converted(t);
+      if (c == null || c <= 0) continue;
+      sum += c;
+    }
+    return sum;
+  }
 
   /// Top 5 spending categories this month, sorted by total descending.
   ///
@@ -144,11 +186,15 @@ class DashboardData {
       ));
     }
 
-    final uncategorizedCents = _monthTransactions
-        .where(
-          (t) => t.amount < 0 && t.categoryId == null && t.receiptId == null,
-        )
-        .fold<int>(0, (sum, t) => sum + t.amount.abs());
+    var uncategorizedCents = 0;
+    for (final t in _monthTransactions) {
+      if (t.amount >= 0) continue;
+      if (t.categoryId != null) continue;
+      if (t.receiptId != null) continue;
+      final c = _converted(t);
+      if (c == null) continue;
+      uncategorizedCents += c.abs();
+    }
     if (uncategorizedCents > 0) {
       entries.add((
         // null id — no single category to drill into; the dashboard
@@ -166,14 +212,18 @@ class DashboardData {
 
   // ── 30-day spending sparkline ──────────────────────────────────────────────
 
-  /// Daily spending totals for the last 30 days.
+  /// Daily spending totals for the last 30 days, in [displayCurrency].
   /// Index 0 = 29 days ago, index 29 = today. Missing days default to 0.
+  /// Foreign-currency transactions convert via [ratesToDisplay];
+  /// missing-rate ones are skipped (same contract as monthlySpending).
   List<int> get spendingByDay {
     final today = DateTime.now();
     final result = List<int>.filled(30, 0);
     for (final tx in recentTransactions90d.where(
       (t) => t.amount < 0 && t.transferId == null,
     )) {
+      final c = _converted(tx);
+      if (c == null) continue;
       final daysAgo = today
           .difference(
             DateTime(
@@ -184,7 +234,7 @@ class DashboardData {
           )
           .inDays;
       if (daysAgo >= 0 && daysAgo < 30) {
-        result[29 - daysAgo] += tx.amount.abs();
+        result[29 - daysAgo] += c.abs();
       }
     }
     return result;
@@ -323,5 +373,7 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     categoryLookup: {for (final c in categories) c.id: c},
     ytdRothContributionsCents: ytdRothContributions,
     monthlyNetWorth: monthlyNetWorth,
+    displayCurrency: info.displayCurrency,
+    ratesToDisplay: ratesToDisplay,
   );
 }

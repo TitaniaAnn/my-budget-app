@@ -412,4 +412,145 @@ void main() {
       );
     });
   });
+
+  // ── Multi-currency conversion (slice 2-3 of the multi-currency arc) ──
+  //
+  // Same contract as the monthly report: foreign-currency
+  // transactions convert via ratesToDisplay; missing-rate ones are
+  // EXCLUDED rather than silently summed at rate=1. The default
+  // displayCurrency='USD' + empty rate map means a single-currency
+  // household sees no behavioural change.
+
+  group('multi-currency conversion', () {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final today = DateTime(now.year, now.month, now.day);
+
+    Transaction tx({
+      required int amount,
+      String currency = 'USD',
+      String id = 't',
+      String? categoryId,
+      String? receiptId,
+    }) {
+      final ts = DateTime(2026, 1, 1);
+      return Transaction(
+        id: id,
+        householdId: 'h',
+        accountId: 'a',
+        amount: amount,
+        currency: currency,
+        description: 'desc',
+        transactionDate: monthStart,
+        pending: false,
+        source: 'manual',
+        createdAt: ts,
+        updatedAt: ts,
+        categoryId: categoryId,
+        receiptId: receiptId,
+      );
+    }
+
+    test(
+      'monthlyIncome / monthlySpending convert foreign currency rows',
+      () {
+        // $1,000 USD salary + €100 EUR refund → expect $1,000 + $107.30 income.
+        final data = DashboardData(
+          accounts: const [],
+          recentTransactions90d: [
+            tx(amount: 100000, id: 'usd-pay'),
+            tx(amount: 10000, currency: 'EUR', id: 'eu-refund'),
+            tx(amount: -5000, id: 'usd-spend'),
+            tx(amount: -2000, currency: 'EUR', id: 'eu-spend'),
+          ],
+          recentTransactions: const [],
+          ratesToDisplay: const {'EUR': 1.073},
+        );
+        expect(data.monthlyIncome, 100000 + 10730);
+        expect(data.monthlySpending, 5000 + 2146);
+      },
+    );
+
+    test(
+      'missing-rate transactions are excluded from monthlyIncome / Spending',
+      () {
+        // JPY transaction with no rate → must NOT contribute at rate=1.
+        final data = DashboardData(
+          accounts: const [],
+          recentTransactions90d: [
+            tx(amount: -5000, id: 'usd-spend'),
+            tx(amount: -100000, currency: 'JPY', id: 'jp-spend'),
+          ],
+          recentTransactions: const [],
+          ratesToDisplay: const {},
+        );
+        expect(
+          data.monthlySpending,
+          5000,
+          reason: 'JPY row has no rate → excluded; including it at '
+              'rate=1 would silently lie about cash flow.',
+        );
+      },
+    );
+
+    test('Uncategorized bucket in topCategories converts foreign rows', () {
+      // Unpaired, uncategorised EUR debit converts at 1.10 before
+      // landing in the Uncategorized total.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          tx(amount: -10000, currency: 'EUR', id: 'eu-misc'),
+        ],
+        recentTransactions: const [],
+        ratesToDisplay: const {'EUR': 1.10},
+      );
+      final uncategorised = data.topCategories.firstWhere(
+        (r) => r.name == 'Uncategorized',
+      );
+      expect(uncategorised.totalCents, 11000);
+    });
+
+    test('spendingByDay converts foreign-currency rows for today', () {
+      // EUR expense dated today must convert into today's bucket
+      // at the configured rate.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          Transaction(
+            id: 'eu',
+            householdId: 'h',
+            accountId: 'a',
+            amount: -10000,
+            currency: 'EUR',
+            description: 'd',
+            transactionDate: today,
+            pending: false,
+            source: 'manual',
+            createdAt: today,
+            updatedAt: today,
+          ),
+        ],
+        recentTransactions: const [],
+        ratesToDisplay: const {'EUR': 1.10},
+      );
+      expect(data.spendingByDay[29], 11000);
+    });
+
+    test('USD-only household sees no behavioural change', () {
+      // Slice contract: a single-currency household with default
+      // displayCurrency='USD' + empty rate map behaves exactly as
+      // before — every existing dashboard test must keep passing.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          tx(amount: 100000, id: 'pay'),
+          tx(amount: -5000, id: 'spend'),
+        ],
+        recentTransactions: const [],
+        // Defaults: displayCurrency='USD', ratesToDisplay={}.
+      );
+      expect(data.monthlyIncome, 100000);
+      expect(data.monthlySpending, 5000);
+    });
+  });
 }
