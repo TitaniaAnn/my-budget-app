@@ -100,9 +100,8 @@ When changing trigger logic, change both files in the same commit.
 - **No token-invalidation pruning.** If FCM returns an error indicating
   a token is stale, this function ignores it. A retry/cleanup pass is
   a follow-up.
-- **No multi-currency cap conversion server-side.** The function reads
-  `budgets.amount` directly as if denominated in the display currency.
-  The Dart engine compares against `capCents` (= FX-converted). For
-  the budget-over alert to be correct under multi-currency, this
-  function needs the same household-info + fx_rates fetch the Dart
-  side does (slice 3 of the multi-currency arc).
+- **Large-tx threshold is currency-naive.** A transaction's `amount`
+  is compared raw against the $200 threshold. A foreign-currency
+  charge is judged large by its native magnitude — same contract as
+  the Dart engine, deliberately. Conversion before comparison would
+  need to land on both sides at once.

@@ -112,6 +112,54 @@ async function evaluateForHousehold(
 
   const out: PendingNotification[] = [];
 
+  // Pre-fetch the household's display currency + FX rates so the
+  // budget-over branch can convert caps and the spending RPC can
+  // convert per-row totals. Mirrors budgetDataProvider on the Dart
+  // side. A USD-only household ends up with an empty rate map and
+  // every conversion short-circuits to the legacy single-currency
+  // behaviour.
+  const [{ data: household }, { data: fxRows }, { data: categoryRows }] =
+    await Promise.all([
+      supabase
+        .from("households")
+        .select("display_currency")
+        .eq("id", householdId)
+        .single(),
+      // newest-first ordering means the first row we see for a
+      // (from, to) pair wins the latest-rate slot
+      supabase
+        .from("fx_rates")
+        .select("from_currency, to_currency, as_of_date, rate")
+        .eq("household_id", householdId)
+        .order("as_of_date", { ascending: false }),
+      supabase
+        .from("categories")
+        .select("id, name")
+        .eq("household_id", householdId),
+    ]);
+  const displayCurrency: string = household?.display_currency ?? "USD";
+  const ratesToDisplay = new Map<string, number>();
+  for (const r of (fxRows as Array<{
+    from_currency: string;
+    to_currency: string;
+    rate: number | string;
+  }> | null) ?? []) {
+    if (r.to_currency !== displayCurrency) continue;
+    if (ratesToDisplay.has(r.from_currency)) continue;
+    ratesToDisplay.set(r.from_currency, Number(r.rate));
+  }
+  const categoryNames = new Map<string, string>(
+    (categoryRows as Array<{ id: string; name: string }> | null)
+      ?.map((c) => [c.id, c.name]) ?? [],
+  );
+  // The RPC accepts a JSONB rate map; null preserves migration 029
+  // single-currency behaviour. We pass null when the household has
+  // no rates configured so a USD-only household pays nothing for
+  // the FX-aware path.
+  const rpcRates: Record<string, number> | null = ratesToDisplay.size === 0
+    ? null
+    : Object.fromEntries(ratesToDisplay);
+
   // Budget-over: read each budget + its current-period spending,
   // surface those exceeding cap + the $1 floor.
   const { data: budgets } = await supabase
@@ -121,26 +169,47 @@ async function evaluateForHousehold(
   if (budgets) {
     for (const b of budgets) {
       const { from, to } = currentPeriodRange(b.period);
+
+      // Convert the budget cap to the household's display currency.
+      // exclude-not-lie: a foreign-currency budget with no rate
+      // gets dropped from evaluation rather than compared at rate=1.
+      let capCents: number;
+      if (b.currency === displayCurrency) {
+        capCents = b.amount;
+      } else {
+        const rate = ratesToDisplay.get(b.currency);
+        if (rate === undefined) continue;
+        capCents = Math.round(b.amount * rate);
+      }
+
       const { data: rpc } = await supabase.rpc("get_category_spending", {
         p_household_id: householdId,
         p_from: from,
         p_to: to,
+        p_rates: rpcRates,
       });
       const row = (rpc as Array<{ category_id: string; net_cents: number }> | null)
         ?.find((r) => r.category_id === b.category_id);
       const spent = Math.max(0, row?.net_cents ?? 0);
-      if (spent <= b.amount) continue;
-      const overBy = spent - b.amount;
+      if (spent <= capCents) continue;
+      const overBy = spent - capCents;
       if (overBy < BUDGET_OVER_FLOOR_CENTS) continue;
+      const categoryName = categoryNames.get(b.category_id) ?? "Unknown";
       out.push({
         key: `budget_over:${b.id}:${from}`,
-        title: `Over budget`,
-        body: `$${(overBy / 100).toFixed(2)} over the $${(b.amount / 100).toFixed(2)} ${b.period} cap.`,
+        title: `Over budget: ${categoryName}`,
+        body: `$${(overBy / 100).toFixed(2)} over the $${(capCents / 100).toFixed(2)} ${periodLabel(b.period)} cap.`,
       });
     }
   }
 
   // Large transactions in the last 24 hours.
+  // NOTE: amount is in the transaction's own currency. Comparing
+  // raw to the display-currency threshold matches the Dart engine's
+  // current behaviour — a foreign-currency transaction is large
+  // when its native magnitude is large. A future slice could
+  // convert via ratesToDisplay before the comparison, but doing so
+  // here would drift from the in-app engine.
   const cutoff = new Date(Date.now() - RECENT_TRANSACTION_WINDOW_MS).toISOString();
   const { data: recentTx } = await supabase
     .from("transactions")
@@ -161,6 +230,25 @@ async function evaluateForHousehold(
   }
 
   return out;
+}
+
+/// Mirrors `BudgetPeriod.label.toLowerCase()` on the Dart side so the
+/// notification body reads identically across the two engines.
+function periodLabel(period: string): string {
+  switch (period) {
+    case "weekly":
+      return "1 week";
+    case "biweekly":
+      return "2 weeks";
+    case "monthly":
+      return "monthly";
+    case "semiannual":
+      return "6 months";
+    case "annual":
+      return "annual";
+    default:
+      return period;
+  }
 }
 
 /// Returns YYYY-MM-DD `from` / `to` strings for the current
