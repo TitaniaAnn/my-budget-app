@@ -62,6 +62,7 @@ Transaction _tx({
   String merchant = 'Costco',
   String? transferId,
   DateTime? createdAt,
+  String currency = 'USD',
 }) {
   final ts = createdAt ?? DateTime(2026, 5, 20, 12);
   return Transaction(
@@ -69,7 +70,7 @@ Transaction _tx({
     householdId: 'h',
     accountId: 'a',
     amount: amount,
-    currency: 'USD',
+    currency: currency,
     description: 'desc',
     merchant: merchant,
     transactionDate: ts,
@@ -97,7 +98,8 @@ void main() {
       expect(
         result,
         isEmpty,
-        reason: 'master toggle off must short-circuit everything — that\'s '
+        reason:
+            'master toggle off must short-circuit everything — that\'s '
             'the "silence in one tap" promise.',
       );
     });
@@ -125,9 +127,7 @@ void main() {
           // largeTxEnabled defaults true — verify large-tx still fires.
         ),
         budgets: [_bws(budgetCents: 10000, spentCents: 15000)],
-        recentTransactions: [
-          _tx(amount: -50000, id: 'large', createdAt: now),
-        ],
+        recentTransactions: [_tx(amount: -50000, id: 'large', createdAt: now)],
         lastFiredByKey: const {},
         now: now,
       );
@@ -146,7 +146,8 @@ void main() {
       expect(
         result,
         isEmpty,
-        reason: 'isOverBudget is strict — spent must EXCEED amount, '
+        reason:
+            'isOverBudget is strict — spent must EXCEED amount, '
             'not equal it. Hitting the cap exactly is on-budget.',
       );
     });
@@ -162,7 +163,8 @@ void main() {
       expect(
         result,
         isEmpty,
-        reason: 'a one-cent rounding miss isn\'t worth a notification; '
+        reason:
+            'a one-cent rounding miss isn\'t worth a notification; '
             'the floor avoids spamming on the kind of edge that comes '
             'from refund-then-recharge events.',
       );
@@ -207,9 +209,7 @@ void main() {
         ],
         recentTransactions: const [],
         // May's already-fired entry must NOT mask June's.
-        lastFiredByKey: {
-          'budget_over:b1:2026-05-01': DateTime(2026, 5, 5),
-        },
+        lastFiredByKey: {'budget_over:b1:2026-05-01': DateTime(2026, 5, 5)},
         now: DateTime(2026, 6, 10),
       );
       expect(result, hasLength(1));
@@ -293,7 +293,8 @@ void main() {
         expect(
           result,
           isEmpty,
-          reason: 'without this gate a fresh install with months of '
+          reason:
+              'without this gate a fresh install with months of '
               'imported history would fire dozens of notifications in '
               'a single dashboard load.',
         );
@@ -308,12 +309,100 @@ void main() {
         ),
         budgets: const [],
         recentTransactions: [_tx(amount: -50000, id: 't1', createdAt: now)],
-        lastFiredByKey: {
-          'large_tx:t1': now.subtract(const Duration(hours: 1)),
-        },
+        lastFiredByKey: {'large_tx:t1': now.subtract(const Duration(hours: 1))},
         now: now,
       );
       expect(result, isEmpty);
+    });
+
+    // ── Currency-aware threshold ─────────────────────────────────
+    //
+    // The threshold is denominated in display currency. A foreign-
+    // currency tx must be converted before the comparison, and the
+    // BODY must also speak display currency so the user sees one
+    // number instead of having to mentally convert.
+
+    test('foreign-currency tx ABOVE threshold AFTER conversion fires '
+        'with the converted amount in the body', () {
+      // CHF 25,000 cents (CHF 250) at 1.10 → USD 27,500 cents.
+      // Comfortably above the $200 threshold.
+      final result = evaluateNotifications(
+        settings: const NotificationSettings(
+          enabled: true,
+          largeTxThresholdCents: 20000,
+        ),
+        budgets: const [],
+        recentTransactions: [
+          _tx(amount: -25000, id: 't1', currency: 'CHF', createdAt: now),
+        ],
+        lastFiredByKey: const {},
+        now: now,
+        displayCurrency: 'USD',
+        ratesToDisplay: {'CHF': 1.10},
+      );
+      expect(result, hasLength(1));
+      // -25000 * 1.10 = -27500 → -$275.00
+      expect(result.single.body, contains(r'-$275.00'));
+    });
+
+    test(
+      'foreign-currency tx BELOW threshold after conversion does NOT fire',
+      () {
+        // JPY 250,000 cents at 0.0067 ≈ USD 1,675 cents → $16.75,
+        // well below the $200 threshold. The raw 250000 cents would
+        // have tripped a currency-naive check.
+        final result = evaluateNotifications(
+          settings: const NotificationSettings(
+            enabled: true,
+            largeTxThresholdCents: 20000,
+          ),
+          budgets: const [],
+          recentTransactions: [
+            _tx(amount: -250000, id: 't1', currency: 'JPY', createdAt: now),
+          ],
+          lastFiredByKey: const {},
+          now: now,
+          displayCurrency: 'USD',
+          ratesToDisplay: {'JPY': 0.0067},
+        );
+        expect(
+          result,
+          isEmpty,
+          reason:
+              "without conversion this raw 250000 cents would have "
+              "tripped the threshold; with conversion the user sees no "
+              "spurious 'large transaction' alert for what's really \$16.",
+        );
+      },
+    );
+
+    test('foreign-currency tx with NO available rate is dropped — '
+        'exclude-not-lie', () {
+      // Big EUR charge, no EUR rate configured. Same contract as
+      // the rest of the multi-currency surface: drop rather than
+      // lie by treating rate=1.
+      final result = evaluateNotifications(
+        settings: const NotificationSettings(
+          enabled: true,
+          largeTxThresholdCents: 20000,
+        ),
+        budgets: const [],
+        recentTransactions: [
+          _tx(amount: -50000, id: 't1', currency: 'EUR', createdAt: now),
+        ],
+        lastFiredByKey: const {},
+        now: now,
+        displayCurrency: 'USD',
+        ratesToDisplay: const {},
+      );
+      expect(
+        result,
+        isEmpty,
+        reason:
+            "a -50000 cents EUR charge compared at the implicit "
+            "rate=1 would say USD 500 and fire spuriously. The engine "
+            "must skip the tx entirely until the rate exists.",
+      );
     });
 
     test('positive (income) large transactions also fire', () {
@@ -327,7 +416,12 @@ void main() {
         ),
         budgets: const [],
         recentTransactions: [
-          _tx(amount: 500000, id: 'income', merchant: 'Employer', createdAt: now),
+          _tx(
+            amount: 500000,
+            id: 'income',
+            merchant: 'Employer',
+            createdAt: now,
+          ),
         ],
         lastFiredByKey: const {},
         now: now,

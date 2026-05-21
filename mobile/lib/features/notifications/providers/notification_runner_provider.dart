@@ -17,7 +17,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/household_provider.dart';
 import '../../budget/providers/budget_provider.dart';
+import '../../currency/repositories/fx_rates_repository.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../repositories/notification_log_repository.dart';
 import '../services/notification_engine.dart';
 import 'notification_settings_provider.dart';
@@ -45,6 +47,20 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
   final dashboard = await ref.watch(dashboardDataProvider.future);
   final budgets = await ref.watch(budgetDataProvider.future);
 
+  // FX context for the large-tx branch — same pattern as
+  // budgetDataProvider. Empty rate map short-circuits to the legacy
+  // single-currency behaviour because every USD tx will match
+  // displayCurrency without consulting the map.
+  final info = await ref.watch(householdInfoProvider.future);
+  final allRates = await ref
+      .read(fxRatesRepositoryProvider)
+      .fetchAll(info.householdId);
+  final ratesToDisplay = <String, double>{};
+  for (final r in allRates) {
+    if (r.toCurrency != info.displayCurrency) continue;
+    ratesToDisplay.putIfAbsent(r.fromCurrency, () => r.rate);
+  }
+
   final localLastFired = await loadLastFired();
   final now = DateTime.now();
   final logRepo = ref.read(notificationLogRepositoryProvider);
@@ -69,6 +85,8 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
     recentTransactions: dashboard.recentTransactions90d,
     lastFiredByKey: mergedLastFired,
     now: now,
+    displayCurrency: info.displayCurrency,
+    ratesToDisplay: ratesToDisplay,
   );
   if (pending.isEmpty) return 0;
 

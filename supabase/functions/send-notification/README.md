@@ -96,8 +96,3 @@ When changing trigger logic, change both files in the same commit.
 - **No token-invalidation pruning.** If FCM returns an error indicating
   a token is stale, this function ignores it. A retry/cleanup pass is
   a follow-up.
-- **Large-tx threshold is currency-naive.** A transaction's `amount`
-  is compared raw against the $200 threshold. A foreign-currency
-  charge is judged large by its native magnitude — same contract as
-  the Dart engine, deliberately. Conversion before comparison would
-  need to land on both sides at once.

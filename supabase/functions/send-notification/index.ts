@@ -241,28 +241,34 @@ async function evaluateForHousehold(
     }
   }
 
-  // Large transactions in the last 24 hours.
-  // NOTE: amount is in the transaction's own currency. Comparing
-  // raw to the display-currency threshold matches the Dart engine's
-  // current behaviour — a foreign-currency transaction is large
-  // when its native magnitude is large. A future slice could
-  // convert via ratesToDisplay before the comparison, but doing so
-  // here would drift from the in-app engine.
+  // Large transactions in the last 24 hours. The threshold check
+  // is in display currency — a transaction in a foreign currency
+  // converts via ratesToDisplay before the comparison. exclude-not-
+  // lie: a tx whose currency is missing from the rate map is
+  // dropped, not compared at rate=1.
   const cutoff = new Date(Date.now() - RECENT_TRANSACTION_WINDOW_MS).toISOString();
   const { data: recentTx } = await supabase
     .from("transactions")
-    .select("id, amount, merchant, description, transfer_id, created_at")
+    .select("id, amount, currency, merchant, description, transfer_id, created_at")
     .eq("household_id", householdId)
     .gte("created_at", cutoff)
     .is("transfer_id", null);
   if (recentTx) {
     for (const t of recentTx) {
-      if (Math.abs(t.amount) < DEFAULT_LARGE_TX_THRESHOLD_CENTS) continue;
-      const sign = t.amount < 0 ? "-" : "+";
+      let amountInDisplay: number;
+      if (t.currency === displayCurrency) {
+        amountInDisplay = t.amount;
+      } else {
+        const rate = ratesToDisplay.get(t.currency);
+        if (rate === undefined) continue;
+        amountInDisplay = Math.round(t.amount * rate);
+      }
+      if (Math.abs(amountInDisplay) < DEFAULT_LARGE_TX_THRESHOLD_CENTS) continue;
+      const sign = amountInDisplay < 0 ? "-" : "+";
       out.push({
         key: `large_tx:${t.id}`,
         title: `Large transaction`,
-        body: `${sign}$${(Math.abs(t.amount) / 100).toFixed(2)} — ${t.merchant ?? t.description}`,
+        body: `${sign}$${(Math.abs(amountInDisplay) / 100).toFixed(2)} — ${t.merchant ?? t.description}`,
       });
     }
   }

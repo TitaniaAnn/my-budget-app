@@ -38,6 +38,13 @@ List<PendingNotification> evaluateNotifications({
   required List<Transaction> recentTransactions,
   required Map<String, DateTime> lastFiredByKey,
   required DateTime now,
+  // Multi-currency context for the large-tx branch. Defaults keep
+  // single-currency tests working without threading FX through —
+  // a USD-only household with [displayCurrency]='USD' and an empty
+  // rate map short-circuits to the legacy behaviour because every
+  // tx already matches the display currency.
+  String displayCurrency = 'USD',
+  Map<String, double> ratesToDisplay = const {},
 }) {
   if (!settings.enabled) return const [];
   final pending = <PendingNotification>[];
@@ -75,7 +82,6 @@ List<PendingNotification> evaluateNotifications({
   // ── Large transaction ─────────────────────────────────────────────
   if (settings.largeTxEnabled) {
     for (final t in recentTransactions) {
-      if (t.amount.abs() < settings.largeTxThresholdCents) continue;
       // Transfer legs are pure cash movement between household
       // accounts; notifying on them would scare a user moving money
       // they intended to move.
@@ -84,16 +90,33 @@ List<PendingNotification> evaluateNotifications({
       // recent window we treat it as already-seen.
       if (now.difference(t.createdAt) > _recentTransactionWindow) continue;
 
+      // Convert tx amount to the household's display currency so
+      // the threshold comparison is currency-symmetric. A CHF 250
+      // charge at ~$278 must trip the $200 threshold; a JPY 2,500
+      // charge at ~$17 must not. Same exclude-not-lie contract as
+      // the rest of the multi-currency surface: a foreign-currency
+      // tx with no rate is dropped rather than compared at rate=1.
+      final int amountInDisplay;
+      if (t.currency == displayCurrency) {
+        amountInDisplay = t.amount;
+      } else {
+        final rate = ratesToDisplay[t.currency];
+        if (rate == null) continue;
+        amountInDisplay = (t.amount * rate).round();
+      }
+
+      if (amountInDisplay.abs() < settings.largeTxThresholdCents) continue;
+
       final key = 'large_tx:${t.id}';
       if (lastFiredByKey.containsKey(key)) continue;
 
-      final sign = t.amount < 0 ? '-' : '+';
+      final sign = amountInDisplay < 0 ? '-' : '+';
       pending.add(
         PendingNotification(
           key: key,
           title: 'Large transaction',
           body:
-              '$sign\$${(t.amount.abs() / 100).toStringAsFixed(2)} — '
+              '$sign\$${(amountInDisplay.abs() / 100).toStringAsFixed(2)} — '
               '${t.merchant ?? t.description}',
         ),
       );
