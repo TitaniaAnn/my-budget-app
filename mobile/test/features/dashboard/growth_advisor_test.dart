@@ -670,6 +670,89 @@ void main() {
     });
   });
 
+  group('SavingsRateRule', () {
+    test('fires a warning when rate is below 10%', () {
+      // $1,000 income, $950 spending → 5% savings rate.
+      final data = _data(
+        accounts: const [],
+        spendCents: 95000,
+        extraTxs: [
+          _tx(amountCents: 100000, date: _now(), description: 'Paycheck'),
+        ],
+      );
+      final s = const SavingsRateRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.severity, SuggestionSeverity.warning);
+      expect(s.title, 'Savings rate looks low');
+      expect(s.detail, contains('5%'));
+    });
+
+    test('stays silent at exactly 10% — the threshold is strict-less-than', () {
+      // $1,000 income, $900 spending → 10% rate. Inside the floor,
+      // so no nag. Choosing "not <" not "<=" keeps the educational
+      // 50/30/20 framing — 10% is the bottom of the acceptable
+      // range, not below it.
+      final data = _data(
+        accounts: const [],
+        spendCents: 90000,
+        extraTxs: [_tx(amountCents: 100000, date: _now())],
+      );
+      expect(const SavingsRateRule().evaluate(data), isNull);
+    });
+
+    test('stays silent at a healthy savings rate', () {
+      // 30% rate — comfortably above the floor.
+      final data = _data(
+        accounts: const [],
+        spendCents: 70000,
+        extraTxs: [_tx(amountCents: 100000, date: _now())],
+      );
+      expect(const SavingsRateRule().evaluate(data), isNull);
+    });
+
+    test('fires the urgent "spending more than you earn" variant when '
+        'spending exceeds income', () {
+      // $1,000 income, $1,500 spending → gap of $500/month. The
+      // "rate -50%" framing would be confusing; the rule's special
+      // case phrases this as a positive dollar gap.
+      final data = _data(
+        accounts: const [],
+        spendCents: 150000,
+        extraTxs: [_tx(amountCents: 100000, date: _now())],
+      );
+      final s = const SavingsRateRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.title, 'Spending more than you earn');
+      expect(s.detail, contains(r'$500'));
+    });
+
+    test('stays silent when monthly income is zero', () {
+      // Brand-new household with no paycheck transactions. We can't
+      // compute a rate, so don't pretend. The other no-data rules
+      // (EmergencyFund, IdleCash) gate on monthlySpending the same
+      // way; this rule gates on income because that's the
+      // divide-by-zero risk here.
+      final data = _data(accounts: const [], spendCents: 50000);
+      expect(const SavingsRateRule().evaluate(data), isNull);
+    });
+
+    test(
+      'stays silent when income exists but spending is zero (rate=100%)',
+      () {
+        // Edge case: income with no spending. Could be a fresh
+        // install where transactions haven't all been categorised
+        // yet, or a household with a one-off paycheck and no expenses
+        // for the month. Either way, 100% > 10% → silent.
+        final data = _data(
+          accounts: const [],
+          spendCents: 0,
+          extraTxs: [_tx(amountCents: 100000, date: _now())],
+        );
+        expect(const SavingsRateRule().evaluate(data), isNull);
+      },
+    );
+  });
+
   group('IdleCashRule', () {
     test('fires an opportunity when cash exceeds 12 months of spend', () {
       // $20,000 cash against $1,000/month → 20 months.

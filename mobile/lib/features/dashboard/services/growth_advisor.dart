@@ -79,6 +79,7 @@ class GrowthAdvisor {
   static const List<GrowthRule> defaultRules = [
     EmergencyFundRule(),
     CreditCardCarryRule(),
+    SavingsRateRule(),
     RothIraUnderusedRule(),
     SubscriptionDriftRule(),
     NetWorthTrajectoryRule(),
@@ -188,6 +189,77 @@ class CreditCardCarryRule implements GrowthRule {
       detail:
           '${worst.name} is carrying $dollars at $aprPct%. '
           'Paying this down beats most investment returns.',
+    );
+  }
+}
+
+/// Monthly savings as a fraction of monthly income. The classic
+/// 50/30/20 budgeting rule lands savings at 20%; under 10% is the
+/// structural-risk threshold this rule flags. Below that even a
+/// modest emergency-fund target takes years, and retirement saving
+/// barely keeps up with inflation.
+///
+/// Two cases produce a suggestion:
+///   * spending exceeds income (rate <= 0) — the urgent case, named
+///     out as "spending more than you earn" rather than "savings rate
+///     is -7%" since the negative framing reads cleaner;
+///   * 0 < rate < 0.10 — the structural-warning case.
+///
+/// Edge cases:
+/// - No income (brand-new household, no paychecks imported) → silent.
+///   Computing a rate from zero income would either divide by zero
+///   or pretend everything is fine.
+/// - Income with zero spending → rate is 100%, silent. Probably
+///   means transactions haven't all been categorised yet, but
+///   it's the same outcome either way.
+///
+/// `monthlyIncome` and `monthlySpending` are already in display
+/// currency on DashboardData (the FX-conversion happens upstream),
+/// so this rule is currency-symmetric without doing its own math.
+class SavingsRateRule implements GrowthRule {
+  const SavingsRateRule();
+
+  /// Below this fraction we fire the warning. 10% is more lenient
+  /// than the 20% of "50/30/20" — meant as a floor, not a target.
+  static const double _floor = 0.10;
+
+  @override
+  String get id => 'savings_rate';
+
+  @override
+  GrowthSuggestion? evaluate(DashboardData data) {
+    final income = data.monthlyIncome;
+    final spending = data.monthlySpending;
+    if (income <= 0) return null;
+
+    if (spending >= income) {
+      // Net negative cash flow — the most urgent flavour of this
+      // rule. Phrased in dollars rather than rate so the user
+      // sees the actual hole.
+      final gap = spending - income;
+      return GrowthSuggestion(
+        id: id,
+        severity: SuggestionSeverity.warning,
+        title: 'Spending more than you earn',
+        detail:
+            'This month\'s spending is ${_formatDollars(gap)} above '
+            'income. Closing the gap is the first lever before any '
+            'investing strategy.',
+      );
+    }
+
+    final rate = (income - spending) / income;
+    if (rate >= _floor) return null;
+
+    final pct = (rate * 100).toStringAsFixed(0);
+    return GrowthSuggestion(
+      id: id,
+      severity: SuggestionSeverity.warning,
+      title: 'Savings rate looks low',
+      detail:
+          'Saving about $pct% of monthly income. The 50/30/20 rule '
+          'aims for 20%; under 10% leaves little room for emergencies '
+          'or retirement progress.',
     );
   }
 }
