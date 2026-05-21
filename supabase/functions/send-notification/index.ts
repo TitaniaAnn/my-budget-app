@@ -76,20 +76,58 @@ serve(async (req) => {
   );
 
   try {
-    const pending = await evaluateForHousehold(supabase, body.household_id);
-    const sent = await deliverViaFcm(supabase, body.household_id, pending);
+    const evaluated = await evaluateForHousehold(supabase, body.household_id);
+    // Atomic dedup against the shared notification_log. Whichever
+    // pass — server here, in-app engine on the client — inserts
+    // first wins; the loser sees its INSERT skipped by ON CONFLICT
+    // and doesn't fire. See migration 039.
+    const claimed = await claimUnfired(supabase, body.household_id, evaluated);
+    const sent = await deliverViaFcm(supabase, body.household_id, claimed);
     return Response.json({
       household_id: body.household_id,
-      pending: pending.length,
+      evaluated: evaluated.length,
+      pending: claimed.length,
       sent,
       // When FIREBASE_SERVER_KEY is unset we surface the payload
       // so callers can verify the evaluation without real FCM.
-      preview: sent === 0 && pending.length > 0 ? pending : undefined,
+      preview: sent === 0 && claimed.length > 0 ? claimed : undefined,
     }, { status: 200 });
   } catch (err) {
     return jsonError(500, String(err));
   }
 });
+
+/// Tries to claim each pending key in notification_log via
+/// INSERT ... ON CONFLICT DO NOTHING RETURNING. The keys that come
+/// back are the ones we successfully wrote (i.e., no other pass
+/// fired them). The keys that DON'T come back are already in the
+/// log — we drop them so the user doesn't see the same alert via
+/// two paths.
+async function claimUnfired(
+  supabase: SupabaseClient,
+  householdId: string,
+  pending: PendingNotification[],
+): Promise<PendingNotification[]> {
+  if (pending.length === 0) return [];
+  const rows = pending.map((n) => ({
+    household_id: householdId,
+    dedup_key: n.key,
+    source: "server",
+  }));
+  // ignoreDuplicates: true → DO NOTHING on PK conflict (the PK is
+  // (household_id, dedup_key)). Returned rows are only the new
+  // ones; existing rows are skipped silently.
+  const { data: claimedRows, error } = await supabase
+    .from("notification_log")
+    .upsert(rows, { onConflict: "household_id,dedup_key", ignoreDuplicates: true })
+    .select("dedup_key");
+  if (error) throw error;
+  const claimedKeys = new Set(
+    (claimedRows as Array<{ dedup_key: string }> | null)
+      ?.map((r) => r.dedup_key) ?? [],
+  );
+  return pending.filter((n) => claimedKeys.has(n.key));
+}
 
 // ─── Engine port ───────────────────────────────────────────────
 //

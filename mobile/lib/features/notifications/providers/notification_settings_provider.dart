@@ -122,7 +122,8 @@ Future<void> recordFired({
     for (final k in newKeys) k: now,
   };
   final encoded = jsonEncode({
-    for (final entry in merged.entries) entry.key: entry.value.toIso8601String(),
+    for (final entry in merged.entries)
+      entry.key: entry.value.toIso8601String(),
   });
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_kLastFiredKey, encoded);

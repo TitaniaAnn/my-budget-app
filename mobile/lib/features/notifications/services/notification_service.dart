@@ -49,9 +49,10 @@ class NotificationService {
     await _plugin.initialize(settings);
 
     // Android needs the channel created up front (idempotent).
-    final android = _plugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin
-    >();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.createNotificationChannel(
       const AndroidNotificationChannel(
         _channelId,
@@ -68,9 +69,10 @@ class NotificationService {
   /// system prompt at the moment they're asking for it.
   Future<bool> requestPermission() async {
     await ensureInitialized();
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-      IOSFlutterLocalNotificationsPlugin
-    >();
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       final granted = await ios.requestPermissions(
         alert: true,
@@ -79,9 +81,10 @@ class NotificationService {
       );
       return granted ?? false;
     }
-    final android = _plugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin
-    >();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       // Android 13+ runtime permission. Older Androids grant
       // implicitly via the manifest — the plugin returns null in

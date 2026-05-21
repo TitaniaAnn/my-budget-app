@@ -33,18 +33,13 @@ class DevicePushTokensRepository {
     required String token,
     required DevicePushPlatform platform,
   }) async {
-    await supabase
-        .from('device_push_tokens')
-        .upsert(
-          {
-            'user_id': userId,
-            'household_id': householdId,
-            'token': token,
-            'platform': platform.dbValue,
-            'last_seen_at': DateTime.now().toUtc().toIso8601String(),
-          },
-          onConflict: 'user_id,token',
-        );
+    await supabase.from('device_push_tokens').upsert({
+      'user_id': userId,
+      'household_id': householdId,
+      'token': token,
+      'platform': platform.dbValue,
+      'last_seen_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id,token');
   }
 
   /// Removes a specific token — called on logout and when FCM

@@ -93,10 +93,6 @@ When changing trigger logic, change both files in the same commit.
 
 ## What this does NOT do (yet)
 
-- **No server-side dedup.** The client's `lastFiredByKey` map lives in
-  SharedPreferences; the function doesn't read it. A user who's online
-  could see the same alert twice (in-app + push). A later slice can
-  add a `notification_log` table keyed by `(household_id, key)`.
 - **No token-invalidation pruning.** If FCM returns an error indicating
   a token is stale, this function ignores it. A retry/cleanup pass is
   a follow-up.
