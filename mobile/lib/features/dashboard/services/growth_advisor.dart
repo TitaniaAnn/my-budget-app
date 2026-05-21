@@ -84,6 +84,7 @@ class GrowthAdvisor {
     SubscriptionDriftRule(),
     NetWorthTrajectoryRule(),
     IdleCashRule(),
+    AccountFeesRule(),
   ];
 
   List<GrowthSuggestion> evaluate(DashboardData data) {
@@ -324,6 +325,106 @@ class IdleCashRule implements GrowthRule {
           '$dollars in checking and savings is more than a year of '
           'expenses. Consider moving the excess into investments.',
     );
+  }
+}
+
+/// Bank fees adding up on banking-group accounts (overdraft,
+/// maintenance, ATM, NSF, service charges). Detected by keyword
+/// matching on transaction merchant + description in the 90-day
+/// window, then annualised. Fires an opportunity when the implied
+/// annual drag exceeds [_annualThresholdCents].
+///
+/// Why a separate rule from SubscriptionDriftRule: subscription
+/// drift looks for merchant-level recurring patterns ("Spotify went
+/// up 20%"). Bank fees often arrive as one-off charges from the
+/// bank itself, with descriptions like "OVERDRAFT FEE" — they don't
+/// look like a recurring merchant pattern, so the drift rule misses
+/// them entirely.
+///
+/// Why banking-group only: credit-card annual fees and late fees
+/// are different conversations (the user's signed up for the card,
+/// or they need to pay on time — switching banks doesn't help).
+/// This rule targets the avoidable drag the user can act on by
+/// changing accounts, setting up direct deposit, or opting out of
+/// overdraft protection.
+///
+/// Keywords chosen to minimise false positives. "Fee" alone would
+/// match too much (Uber's "service fee" line, a restaurant's
+/// "split-bill fee"). The match is case-insensitive, substring-based.
+class AccountFeesRule implements GrowthRule {
+  const AccountFeesRule();
+
+  /// Annualised fee total (cents) at or above which the rule fires.
+  /// $100/yr ≈ one $25 overdraft per quarter — actionable, but
+  /// above the noise of one-off legitimate charges.
+  static const int _annualThresholdCents = 10000;
+
+  /// Substring patterns that identify a bank fee. All matched
+  /// case-insensitively against both merchant and description.
+  static const List<String> _patterns = [
+    'overdraft',
+    'maintenance fee',
+    'monthly fee',
+    'service charge',
+    'atm fee',
+    'wire fee',
+    'nsf',
+    'returned check',
+    'inactivity fee',
+  ];
+
+  @override
+  String get id => 'account_fees';
+
+  @override
+  GrowthSuggestion? evaluate(DashboardData data) {
+    if (data.recentTransactions90d.isEmpty) return null;
+
+    final bankingAccountIds = {
+      for (final a in data.accounts)
+        if (a.isActive && a.accountType.group == AccountGroup.banking) a.id,
+    };
+    if (bankingAccountIds.isEmpty) return null;
+
+    var feeSpend = 0;
+    for (final t in data.recentTransactions90d) {
+      // Fees are negative (debits) on banking accounts. Transfers
+      // are separate rows from any wire fees the bank charges, so
+      // exclude transfer legs to avoid double-counting.
+      if (t.amount >= 0) continue;
+      if (t.transferId != null) continue;
+      if (!bankingAccountIds.contains(t.accountId)) continue;
+      if (!_looksLikeFee(t)) continue;
+      final converted = _convertedAmount(t, data);
+      if (converted == null) continue;
+      feeSpend += converted.abs();
+    }
+    if (feeSpend <= 0) return null;
+
+    // 90 days → annualise to a calendar year. ~4.06x is the exact
+    // ratio; rounding to 4 keeps the suggestion text honest about
+    // the approximation.
+    final annualised = (feeSpend * 365) ~/ 90;
+    if (annualised < _annualThresholdCents) return null;
+
+    final dollars = _formatDollars(annualised);
+    return GrowthSuggestion(
+      id: id,
+      severity: SuggestionSeverity.opportunity,
+      title: 'Bank fees adding up',
+      detail:
+          'On pace for about $dollars/year in account fees. Many of '
+          'these are avoidable — switching banks, setting up direct '
+          'deposit, or opting out of overdraft can eliminate them.',
+    );
+  }
+
+  static bool _looksLikeFee(Transaction t) {
+    final haystack = ('${t.merchant ?? ''} ${t.description}').toLowerCase();
+    for (final p in _patterns) {
+      if (haystack.contains(p)) return true;
+    }
+    return false;
   }
 }
 

@@ -47,6 +47,7 @@ Transaction _tx({
   String description = 'TEST',
   String currency = 'USD',
   String accountId = 'a',
+  String? transferId,
 }) {
   // Monotonic counter so multiple test rows sharing a date still get
   // unique ids — the rule under test groups by merchant + month, but
@@ -66,6 +67,7 @@ Transaction _tx({
     source: 'manual',
     createdAt: date,
     updatedAt: date,
+    transferId: transferId,
   );
 }
 
@@ -901,6 +903,191 @@ void main() {
           reason:
               'a contribution to a closed account doesn\'t signal active '
               'investing — the user can\'t access that money anyway.',
+        );
+      },
+    );
+  });
+
+  group('AccountFeesRule', () {
+    test('fires opportunity when annualised fees exceed the threshold', () {
+      // 3 overdraft fees of $35 each in 90 days = $105.
+      // Annualised: ~$425. Well above the $100 threshold.
+      final checking = _account(
+        type: AccountType.checking,
+        currentBalance: 100000,
+      );
+      final fees = [
+        for (var i = 0; i < 3; i++)
+          _tx(
+            amountCents: -3500,
+            date: _now().subtract(Duration(days: i * 25)),
+            accountId: checking.id,
+            merchant: 'BANK OF SOMEWHERE',
+            description: 'OVERDRAFT FEE',
+          ),
+      ];
+      final data = _data(accounts: [checking], spendCents: 0, extraTxs: fees);
+      final s = const AccountFeesRule().evaluate(data);
+      expect(s, isNotNull);
+      expect(s!.severity, SuggestionSeverity.opportunity);
+      expect(s.title, 'Bank fees adding up');
+      // 10500 * 365 / 90 = 42583 cents → $425.83 → "$426".
+      expect(s.detail, contains(r'$426'));
+    });
+
+    test(
+      r'stays silent when fees fall below the $100 annualised threshold',
+      () {
+        // One $5 ATM fee in 90 days → ~$20/yr — below threshold.
+        final checking = _account(
+          type: AccountType.checking,
+          currentBalance: 100000,
+        );
+        final data = _data(
+          accounts: [checking],
+          spendCents: 0,
+          extraTxs: [
+            _tx(
+              amountCents: -500,
+              date: _now(),
+              accountId: checking.id,
+              description: 'ATM FEE - OUT OF NETWORK',
+            ),
+          ],
+        );
+        expect(const AccountFeesRule().evaluate(data), isNull);
+      },
+    );
+
+    test('ignores fee-like transactions on credit cards', () {
+      // The user paid a credit card late fee. That's a different
+      // conversation — switching banks doesn't help. The rule
+      // must only count banking-group accounts.
+      final card = _account(
+        type: AccountType.creditCard,
+        currentBalance: -100000,
+      );
+      final data = _data(
+        accounts: [card],
+        spendCents: 0,
+        extraTxs: [
+          for (var i = 0; i < 4; i++)
+            _tx(
+              amountCents: -3500,
+              date: _now().subtract(Duration(days: i * 20)),
+              accountId: card.id,
+              description: 'LATE FEE',
+            ),
+        ],
+      );
+      expect(
+        const AccountFeesRule().evaluate(data),
+        isNull,
+        reason:
+            'credit-card late fees and annual fees are out of '
+            'scope; this rule targets avoidable bank charges only.',
+      );
+    });
+
+    test('ignores positive transactions even with fee keywords', () {
+      // A fee REFUND ("overdraft fee waived") shows up as a
+      // positive amount with a matching description. The rule
+      // must skip these — they're the BANK paying the user back,
+      // not a fee being charged.
+      final checking = _account(
+        type: AccountType.checking,
+        currentBalance: 100000,
+      );
+      final data = _data(
+        accounts: [checking],
+        spendCents: 0,
+        extraTxs: [
+          _tx(
+            amountCents: 10500,
+            date: _now(),
+            accountId: checking.id,
+            description: 'OVERDRAFT FEE REFUND',
+          ),
+        ],
+      );
+      expect(const AccountFeesRule().evaluate(data), isNull);
+    });
+
+    test('ignores transfer-leg transactions even on banking accounts', () {
+      // Banks sometimes book wire-transfer fees as a separate entry.
+      // The wire itself is a transfer leg (transfer_id set); the
+      // fee, if any, is a SEPARATE row without transfer_id. A leg
+      // whose description happens to contain a fee keyword must
+      // NOT count, or every recurring transfer would falsely trip.
+      final checking = _account(
+        type: AccountType.checking,
+        currentBalance: 100000,
+      );
+      final data = _data(
+        accounts: [checking],
+        spendCents: 0,
+        extraTxs: [
+          _tx(
+            amountCents: -100000,
+            date: _now(),
+            accountId: checking.id,
+            description: 'WIRE FEE',
+            transferId: 'xfer1',
+          ),
+        ],
+      );
+      expect(
+        const AccountFeesRule().evaluate(data),
+        isNull,
+        reason:
+            "transfer legs are pure cash movement; counting them "
+            "would double-charge against any real fee row.",
+      );
+    });
+
+    test(
+      'matches the keyword set case-insensitively across multiple variants',
+      () {
+        // Each pattern with a different casing + position to confirm
+        // the substring match works regardless of where the keyword
+        // appears in merchant or description.
+        final checking = _account(
+          type: AccountType.checking,
+          currentBalance: 100000,
+        );
+        final data = _data(
+          accounts: [checking],
+          spendCents: 0,
+          extraTxs: [
+            _tx(
+              amountCents: -3500,
+              date: _now(),
+              accountId: checking.id,
+              merchant: 'Bank XYZ',
+              description: 'Monthly Maintenance Fee',
+            ),
+            _tx(
+              amountCents: -3500,
+              date: _now().subtract(const Duration(days: 30)),
+              accountId: checking.id,
+              merchant: 'NSF CHARGE',
+              description: 'returned item',
+            ),
+            _tx(
+              amountCents: -3500,
+              date: _now().subtract(const Duration(days: 60)),
+              accountId: checking.id,
+              description: 'service charge - low balance',
+            ),
+          ],
+        );
+        final s = const AccountFeesRule().evaluate(data);
+        expect(
+          s,
+          isNotNull,
+          reason:
+              'each fee keyword should match regardless of casing '
+              'or which field it appears in.',
         );
       },
     );
