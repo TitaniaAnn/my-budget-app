@@ -29,6 +29,12 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
   String _freq = 'MONTHLY'; // DAILY, WEEKLY, MONTHLY, YEARLY
   int? _count; // null = indefinite
   final _countCtrl = TextEditingController();
+
+  /// "Every N units". Empty / null / <2 is treated as 1, which the
+  /// engine and the RRULE spec both consider the default. We keep
+  /// _intervalCtrl as the source of truth so a user backspacing the
+  /// field doesn't get a phantom "1" displayed.
+  final _intervalCtrl = TextEditingController();
   bool _saving = false;
   String? _error;
 
@@ -53,6 +59,14 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
           _count = int.tryParse(countMatch.group(1)!);
           _countCtrl.text = _count?.toString() ?? '';
         }
+        // INTERVAL=1 is the default — only pre-fill the field for
+        // values that actually change the cadence (avoid showing a
+        // redundant "1" on every edit).
+        final intervalMatch = RegExp(r'INTERVAL=(\d+)').firstMatch(rule);
+        if (intervalMatch != null) {
+          final n = int.tryParse(intervalMatch.group(1)!);
+          if (n != null && n > 1) _intervalCtrl.text = n.toString();
+        }
       }
     }
   }
@@ -62,6 +76,7 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
     _labelCtrl.dispose();
     _amountCtrl.dispose();
     _countCtrl.dispose();
+    _intervalCtrl.dispose();
     super.dispose();
   }
 
@@ -75,12 +90,29 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
     if (picked != null) setState(() => _eventDate = picked);
   }
 
+  /// Pluralised unit label matching the selected frequency so the
+  /// "Repeat every N ___" field reads naturally — "weeks", "months",
+  /// not the raw RRULE codeword.
+  String get _intervalUnitLabel => switch (_freq) {
+    'DAILY' => 'days',
+    'WEEKLY' => 'weeks',
+    'MONTHLY' => 'months',
+    'YEARLY' => 'years',
+    _ => 'units',
+  };
+
   String? get _rrule {
     if (!_isRecurring) return null;
     final count = int.tryParse(_countCtrl.text);
-    return count != null && count > 0
-        ? 'FREQ=$_freq;COUNT=$count'
-        : 'FREQ=$_freq';
+    final interval = int.tryParse(_intervalCtrl.text);
+    final parts = <String>['FREQ=$_freq'];
+    // Only emit INTERVAL when it actually changes the cadence —
+    // FREQ=WEEKLY and FREQ=WEEKLY;INTERVAL=1 are equivalent per
+    // the engine and the spec, so omitting the redundant param
+    // keeps stored RRULEs shorter and cleaner to read.
+    if (interval != null && interval > 1) parts.add('INTERVAL=$interval');
+    if (count != null && count > 0) parts.add('COUNT=$count');
+    return parts.join(';');
   }
 
   Future<void> _save() async {
@@ -213,6 +245,20 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
               onChanged: (v) {
                 if (v != null) setState(() => _freq = v);
               },
+            ),
+            const SizedBox(height: 12),
+            // INTERVAL: "Every N <freq>" — supports biweekly,
+            // quarterly, every-other-year. Blank or 1 means
+            // "every unit" (the spec default).
+            TextField(
+              controller: _intervalCtrl,
+              decoration: InputDecoration(
+                labelText: 'Repeat every ($_intervalUnitLabel)',
+                hintText: '1 (every ${_freq.toLowerCase()})',
+                prefixIcon: const Icon(Icons.update),
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             // Optional count
