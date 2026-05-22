@@ -9,6 +9,8 @@ import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
 import '../../holdings/screens/holdings_screen.dart';
 import '../../transactions/screens/transactions_screen.dart';
+import '../../transactions/widgets/add_transaction_sheet.dart';
+import '../../transactions/widgets/import_statement_sheet.dart';
 import '../models/account.dart';
 import '../providers/accounts_provider.dart';
 import '../repositories/accounts_repository.dart';
@@ -98,6 +100,14 @@ class _AccountDetailBody extends ConsumerWidget {
               ),
             ),
           IconButton(
+            icon: const Icon(Icons.file_upload_outlined),
+            tooltip: 'Import statement',
+            onPressed: () => showAppSheet<void>(
+              context,
+              child: ImportStatementSheet(preselectedAccountId: account.id),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => _showEditSheet(context, ref),
           ),
@@ -109,6 +119,14 @@ class _AccountDetailBody extends ConsumerWidget {
             onPressed: () => _confirmDelete(context, ref),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Add transaction',
+        onPressed: () => showAppSheet<void>(
+          context,
+          child: AddTransactionSheet(preselectedAccountId: account.id),
+        ),
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [

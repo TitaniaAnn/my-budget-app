@@ -28,7 +28,12 @@ import '../services/statement_parser.dart';
 import 'column_override_sheet.dart';
 
 class ImportStatementSheet extends ConsumerStatefulWidget {
-  const ImportStatementSheet({super.key});
+  const ImportStatementSheet({super.key, this.preselectedAccountId});
+
+  /// Pre-fills the destination account when launched from
+  /// AccountDetailScreen — saves the user the extra dropdown tap
+  /// when they're already on a specific account's page.
+  final String? preselectedAccountId;
 
   @override
   ConsumerState<ImportStatementSheet> createState() =>
@@ -37,6 +42,13 @@ class ImportStatementSheet extends ConsumerStatefulWidget {
 
 class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
   String? _selectedAccountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAccountId = widget.preselectedAccountId;
+  }
+
   List<ParsedStatementRow> _preview = [];
   String? _fileName;
   bool _loading = false;
