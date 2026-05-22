@@ -167,10 +167,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     // extra icons appearing — same convention as Material's
     // contextual app bar.
     if (_selectionMode) {
-      return Scaffold(
-        appBar: _buildSelectionAppBar(context),
-        body: body,
-      );
+      return Scaffold(appBar: _buildSelectionAppBar(context), body: body);
     }
 
     return Scaffold(
@@ -409,10 +406,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     try {
       await ref
           .read(transactionsRepositoryProvider)
-          .setUserCategoryForMany(
-            transactionIds: ids,
-            categoryId: categoryId,
-          );
+          .setUserCategoryForMany(transactionIds: ids, categoryId: categoryId);
       ref.invalidate(transactionsProvider);
       setState(_selection.clear);
       if (mounted) {
@@ -449,10 +443,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     final tagId = await showAppSheet<String>(
       context,
-      child: _TagPickerSheet(
-        tags: tags,
-        title: add ? 'Add tag' : 'Remove tag',
-      ),
+      child: _TagPickerSheet(tags: tags, title: add ? 'Add tag' : 'Remove tag'),
     );
     if (tagId == null) return;
     final ids = _selection.toList();
@@ -494,9 +485,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       // explicit recompute per affected account. Run them in parallel
       // — RPCs are independent.
       final accountsRepo = ref.read(accountsRepositoryProvider);
-      await Future.wait(
-        affectedAccounts.map(accountsRepo.recalculateBalance),
-      );
+      await Future.wait(affectedAccounts.map(accountsRepo.recalculateBalance));
       ref.invalidate(accountsProvider);
       ref.invalidate(transactionsProvider);
       setState(_selection.clear);
@@ -544,10 +533,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               subtitle: const Text('Move money between two accounts'),
               onTap: () {
                 Navigator.of(sheetCtx).pop();
-                showAppSheet<void>(
-                  context,
-                  child: const AddTransferSheet(),
-                );
+                showAppSheet<void>(context, child: const AddTransferSheet());
               },
             ),
             const SizedBox(height: 8),
@@ -796,6 +782,101 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
 // ── Filter bars ───────────────────────────────────────────────────────────────
 
+/// Filter dropdown for the transactions screen — used for both
+/// account and category. Replaces a horizontally-scrolling chip
+/// row so a household with N accounts (or N categories) doesn't
+/// eat a whole strip of vertical space. The button's label shows
+/// the current selection so the filter remains visible at a
+/// glance; the trailing chevron + tap opens the menu.
+class _FilterDropdown extends StatelessWidget {
+  final String allLabel;
+  final List<({String id, String name})> items;
+  final String? selectedId;
+  final ValueChanged<String?> onSelected;
+  final IconData icon;
+
+  const _FilterDropdown({
+    required this.allLabel,
+    required this.items,
+    required this.selectedId,
+    required this.onSelected,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final selected = selectedId == null
+        ? null
+        : items.firstWhere(
+            (i) => i.id == selectedId,
+            // If the saved selection no longer matches anything
+            // (account/category deleted), behave as if All is
+            // selected.
+            orElse: () => (id: '', name: allLabel),
+          );
+    final showActive = selected != null && selected.id.isNotEmpty;
+    return PopupMenuButton<String?>(
+      tooltip: allLabel,
+      initialValue: selectedId,
+      onSelected: onSelected,
+      itemBuilder: (_) => <PopupMenuEntry<String?>>[
+        PopupMenuItem<String?>(value: null, child: Text(allLabel)),
+        const PopupMenuDivider(),
+        for (final i in items)
+          PopupMenuItem<String?>(value: i.id, child: Text(i.name)),
+      ],
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: showActive ? cs.primary : cs.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: showActive ? cs.primary : theme.dividerColor,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: showActive
+                  ? Colors.white
+                  : cs.onSurface.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                selected?.name ?? allLabel,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: showActive
+                      ? Colors.white
+                      : cs.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 18,
+              color: showActive
+                  ? Colors.white
+                  : cs.onSurface.withValues(alpha: 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AccountFilterBar extends StatelessWidget {
   final List<Account> accounts;
   final String? selectedId;
@@ -809,52 +890,16 @@ class _AccountFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _chip(context, null, 'All'),
-          ...accounts.map((a) => _chip(context, a.id, a.name)),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(BuildContext context, String? id, String label) {
-    final selected = selectedId == id;
     return Padding(
-      padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-      child: GestureDetector(
-        onTap: () => onSelected(id),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).dividerColor,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: selected
-                    ? Colors.white
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: _FilterDropdown(
+          allLabel: 'All accounts',
+          items: [for (final a in accounts) (id: a.id, name: a.name)],
+          selectedId: selectedId,
+          onSelected: onSelected,
+          icon: Icons.account_balance_outlined,
         ),
       ),
     );
@@ -875,52 +920,16 @@ class _CategoryFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _chip(context, null, 'All categories'),
-          ...categories.map((c) => _chip(context, c.id, c.name)),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(BuildContext context, String? id, String label) {
-    final selected = selectedId == id;
     return Padding(
-      padding: const EdgeInsets.only(right: 8, bottom: 4),
-      child: GestureDetector(
-        onTap: () => onSelected(id),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).dividerColor,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected
-                    ? Colors.white
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: _FilterDropdown(
+          allLabel: 'All categories',
+          items: [for (final c in categories) (id: c.id, name: c.name)],
+          selectedId: selectedId,
+          onSelected: onSelected,
+          icon: Icons.label_outline,
         ),
       ),
     );
