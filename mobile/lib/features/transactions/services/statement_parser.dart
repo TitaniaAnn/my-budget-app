@@ -227,6 +227,28 @@ ParsedStatement _parseWithMapping(List<List<dynamic>> rows, ColumnMapping m) {
   // the same day (same description and amount) get unique externalIds.
   final keyCounts = <String, int>{};
 
+  // Pre-scan: if ANY row in a single-amount-column file has an explicit
+  // negative sign, treat the whole file as signed and skip the
+  // description-keyword inference for positive amounts. Without this,
+  // a Chase-style CC export (charges negative, payments positive) would
+  // see its unsigned-positive payments routed through inference, where
+  // the "PAYMENT" debit keyword would flip them to negative — making
+  // every payment look like a second charge.
+  //
+  // Split debit/credit files don't have this ambiguity; the columns
+  // already encode direction.
+  var fileIsSigned = false;
+  if (!m.isSplit) {
+    for (final row in rows.skip(1)) {
+      if (row.length <= m.amountIdx) continue;
+      final raw = row[m.amountIdx].toString().trim();
+      if (_signFromValue(raw) == _Sign.negative) {
+        fileIsSigned = true;
+        break;
+      }
+    }
+  }
+
   for (final (i, row) in rows.skip(1).indexed) {
     final rowNum = i + 2; // 1-based, accounting for header
     final neededCols = m.isSplit
@@ -266,6 +288,7 @@ ParsedStatement _parseWithMapping(List<List<dynamic>> rows, ColumnMapping m) {
         raw: row[m.amountIdx].toString().trim(),
         description: desc,
         err: amountErr,
+        fileIsSigned: fileIsSigned,
       );
     }
     if (cents == null) {
@@ -367,16 +390,23 @@ int? _parseToCentsStrict(String raw, StringBuffer err) {
 
 /// Sign-inference order:
 ///   1. If the parsed value already has a sign, trust it (the bank knows).
-///   2. Otherwise, check description keywords. Credit keywords win over
+///   2. If [fileIsSigned] is true (the file has at least one explicit
+///      negative elsewhere), positive values are also trusted as-is —
+///      they're "income" rows in a signed export, not unsigned-default
+///      candidates for description inference. This is the path Chase
+///      CC exports take: charges negative, payments positive, no leading
+///      "+" on the positives.
+///   3. Otherwise, check description keywords. Credit keywords win over
 ///      debit keywords on overlap — "PAYMENT REFUND" is a refund, not a
-///      payment. Without this, the previous code mis-signed refunds because
-///      the debit branch fired first.
-///   3. No keyword hit: keep positive (the import preview row will look
+///      payment. Without this, the previous code mis-signed refunds
+///      because the debit branch fired first.
+///   4. No keyword hit: keep positive (the import preview row will look
 ///      odd and the user can correct it before confirming).
 int? _parseSingleAmount({
   required String raw,
   required String description,
   required StringBuffer err,
+  bool fileIsSigned = false,
 }) {
   if (raw.isEmpty) {
     err.write('empty amount');
@@ -386,6 +416,10 @@ int? _parseSingleAmount({
   if (cents == null) return null;
 
   if (cents != 0 && cents.isNegative) return cents;
+  // Trust positive values when the file is detected as signed —
+  // otherwise the "PAYMENT" keyword would flip Chase-style positive
+  // payment rows to negative, double-counting them as charges.
+  if (fileIsSigned) return cents;
   // Some banks always export positive — also covers the rare case of a
   // signed-zero or genuinely zero row (e.g. waived fee).
   if (cents > 0 && _signFromValue(raw) == _Sign.unsigned) {

@@ -104,6 +104,60 @@ void main() {
     });
   });
 
+  group('parseStatementCsv — signed-file detection (Chase CC pattern)', () {
+    test('mixed-sign file trusts positive "PAYMENT" rows as positive', () {
+      // Real-world Chase CC export shape: charges land negative,
+      // payments land positive, no leading "+" on the positives.
+      // Without the signed-file detection, the parser would treat
+      // the unsigned-positive "Payment Thank You" rows as debit
+      // candidates and flip them via the PAYMENT keyword — making
+      // every payment a duplicate charge. Pinned here so the bug
+      // can't silently come back.
+      const csv =
+          'Date,Description,Amount\n'
+          '04/22/2026,Payment Thank You-Mobile,2000\n'
+          '05/05/2026,PURCHASE INTEREST CHARGE,-313.72\n'
+          '04/16/2026,Payment Thank You-Mobile,1500\n'
+          '04/02/2026,AUTOMATIC PAYMENT - THANK,493\n'
+          '03/27/2026,PAYPAL ASANA REBEL,-119.99\n';
+      final result = parseStatementCsv(csv);
+      expect(result.rows[0].amountCents, 200000);
+      expect(result.rows[1].amountCents, -31372);
+      expect(result.rows[2].amountCents, 150000);
+      expect(result.rows[3].amountCents, 49300);
+      expect(result.rows[4].amountCents, -11999);
+    });
+
+    test('all-positive file still routes through description inference', () {
+      // Counter-test: a file with NO explicit negatives is treated
+      // as an unsigned export (the legacy path). The "WITHDRAWAL"
+      // keyword should still flip the sign. Without this, a
+      // checking-account CSV from a bank that always exports
+      // positive would silently mis-sign every debit.
+      const csv =
+          'Date,Description,Amount\n'
+          '01/15/2026,WITHDRAWAL ATM,40.00\n'
+          '01/15/2026,DIRECT DEPOSIT,2500.00\n';
+      final result = parseStatementCsv(csv);
+      expect(result.rows[0].amountCents, -4000);
+      expect(result.rows[1].amountCents, 250000);
+    });
+
+    test('split debit/credit files are unaffected by the signed-file path', () {
+      // The detection only runs in single-column mode (m.isSplit
+      // == false). A split file with "Payment" in the credit
+      // column should keep working as before: credit column ->
+      // positive, debit column -> negative.
+      const csv =
+          'Date,Description,Debit,Credit\n'
+          '01/15/2026,Payment Thank You,,500.00\n'
+          '01/16/2026,Amazon,25.99,\n';
+      final result = parseStatementCsv(csv);
+      expect(result.rows[0].amountCents, 50000);
+      expect(result.rows[1].amountCents, -2599);
+    });
+  });
+
   group('parseStatementCsv — split debit/credit columns', () {
     test('debit column → negative cents, credit column → positive cents', () {
       // Format: Wells Fargo–style two-column. Both columns positive.
