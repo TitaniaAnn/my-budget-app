@@ -24,8 +24,12 @@ flutter format lib/ test/
 # Run tests
 flutter test
 
-# Build release
-flutter build appbundle --release --dart-define-from-file=.env.json
+# Build release — wrapper that refuses to run unless .env.json
+# points at the production Supabase project on supabase.com.
+# Prevents a stray localhost URL from shipping in an .aab. The
+# bash + PowerShell variants do the same thing; pick by host.
+./scripts/build-release.sh android   # or windows / all
+.\scripts\build-release.ps1 android  # PowerShell sibling
 ```
 
 ## Architecture
