@@ -35,6 +35,8 @@ ScenarioEvent _event({
   String? rrule,
   String id = 'e',
   String label = 'Test event',
+  String? accountId,
+  int? paymentAprBps,
 }) {
   return ScenarioEvent(
     id: id,
@@ -45,6 +47,8 @@ ScenarioEvent _event({
     amount: amount,
     isRecurring: isRecurring,
     recurrenceRule: rrule,
+    accountId: accountId,
+    paymentAprBps: paymentAprBps,
     sortOrder: 0,
   );
 }
@@ -495,6 +499,136 @@ void main() {
         windowDays: 95,
       );
       expect(result.last.balanceCents, 500000 - 300000);
+    });
+
+    // ── EventType.payoff ────────────────────────────────────────
+    //
+    // Payoff events expand into a monthly amortisation schedule
+    // against the debt account's outstanding principal. Each
+    // simulated month registers a NEGATIVE delta equal to the
+    // interest accrued — the principal payment itself is net-worth-
+    // neutral (cash → debt account), so only the interest cost
+    // shows up on the projection line.
+
+    test('payoff event subtracts monthly interest from net worth, '
+        'nothing else', () {
+      // $10,000 debt @ 12% APR, $500/month. Month 1 interest =
+      // $100 → projection drops by $100 at month-end. We sample
+      // exact month-ends to make the assertion deterministic.
+      final start = DateTime(2026, 1, 1);
+      final result = buildProjection(
+        startingBalance: 0,
+        events: [
+          _event(
+            type: EventType.payoff,
+            date: start,
+            amount: 50000, // $500/mo
+            accountId: 'cc',
+            paymentAprBps: 1200, // 12% APR
+          ),
+        ],
+        from: start,
+        windowDays: 95,
+        debtBalances: {'cc': 1000000}, // $10k debt
+      );
+      // After month 1 (day 31): net worth has dropped by the
+      // month-1 interest (~$100, 10000 cents).
+      final lastBalance = result.last.balanceCents;
+      expect(
+        lastBalance,
+        lessThan(0),
+        reason: 'cumulative interest must drive net worth negative',
+      );
+      expect(
+        lastBalance,
+        greaterThan(-100000),
+        reason:
+            r'three months of interest on a $10k debt at 12% APR '
+            r'should be roughly $200-$300, not thousands',
+      );
+    });
+
+    test('payoff event without a matching debtBalances entry is dropped', () {
+      // accountId='unknown' isn't in the debtBalances map. The
+      // event should produce no deltas — defensive against a
+      // stale plan whose debt account was archived.
+      final start = DateTime(2026, 1, 1);
+      final result = buildProjection(
+        startingBalance: 0,
+        events: [
+          _event(
+            type: EventType.payoff,
+            date: start,
+            amount: 50000,
+            accountId: 'unknown',
+            paymentAprBps: 1200,
+          ),
+        ],
+        from: start,
+        windowDays: 95,
+        debtBalances: const {},
+      );
+      expect(result.every((p) => p.balanceCents == 0), isTrue);
+    });
+
+    test('payoff event without paymentAprBps is dropped (data integrity)', () {
+      // A payoff event saved without an APR is malformed — should
+      // not crash, just skip. The model permits the field to be
+      // null because non-payoff events don't carry it.
+      final start = DateTime(2026, 1, 1);
+      final result = buildProjection(
+        startingBalance: 0,
+        events: [
+          _event(
+            type: EventType.payoff,
+            date: start,
+            amount: 50000,
+            accountId: 'cc',
+            // paymentAprBps deliberately omitted
+          ),
+        ],
+        from: start,
+        windowDays: 95,
+        debtBalances: {'cc': 1000000},
+      );
+      expect(result.every((p) => p.balanceCents == 0), isTrue);
+    });
+
+    test('payoff truncates at window end — schedule months past windowEnd '
+        'are dropped', () {
+      // $1k debt @ 18% APR, $50/mo. Full payoff would take ~24
+      // months and accrue ~$200 in interest. Window is 60 days,
+      // so only the FIRST TWO months land in deltas — final
+      // balance should reflect ~2 months of interest (~$30), not
+      // the whole ~$200 trajectory.
+      final start = DateTime(2026, 1, 1);
+      final result = buildProjection(
+        startingBalance: 0,
+        events: [
+          _event(
+            type: EventType.payoff,
+            date: start,
+            amount: 5000,
+            accountId: 'cc',
+            paymentAprBps: 1800,
+          ),
+        ],
+        from: start,
+        windowDays: 60,
+        debtBalances: {'cc': 100000},
+      );
+      // Two months of interest ≈ $30 ⇒ -3000 cents. Much less
+      // than the full ~$200 ⇒ -20000 cents of unconstrained
+      // payoff. The window-truncation is what keeps the delta
+      // bounded.
+      expect(result.last.balanceCents, lessThan(0));
+      expect(
+        result.last.balanceCents,
+        greaterThan(-10000),
+        reason:
+            'only first two months of interest should land; '
+            'the rest of the schedule sits past windowEnd',
+      );
     });
   });
 }

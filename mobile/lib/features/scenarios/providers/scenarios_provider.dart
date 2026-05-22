@@ -6,6 +6,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../currency/providers/rates_to_display_provider.dart';
 import '../../currency/services/convert.dart';
@@ -13,6 +14,7 @@ import '../../settings/providers/settings_provider.dart';
 import '../models/scenario.dart';
 import '../models/scenario_event.dart';
 import '../repositories/scenarios_repository.dart';
+import '../services/payoff_simulator.dart';
 
 part 'scenarios_provider.g.dart';
 
@@ -60,6 +62,23 @@ class ScenarioDetail {
 
 /// How far ahead to project (in days). 5 years covers most goal horizons.
 const _projectionDays = 365 * 5;
+
+/// Builds the {accountId → outstanding debt magnitude in cents}
+/// map that `buildProjection` reads when expanding payoff events.
+/// Credit cards and loan-group accounts (mortgage etc.) qualify;
+/// everything else is filtered out. Balances are stored signed-
+/// negative per project convention, so we `.abs()` to feed the
+/// payoff simulator's unsigned-principal contract.
+Map<String, int> _debtBalances(List<Account> accounts) {
+  return {
+    for (final a in accounts)
+      if (a.isActive &&
+          (a.accountType.group == AccountGroup.creditCards ||
+              a.accountType.group == AccountGroup.loans) &&
+          a.currentBalance < 0)
+        a.id: a.currentBalance.abs(),
+  };
+}
 
 /// Expands a [ScenarioEvent] into every date it occurs within [windowEnd].
 ///
@@ -130,18 +149,56 @@ List<DateTime> expandRecurrenceDates(ScenarioEvent event, DateTime windowEnd) {
 ///
 /// Produces one [ProjectionPoint] per day from [from] to [from + windowDays].
 /// Events that fall on a day are applied as a lump sum to the running balance.
+///
+/// [debtBalances] maps a debt account's id → its current outstanding
+/// principal magnitude (positive cents). Used to simulate
+/// [EventType.payoff] events: each simulated month accrues interest
+/// against the principal, and the projection registers a negative
+/// delta equal to that interest on the month-end date. The principal
+/// payment itself is net-worth-neutral (cash moves to debt account),
+/// so only the interest cost shows up on the projection line.
 @visibleForTesting
 List<ProjectionPoint> buildProjection({
   required int startingBalance,
   required List<ScenarioEvent> events,
   required DateTime from,
   required int windowDays,
+  Map<String, int> debtBalances = const {},
 }) {
   final windowEnd = from.add(Duration(days: windowDays));
 
   // Build a map: date → net delta in cents for that day.
   final deltas = <DateTime, int>{};
   for (final event in events) {
+    if (event.eventType == EventType.payoff) {
+      // Payoff events take their own path: simulate the
+      // amortisation against the debt account's current balance,
+      // then register the per-month INTEREST as a negative delta.
+      // Principal payment is just cash → debt-account; it nets to
+      // zero against net worth. Interest is the real cost.
+      final accountId = event.accountId;
+      final aprBps = event.paymentAprBps;
+      if (accountId == null || aprBps == null) continue;
+      final principal = debtBalances[accountId];
+      if (principal == null || principal <= 0) continue;
+      final sim = simulatePayoff(
+        startingBalanceCents: principal,
+        monthlyPaymentCents: event.amount,
+        aprBps: aprBps,
+        startDate: event.eventDate,
+      );
+      for (final month in sim.months) {
+        if (month.monthEnd.isAfter(windowEnd)) break;
+        final key = DateTime(
+          month.monthEnd.year,
+          month.monthEnd.month,
+          month.monthEnd.day,
+        );
+        deltas[key] = (deltas[key] ?? 0) - month.interestCents;
+      }
+      continue;
+    }
+
     final int delta = event.eventType.isPositive ? event.amount : -event.amount;
     for (final date in expandRecurrenceDates(event, windowEnd)) {
       final key = DateTime(date.year, date.month, date.day);
@@ -241,6 +298,7 @@ Future<ScenarioCardSummary> scenarioCardSummary(
     events: events,
     from: from,
     windowDays: windowDays,
+    debtBalances: _debtBalances(accounts),
   );
 
   final finalBalance = projection.isEmpty
@@ -313,6 +371,7 @@ Future<ScenarioDetail> scenarioDetail(
         events: events,
         from: from,
         windowDays: windowDays,
+        debtBalances: _debtBalances(accounts),
       ),
     ),
   ).wait;

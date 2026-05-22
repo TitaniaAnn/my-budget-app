@@ -206,6 +206,7 @@ class ScenariosRepository {
     String? recurrenceRule,
     String? accountId,
     int sortOrder = 0,
+    int? paymentAprBps,
   }) async {
     final data = await supabase
         .from('scenario_events')
@@ -219,6 +220,7 @@ class ScenariosRepository {
           'recurrence_rule': ?recurrenceRule,
           'account_id': ?accountId,
           'sort_order': sortOrder,
+          'payoff_apr_bps': ?paymentAprBps,
           'parameters': {},
         })
         .select()
@@ -235,6 +237,7 @@ class ScenariosRepository {
     EventType? eventType,
     bool? isRecurring,
     String? recurrenceRule,
+    int? paymentAprBps,
   }) async {
     final data = await supabase
         .from('scenario_events')
@@ -245,6 +248,7 @@ class ScenariosRepository {
           'event_type': ?eventType?.name,
           'is_recurring': ?isRecurring,
           'recurrence_rule': ?recurrenceRule,
+          'payoff_apr_bps': ?paymentAprBps,
         })
         .eq('id', eventId)
         .select()
