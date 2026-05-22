@@ -19,6 +19,7 @@ _$ScenarioEventImpl _$$ScenarioEventImplFromJson(Map<String, dynamic> json) =>
       recurrenceRule: json['recurrence_rule'] as String?,
       parameters: json['parameters'] as Map<String, dynamic>?,
       sortOrder: (json['sort_order'] as num).toInt(),
+      paymentAprBps: (json['payoff_apr_bps'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$$ScenarioEventImplToJson(_$ScenarioEventImpl instance) =>
@@ -34,6 +35,7 @@ Map<String, dynamic> _$$ScenarioEventImplToJson(_$ScenarioEventImpl instance) =>
       'recurrence_rule': instance.recurrenceRule,
       'parameters': instance.parameters,
       'sort_order': instance.sortOrder,
+      'payoff_apr_bps': instance.paymentAprBps,
     };
 
 const _$EventTypeEnumMap = {
@@ -43,4 +45,5 @@ const _$EventTypeEnumMap = {
   EventType.purchase: 'purchase',
   EventType.debt: 'debt',
   EventType.savings: 'savings',
+  EventType.payoff: 'payoff',
 };

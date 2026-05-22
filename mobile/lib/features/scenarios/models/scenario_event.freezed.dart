@@ -39,6 +39,14 @@ mixin _$ScenarioEvent {
   Map<String, dynamic>? get parameters => throw _privateConstructorUsedError;
   int get sortOrder => throw _privateConstructorUsedError;
 
+  /// APR in basis points (10000 = 100%) for payoff-plan events.
+  /// Null for all other event types. Set at create time from the
+  /// debt account's `interestRate` — capturing it on the event
+  /// keeps the plan stable if the user updates the account's APR
+  /// later. Migration 041.
+  @JsonKey(name: 'payoff_apr_bps')
+  int? get paymentAprBps => throw _privateConstructorUsedError;
+
   /// Serializes this ScenarioEvent to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -68,6 +76,7 @@ abstract class $ScenarioEventCopyWith<$Res> {
     String? recurrenceRule,
     Map<String, dynamic>? parameters,
     int sortOrder,
+    @JsonKey(name: 'payoff_apr_bps') int? paymentAprBps,
   });
 }
 
@@ -97,6 +106,7 @@ class _$ScenarioEventCopyWithImpl<$Res, $Val extends ScenarioEvent>
     Object? recurrenceRule = freezed,
     Object? parameters = freezed,
     Object? sortOrder = null,
+    Object? paymentAprBps = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -144,6 +154,10 @@ class _$ScenarioEventCopyWithImpl<$Res, $Val extends ScenarioEvent>
                 ? _value.sortOrder
                 : sortOrder // ignore: cast_nullable_to_non_nullable
                       as int,
+            paymentAprBps: freezed == paymentAprBps
+                ? _value.paymentAprBps
+                : paymentAprBps // ignore: cast_nullable_to_non_nullable
+                      as int?,
           )
           as $Val,
     );
@@ -171,6 +185,7 @@ abstract class _$$ScenarioEventImplCopyWith<$Res>
     String? recurrenceRule,
     Map<String, dynamic>? parameters,
     int sortOrder,
+    @JsonKey(name: 'payoff_apr_bps') int? paymentAprBps,
   });
 }
 
@@ -199,6 +214,7 @@ class __$$ScenarioEventImplCopyWithImpl<$Res>
     Object? recurrenceRule = freezed,
     Object? parameters = freezed,
     Object? sortOrder = null,
+    Object? paymentAprBps = freezed,
   }) {
     return _then(
       _$ScenarioEventImpl(
@@ -246,6 +262,10 @@ class __$$ScenarioEventImplCopyWithImpl<$Res>
             ? _value.sortOrder
             : sortOrder // ignore: cast_nullable_to_non_nullable
                   as int,
+        paymentAprBps: freezed == paymentAprBps
+            ? _value.paymentAprBps
+            : paymentAprBps // ignore: cast_nullable_to_non_nullable
+                  as int?,
       ),
     );
   }
@@ -266,6 +286,7 @@ class _$ScenarioEventImpl implements _ScenarioEvent {
     this.recurrenceRule,
     final Map<String, dynamic>? parameters,
     required this.sortOrder,
+    @JsonKey(name: 'payoff_apr_bps') this.paymentAprBps,
   }) : _parameters = parameters;
 
   factory _$ScenarioEventImpl.fromJson(Map<String, dynamic> json) =>
@@ -310,9 +331,18 @@ class _$ScenarioEventImpl implements _ScenarioEvent {
   @override
   final int sortOrder;
 
+  /// APR in basis points (10000 = 100%) for payoff-plan events.
+  /// Null for all other event types. Set at create time from the
+  /// debt account's `interestRate` — capturing it on the event
+  /// keeps the plan stable if the user updates the account's APR
+  /// later. Migration 041.
+  @override
+  @JsonKey(name: 'payoff_apr_bps')
+  final int? paymentAprBps;
+
   @override
   String toString() {
-    return 'ScenarioEvent(id: $id, scenarioId: $scenarioId, eventType: $eventType, label: $label, eventDate: $eventDate, amount: $amount, accountId: $accountId, isRecurring: $isRecurring, recurrenceRule: $recurrenceRule, parameters: $parameters, sortOrder: $sortOrder)';
+    return 'ScenarioEvent(id: $id, scenarioId: $scenarioId, eventType: $eventType, label: $label, eventDate: $eventDate, amount: $amount, accountId: $accountId, isRecurring: $isRecurring, recurrenceRule: $recurrenceRule, parameters: $parameters, sortOrder: $sortOrder, paymentAprBps: $paymentAprBps)';
   }
 
   @override
@@ -340,7 +370,9 @@ class _$ScenarioEventImpl implements _ScenarioEvent {
               _parameters,
             ) &&
             (identical(other.sortOrder, sortOrder) ||
-                other.sortOrder == sortOrder));
+                other.sortOrder == sortOrder) &&
+            (identical(other.paymentAprBps, paymentAprBps) ||
+                other.paymentAprBps == paymentAprBps));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -358,6 +390,7 @@ class _$ScenarioEventImpl implements _ScenarioEvent {
     recurrenceRule,
     const DeepCollectionEquality().hash(_parameters),
     sortOrder,
+    paymentAprBps,
   );
 
   /// Create a copy of ScenarioEvent
@@ -387,6 +420,7 @@ abstract class _ScenarioEvent implements ScenarioEvent {
     final String? recurrenceRule,
     final Map<String, dynamic>? parameters,
     required final int sortOrder,
+    @JsonKey(name: 'payoff_apr_bps') final int? paymentAprBps,
   }) = _$ScenarioEventImpl;
 
   factory _ScenarioEvent.fromJson(Map<String, dynamic> json) =
@@ -420,6 +454,15 @@ abstract class _ScenarioEvent implements ScenarioEvent {
   Map<String, dynamic>? get parameters;
   @override
   int get sortOrder;
+
+  /// APR in basis points (10000 = 100%) for payoff-plan events.
+  /// Null for all other event types. Set at create time from the
+  /// debt account's `interestRate` — capturing it on the event
+  /// keeps the plan stable if the user updates the account's APR
+  /// later. Migration 041.
+  @override
+  @JsonKey(name: 'payoff_apr_bps')
+  int? get paymentAprBps;
 
   /// Create a copy of ScenarioEvent
   /// with the given fields replaced by the non-null parameter values.
