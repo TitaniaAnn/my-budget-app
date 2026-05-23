@@ -55,6 +55,21 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
   bool _importing = false;
   String? _error;
 
+  /// Flip every amount's sign before insertion. Some banks (Amex,
+  /// many store cards) export credit-card statements with charges
+  /// as POSITIVE and payments as NEGATIVE — the bank's "what we
+  /// charged you" view. That's the opposite of the app's CC
+  /// ledger convention (negative = debt up). When the preview
+  /// shows charges in green / payments in red, this toggle
+  /// normalises both before they hit the database.
+  bool _flipSigns = false;
+
+  /// Applies [_flipSigns] to a raw parsed amount. Used by both
+  /// the preview list and the import write path so they can't
+  /// disagree about what's actually getting saved.
+  int _displayCents(ParsedStatementRow r) =>
+      _flipSigns ? -r.amountCents : r.amountCents;
+
   Future<void> _pickFile() async {
     setState(() {
       _error = null;
@@ -180,9 +195,10 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       final accountType = selectedAccount?.accountType.dbValue;
 
       final rows = _preview.map((r) {
+        final amount = _displayCents(r);
         final result = categorizer.categorize(
           description: r.description,
-          amountCents: r.amountCents,
+          amountCents: amount,
           accountType: accountType,
         );
         final confidenceBp = result == null
@@ -190,7 +206,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             : confidenceToBasisPoints(result);
         return {
           'description': r.description,
-          'amount': r.amountCents,
+          'amount': amount,
           'transaction_date': r.date.toIso8601String().substring(0, 10),
           'external_id': r.externalId,
           'pending': false,
@@ -307,8 +323,32 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                 ),
                 const Spacer(),
                 Text(
-                  'Total: ${formatCurrency(_preview.fold<int>(0, (s, r) => s + r.amountCents))}',
+                  'Total: ${formatCurrency(_preview.fold<int>(0, (s, r) => s + _displayCents(r)))}',
                   style: TextStyle(color: context.appColors.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Sign-convention toggle. Surfaced inline above the
+            // preview rows so the user can flip and see the colors
+            // update immediately. Off by default — most checking
+            // / Chase CC exports are correctly signed; this is
+            // primarily for Amex-style "bank-view" CSVs.
+            Row(
+              children: [
+                Switch(
+                  value: _flipSigns,
+                  onChanged: (v) => setState(() => _flipSigns = v),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Flip signs (use if charges show green / payments show red)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.appColors.textSubtle,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -342,11 +382,11 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
                           ),
                         ),
                         Text(
-                          formatCurrency(r.amountCents),
+                          formatCurrency(_displayCents(r)),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: r.amountCents < 0
+                            color: _displayCents(r) < 0
                                 ? context.appColors.expense
                                 : context.appColors.income,
                           ),
