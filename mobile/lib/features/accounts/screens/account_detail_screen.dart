@@ -58,12 +58,22 @@ class _AccountDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isCreditCard = account.accountType == AccountType.creditCard;
-    // Liability balances are stored as negative cents but shown as the
-    // magnitude owed.
+    // Liability balances are stored as negative cents (debt) and
+    // shown as the magnitude owed. Edge case worth pinning: an
+    // overpayment / refund flip puts the balance POSITIVE, which
+    // means the bank now owes the user — that's a credit balance,
+    // not a debt. The label and color need to flip with the sign
+    // so a $700 credit doesn't read as "$700 owed".
     final isLiability = account.accountType.isLiability;
+    final inCredit = isLiability && account.currentBalance > 0;
     final displayCents = isLiability
         ? account.currentBalance.abs()
         : account.currentBalance;
+    final balanceLabel = !isLiability
+        ? 'Current Balance'
+        : inCredit
+        ? 'Credit balance'
+        : 'Balance (owed)';
     final limit = account.creditLimit;
     final utilization = isCreditCard && limit != null && limit > 0
         ? creditUtilization(account.currentBalance.abs(), limit)
@@ -192,7 +202,7 @@ class _AccountDetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isLiability ? 'Balance (owed)' : 'Current Balance',
+                  balanceLabel,
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.outline,
@@ -204,7 +214,14 @@ class _AccountDetailBody extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
-                    color: isLiability
+                    // Color matches the SIGN of the balance, not just
+                    // the account type: a CC in credit territory
+                    // shows the income color (the bank owes you);
+                    // a CC in debt shows the expense color. Asset
+                    // accounts use the same sign rule against zero.
+                    color: inCredit
+                        ? context.appColors.income
+                        : isLiability
                         ? context.appColors.expense
                         : account.currentBalance >= 0
                         ? Theme.of(context).colorScheme.onSurface

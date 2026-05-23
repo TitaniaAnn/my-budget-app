@@ -404,6 +404,12 @@ class _AccountsRowState extends State<_AccountsRow> {
               final a = accounts[i];
               final color = _typeColor(a);
               final isLiability = a.accountType.isLiability;
+              // A CC with a positive currentBalance has a CREDIT
+              // balance (the bank owes the user, post-overpayment
+              // or refund). The card needs to show that in the
+              // income color, not the debt-red default that all
+              // liabilities used to get.
+              final inCredit = isLiability && a.currentBalance > 0;
               final displayCents = isLiability
                   ? a.currentBalance.abs()
                   : a.currentBalance;
@@ -449,7 +455,9 @@ class _AccountsRowState extends State<_AccountsRow> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: isLiability
+                          color: inCredit
+                              ? context.appColors.income
+                              : isLiability
                               ? context.appColors.expense
                               : Theme.of(context).colorScheme.onSurface,
                         ),
