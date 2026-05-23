@@ -1,6 +1,7 @@
 // Dashboard screen — net worth, accounts, monthly summary, spending sparkline,
 // budget health alerts, top categories, and recent transactions.
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -345,90 +346,131 @@ class _NetWorthCard extends ConsumerWidget {
 }
 
 /// Horizontally scrollable row of compact account chips.
-class _AccountsRow extends StatelessWidget {
+class _AccountsRow extends StatefulWidget {
   final List<Account> accounts;
   const _AccountsRow({required this.accounts});
+
+  @override
+  State<_AccountsRow> createState() => _AccountsRowState();
+}
+
+class _AccountsRowState extends State<_AccountsRow> {
+  /// Drives both the horizontal ListView and the persistent
+  /// Scrollbar. On desktop a mouse-wheel event would otherwise scroll
+  /// the OUTER vertical ListView; the Listener below catches the
+  /// PointerScrollEvent and forwards `dy` to this controller's
+  /// `offset` so wheel-scroll moves the account row left/right
+  /// instead of fighting the page.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   Color _typeColor(Account a) =>
       colorFromHex(a.color, fallback: a.accountType.group.defaultColor);
 
   @override
   Widget build(BuildContext context) {
+    final accounts = widget.accounts;
     return SizedBox(
-      height: 88,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: accounts.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final a = accounts[i];
-          final color = _typeColor(a);
-          final isLiability = a.accountType.isLiability;
-          final displayCents = isLiability
-              ? a.currentBalance.abs()
-              : a.currentBalance;
-          // Drill-down: tapping an account card lands on the
-          // transactions screen with that account pre-selected.
-          // Using `preselectedAccountId` (not `lockedAccountId`) so
-          // the user can clear or switch accounts via the in-screen
-          // filter bar without backing out.
-          return InkWell(
-            onTap: () => context.go('/transactions?accountId=${a.id}'),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 148,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+      // A few pixels taller than the cards to leave room for the
+      // persistent scrollbar underneath without clipping it.
+      height: 100,
+      child: Scrollbar(
+        controller: _scroll,
+        // Always show the bar so a user with more accounts than fit
+        // on-screen knows there's more to the right (and can drag
+        // the bar themselves).
+        thumbVisibility: true,
+        child: Listener(
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent && _scroll.hasClients) {
+              final next = (_scroll.offset + event.scrollDelta.dy).clamp(
+                _scroll.position.minScrollExtent,
+                _scroll.position.maxScrollExtent,
+              );
+              _scroll.jumpTo(next);
+            }
+          },
+          child: ListView.separated(
+            controller: _scroll,
+            scrollDirection: Axis.horizontal,
+            itemCount: accounts.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, i) {
+              final a = accounts[i];
+              final color = _typeColor(a);
+              final isLiability = a.accountType.isLiability;
+              final displayCents = isLiability
+                  ? a.currentBalance.abs()
+                  : a.currentBalance;
+              // Drill-down: tapping an account card lands on the
+              // transactions screen with that account pre-selected.
+              // Using `preselectedAccountId` (not `lockedAccountId`) so
+              // the user can clear or switch accounts via the in-screen
+              // filter bar without backing out.
+              return InkWell(
+                onTap: () => context.go('/transactions?accountId=${a.id}'),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                child: Container(
+                  width: 148,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(a.accountType.icon, size: 16, color: color),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          a.name,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Icon(a.accountType.icon, size: 16, color: color),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              a.name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        formatCurrency(displayCents),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isLiability
+                              ? context.appColors.expense
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      if (a.institution != null)
+                        Text(
+                          a.institution!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: context.appColors.textSubtle,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
                     ],
                   ),
-                  const Spacer(),
-                  Text(
-                    formatCurrency(displayCents),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isLiability
-                          ? context.appColors.expense
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  if (a.institution != null)
-                    Text(
-                      a.institution!,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: context.appColors.textSubtle,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -657,10 +699,7 @@ class _BudgetAlertTile extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  bodyText,
-                  style: TextStyle(fontSize: 11, color: color),
-                ),
+                Text(bodyText, style: TextStyle(fontSize: 11, color: color)),
               ],
             ),
           ),
@@ -1157,9 +1196,9 @@ class _RebalanceTile extends StatelessWidget {
                 Text(
                   isOverweight
                       ? 'Overweight by ${driftPct.toStringAsFixed(1)}% — '
-                          'sell ~${formatCurrency(driftCents.abs())}'
+                            'sell ~${formatCurrency(driftCents.abs())}'
                       : 'Underweight by ${driftPct.abs().toStringAsFixed(1)}% — '
-                          'buy ~${formatCurrency(driftCents.abs())}',
+                            'buy ~${formatCurrency(driftCents.abs())}',
                   style: TextStyle(fontSize: 11, color: accent),
                 ),
               ],
@@ -1178,10 +1217,7 @@ class _RebalanceTile extends StatelessWidget {
               ),
               Text(
                 'target ${(row.targetPctBp / 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colors.textSubtle,
-                ),
+                style: TextStyle(fontSize: 11, color: colors.textSubtle),
               ),
             ],
           ),
