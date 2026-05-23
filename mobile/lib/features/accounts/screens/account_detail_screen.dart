@@ -75,8 +75,18 @@ class _AccountDetailBody extends ConsumerWidget {
         ? 'Credit balance'
         : 'Balance (owed)';
     final limit = account.creditLimit;
-    final utilization = isCreditCard && limit != null && limit > 0
-        ? creditUtilization(account.currentBalance.abs(), limit)
+    // Magnitude of active debt — what the interest calc applies to.
+    // A CC in credit territory accrues no interest.
+    final debtForUtilisation = isLiability && account.currentBalance < 0
+        ? account.currentBalance.abs()
+        : 0;
+    // Signed credit-utilisation percentage. Positive when in debt
+    // (standard meaning); negative when in credit, surfacing the
+    // "headroom beyond zero" position. A $700 credit on a $2k limit
+    // reads "-35% of $2,000" — clearer than 0% (hides the position)
+    // or +35% (treats the credit as debt).
+    final signedUtilization = isCreditCard && limit != null && limit > 0
+        ? -account.currentBalance / limit * 100
         : null;
 
     return Scaffold(
@@ -228,7 +238,7 @@ class _AccountDetailBody extends ConsumerWidget {
                         : context.appColors.expense,
                   ),
                 ),
-                if (utilization != null) ...[
+                if (signedUtilization != null) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -236,13 +246,18 @@ class _AccountDetailBody extends ConsumerWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: (utilization / 100).clamp(0, 1),
+                            // Negative utilisation (credit balance)
+                            // clamps to 0 — the bar empties and the
+                            // signed % in the label conveys "below
+                            // zero owed" without a leftward-growing
+                            // bar that'd need a new widget.
+                            value: (signedUtilization / 100).clamp(0, 1),
                             minHeight: 5,
                             backgroundColor: Theme.of(context).dividerColor,
                             valueColor: AlwaysStoppedAnimation(
-                              utilization > 80
+                              signedUtilization > 80
                                   ? context.appColors.expense
-                                  : utilization > 50
+                                  : signedUtilization > 50
                                   ? context.appColors.warning
                                   : context.appColors.income,
                             ),
@@ -251,7 +266,7 @@ class _AccountDetailBody extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        '${utilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
+                        '${signedUtilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.outline,
@@ -291,7 +306,14 @@ class _AccountDetailBody extends ConsumerWidget {
                       ),
                       const Spacer(),
                       Text(
-                        'Monthly: ${formatCurrency(((account.currentBalance.abs() * account.interestRate!) / 12).round())}',
+                        // Interest only accrues on DEBT; a credit
+                        // balance has nothing to compound, so a CC
+                        // sitting at $0 or in credit shows $0.00
+                        // monthly. Mortgages / loans always charge
+                        // on |balance| since their "balance" is the
+                        // unpaid principal magnitude regardless of
+                        // storage sign.
+                        'Monthly: ${formatCurrency(((debtForUtilisation * account.interestRate!) / 12).round())}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.outline,
