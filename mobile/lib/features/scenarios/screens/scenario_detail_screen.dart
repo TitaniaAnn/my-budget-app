@@ -1,15 +1,22 @@
 // Scenario detail screen — projected balance chart + event list.
 // Goals also show a target line on the chart and a progress ring.
+// Debt-payoff scenarios swap the whole body for a multi-debt
+// amortisation view (summary + per-debt toggle).
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
+import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
+import '../../accounts/models/account.dart';
+import '../../accounts/providers/accounts_provider.dart';
+import '../models/scenario.dart';
 import '../models/scenario_event.dart';
 import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
+import '../services/debt_payoff_simulator.dart';
 import '../widgets/add_event_sheet.dart';
 import '../widgets/add_scenario_sheet.dart';
 
@@ -51,6 +58,27 @@ class _DetailBody extends ConsumerWidget {
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
     final accent = _accentColor;
     final scenario = detail.scenario;
+
+    // Debt-payoff scenarios swap the body entirely — different
+    // projection (multi-debt amortisation), no events to add, and
+    // the FAB disappears with them.
+    if (scenario.kind == ScenarioKind.debtPayoff) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(scenario.name),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => showAppSheet<void>(
+                context,
+                child: AddScenarioSheet(existing: scenario),
+              ),
+            ),
+          ],
+        ),
+        body: _DebtPayoffBody(scenario: scenario, accent: accent),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -744,6 +772,429 @@ class _EventTile extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Debt-payoff body
+// ---------------------------------------------------------------------------
+//
+// Runs `simulateMultiDebtPayoff` against the current account balances
+// (rather than the snapshot captured at scenario-creation time), so a
+// payment made yesterday on a real card is reflected the next time the
+// user opens the plan. The captured min-payment + APR on the
+// scenario's targets stay authoritative — they're what the user
+// committed to, not what the account happens to advertise today.
+
+enum _DebtView { summary, perDebt }
+
+class _DebtPayoffBody extends ConsumerStatefulWidget {
+  const _DebtPayoffBody({required this.scenario, required this.accent});
+  final Scenario scenario;
+  final Color accent;
+
+  @override
+  ConsumerState<_DebtPayoffBody> createState() => _DebtPayoffBodyState();
+}
+
+class _DebtPayoffBodyState extends ConsumerState<_DebtPayoffBody> {
+  _DebtView _view = _DebtView.summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final accountsAsync = ref.watch(accountsProvider);
+    return accountsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (accounts) => _buildBody(context, accounts),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, List<Account> accounts) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final scenario = widget.scenario;
+    final targets = scenario.debtPayoffTargets ?? const [];
+    final strategy =
+        scenario.debtPayoffStrategy ?? DebtPayoffStrategy.avalanche;
+    final monthlyBudget = scenario.debtPayoffMonthlyBudgetCents ?? 0;
+
+    // Resolve live balances per target. Accounts that have been
+    // deleted since the plan was saved silently drop out — matches
+    // the simulator's contract.
+    final startingPrincipals = <String, int>{
+      for (final t in targets)
+        if (accounts.any((a) => a.id == t.accountId))
+          t.accountId: accounts
+              .firstWhere((a) => a.id == t.accountId)
+              .currentBalance
+              .abs(),
+    };
+
+    final result = simulateMultiDebtPayoff(
+      targets: targets,
+      startingPrincipals: startingPrincipals,
+      strategy: strategy,
+      monthlyBudgetCents: monthlyBudget,
+      startDate: DateTime.now(),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      children: [
+        const SizedBox(height: 16),
+        _DebtSummaryHeader(
+          result: result,
+          strategy: strategy,
+          monthlyBudget: monthlyBudget,
+          accent: widget.accent,
+        ),
+        const SizedBox(height: 16),
+        SegmentedButton<_DebtView>(
+          segments: const [
+            ButtonSegment(
+              value: _DebtView.summary,
+              label: Text('Summary'),
+              icon: Icon(Icons.show_chart),
+            ),
+            ButtonSegment(
+              value: _DebtView.perDebt,
+              label: Text('Per debt'),
+              icon: Icon(Icons.format_list_bulleted),
+            ),
+          ],
+          selected: {_view},
+          onSelectionChanged: (s) => setState(() => _view = s.first),
+        ),
+        const SizedBox(height: 16),
+        if (_view == _DebtView.summary)
+          _DebtSummaryChart(result: result, accent: widget.accent)
+        else
+          _PerDebtList(result: result, accounts: accounts, targets: targets),
+        if (!result.allPaidOff) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.errorContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: cs.error.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: cs.error),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    monthlyBudget <
+                            targets.fold<int>(
+                              0,
+                              (a, t) => a + t.minPaymentCents,
+                            )
+                        ? 'Your monthly budget doesn\'t cover the sum of '
+                              'minimum payments. Edit the plan to increase '
+                              'the budget.'
+                        : 'At this budget, at least one debt isn\'t paid off '
+                              'within the 50-year simulation horizon.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─── Sub-widgets ──────────────────────────────────────────────────────────────
+
+/// Three-tile header: debt-free date, total interest paid, total paid.
+/// Wraps to two rows on narrow screens so amounts don't get squeezed
+/// to ellipsis.
+class _DebtSummaryHeader extends StatelessWidget {
+  const _DebtSummaryHeader({
+    required this.result,
+    required this.strategy,
+    required this.monthlyBudget,
+    required this.accent,
+  });
+  final MultiDebtPayoffResult result;
+  final DebtPayoffStrategy strategy;
+  final int monthlyBudget;
+  final Color accent;
+
+  String _strategyLabel(DebtPayoffStrategy s) => switch (s) {
+    DebtPayoffStrategy.avalanche => 'Avalanche (highest APR first)',
+    DebtPayoffStrategy.snowball => 'Snowball (smallest balance first)',
+    DebtPayoffStrategy.custom => 'Custom (per-debt extras)',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final dateFmt = DateFormat('MMM yyyy');
+    final freeDate = result.debtFreeDate;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _SummaryTile(
+              label: 'Debt-free',
+              value: freeDate != null ? dateFmt.format(freeDate) : '—',
+              color: accent,
+            ),
+            const SizedBox(width: 12),
+            _SummaryTile(
+              label: 'Interest',
+              value: formatCurrency(result.totalInterestCents),
+              color: cs.error,
+            ),
+            const SizedBox(width: 12),
+            _SummaryTile(
+              label: 'Total paid',
+              value: formatCurrency(result.totalPaidCents),
+              color: cs.outline,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${_strategyLabel(strategy)} · ${formatCurrency(monthlyBudget)}/month',
+          style: theme.textTheme.bodySmall?.copyWith(color: cs.outline),
+        ),
+      ],
+    );
+  }
+}
+
+/// Line chart of total outstanding debt across all accounts, summed
+/// per simulated month. One line — the family debt curve.
+class _DebtSummaryChart extends StatelessWidget {
+  const _DebtSummaryChart({required this.result, required this.accent});
+  final MultiDebtPayoffResult result;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    if (result.months.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Text(
+            'No projection — edit the plan to add debts.',
+            style: TextStyle(color: cs.outline),
+          ),
+        ),
+      );
+    }
+    final startTotal = result.startingPrincipals.values.fold<int>(
+      0,
+      (a, b) => a + b,
+    );
+    final spots = <FlSpot>[FlSpot(0, startTotal / 100)];
+    for (var i = 0; i < result.months.length; i++) {
+      final total = result.months[i].balances.values.fold<int>(
+        0,
+        (a, b) => a + b,
+      );
+      spots.add(FlSpot((i + 1).toDouble(), total / 100));
+    }
+    final maxY = (startTotal / 100) * 1.05;
+    final fmt = NumberFormat.compactCurrency(symbol: '\$');
+
+    return SizedBox(
+      height: 220,
+      child: LineChart(
+        LineChartData(
+          minX: 0,
+          maxX: spots.last.x,
+          minY: 0,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: cs.outlineVariant.withValues(alpha: 0.4),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 56,
+                getTitlesWidget: (v, _) => Text(
+                  fmt.format(v),
+                  style: TextStyle(fontSize: 10, color: cs.outline),
+                ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: (spots.last.x / 4).clamp(1, double.infinity),
+                getTitlesWidget: (v, _) => Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '${v.toInt()}mo',
+                    style: TextStyle(fontSize: 10, color: cs.outline),
+                  ),
+                ),
+              ),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: accent,
+              barWidth: 2.5,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: accent.withValues(alpha: 0.1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Per-debt list. Each row shows the starting principal, the
+/// captured APR, total interest paid on that debt, and the month
+/// it clears.
+class _PerDebtList extends StatelessWidget {
+  const _PerDebtList({
+    required this.result,
+    required this.accounts,
+    required this.targets,
+  });
+  final MultiDebtPayoffResult result;
+  final List<Account> accounts;
+  final List<DebtPayoffTarget> targets;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final dateFmt = DateFormat('MMM yyyy');
+
+    // Sum interest per debt across the schedule once, not in the
+    // ListView builder.
+    final interestByDebt = <String, int>{};
+    for (final m in result.months) {
+      for (final entry in m.interest.entries) {
+        interestByDebt[entry.key] =
+            (interestByDebt[entry.key] ?? 0) + entry.value;
+      }
+    }
+
+    return Column(
+      children: [
+        for (final t in targets) ...[
+          _PerDebtRow(
+            account: accounts.where((a) => a.id == t.accountId).firstOrNull,
+            startingPrincipal: result.startingPrincipals[t.accountId] ?? 0,
+            aprBps: t.aprBps,
+            interestPaid: interestByDebt[t.accountId] ?? 0,
+            payoffDate: result.payoffDates[t.accountId],
+            dateFmt: dateFmt,
+            cs: cs,
+            theme: theme,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PerDebtRow extends StatelessWidget {
+  const _PerDebtRow({
+    required this.account,
+    required this.startingPrincipal,
+    required this.aprBps,
+    required this.interestPaid,
+    required this.payoffDate,
+    required this.dateFmt,
+    required this.cs,
+    required this.theme,
+  });
+  final Account? account;
+  final int startingPrincipal;
+  final int aprBps;
+  final int interestPaid;
+  final DateTime? payoffDate;
+  final DateFormat dateFmt;
+  final ColorScheme cs;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = account?.name ?? '(deleted account)';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            account?.accountType.icon ?? Icons.credit_card_outlined,
+            color: cs.outline,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${formatCurrency(startingPrincipal)} · '
+                  '${(aprBps / 100).toStringAsFixed(2)}% APR',
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.outline),
+                ),
+                Text(
+                  'Interest: ${formatCurrency(interestPaid)}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                payoffDate != null ? 'Paid off' : 'Not paid',
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.outline),
+              ),
+              Text(
+                payoffDate != null ? dateFmt.format(payoffDate!) : '—',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

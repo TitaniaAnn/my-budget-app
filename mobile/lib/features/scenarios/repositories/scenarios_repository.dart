@@ -131,6 +131,11 @@ class ScenariosRepository {
   }
 
   /// Creates a new scenario and returns it.
+  ///
+  /// The debt-payoff fields ([kind], [debtPayoffTargets],
+  /// [debtPayoffStrategy], [debtPayoffMonthlyBudgetCents]) are NULL for
+  /// general scenarios; the app — not a SQL CHECK — enforces the
+  /// kind→fields mapping (see migration 042 rationale).
   Future<Scenario> createScenario({
     required String householdId,
     required String createdBy,
@@ -141,6 +146,10 @@ class ScenariosRepository {
     int? targetAmount,
     DateTime? targetDate,
     DateTime? baseDate,
+    ScenarioKind kind = ScenarioKind.general,
+    List<DebtPayoffTarget>? debtPayoffTargets,
+    DebtPayoffStrategy? debtPayoffStrategy,
+    int? debtPayoffMonthlyBudgetCents,
   }) async {
     final data = await supabase
         .from('scenarios')
@@ -158,13 +167,25 @@ class ScenariosRepository {
           'is_goal': isGoal,
           'target_amount': ?targetAmount,
           'target_date': ?targetDate?.toIso8601String().substring(0, 10),
+          'kind': switch (kind) {
+            ScenarioKind.general => 'general',
+            ScenarioKind.debtPayoff => 'debt_payoff',
+          },
+          'debt_payoff_targets': ?debtPayoffTargets
+              ?.map((t) => t.toJson())
+              .toList(),
+          'debt_payoff_strategy': ?debtPayoffStrategy?.name,
+          'debt_payoff_monthly_budget_cents': ?debtPayoffMonthlyBudgetCents,
         })
         .select()
         .single();
     return Scenario.fromJson(data);
   }
 
-  /// Updates scenario metadata.
+  /// Updates scenario metadata. Debt-payoff fields use sentinel
+  /// `Object()` to distinguish "leave unchanged" (default) from
+  /// "set to null" (caller passes `null`) — the conditional-map
+  /// `?value` operator can't express the latter.
   Future<Scenario> updateScenario({
     required String scenarioId,
     String? name,
@@ -173,6 +194,9 @@ class ScenariosRepository {
     bool? isGoal,
     int? targetAmount,
     DateTime? targetDate,
+    List<DebtPayoffTarget>? debtPayoffTargets,
+    DebtPayoffStrategy? debtPayoffStrategy,
+    int? debtPayoffMonthlyBudgetCents,
   }) async {
     final data = await supabase
         .from('scenarios')
@@ -183,6 +207,11 @@ class ScenariosRepository {
           'is_goal': ?isGoal,
           'target_amount': ?targetAmount,
           'target_date': ?targetDate?.toIso8601String().substring(0, 10),
+          'debt_payoff_targets': ?debtPayoffTargets
+              ?.map((t) => t.toJson())
+              .toList(),
+          'debt_payoff_strategy': ?debtPayoffStrategy?.name,
+          'debt_payoff_monthly_budget_cents': ?debtPayoffMonthlyBudgetCents,
         })
         .eq('id', scenarioId)
         .select()
