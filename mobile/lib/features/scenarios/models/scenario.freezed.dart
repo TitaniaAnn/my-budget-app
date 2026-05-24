@@ -15,6 +15,304 @@ final _privateConstructorUsedError = UnsupportedError(
   'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
 );
 
+DebtPayoffTarget _$DebtPayoffTargetFromJson(Map<String, dynamic> json) {
+  return _DebtPayoffTarget.fromJson(json);
+}
+
+/// @nodoc
+mixin _$DebtPayoffTarget {
+  /// References accounts.id. The simulator snapshots the
+  /// account's current_balance at plan-creation time below;
+  /// the account_id is kept so the UI can resolve the name +
+  /// honour deletes (a target whose account is gone is
+  /// silently dropped from the projection).
+  @JsonKey(name: 'account_id')
+  String get accountId => throw _privateConstructorUsedError;
+
+  /// Minimum required payment per month (cents). Auto-computed
+  /// at creation time from balance + APR; the user can override
+  /// to match their actual statement minimum.
+  @JsonKey(name: 'min_payment_cents')
+  int get minPaymentCents => throw _privateConstructorUsedError;
+
+  /// APR in basis points. Captured per-target so a saved plan
+  /// stays stable if the account's interest_rate changes — same
+  /// reasoning as scenario_events.payoff_apr_bps.
+  @JsonKey(name: 'apr_bps')
+  int get aprBps => throw _privateConstructorUsedError;
+
+  /// For [DebtPayoffStrategy.custom]: extra-over-minimum to
+  /// pay on this debt each month. Null/zero on avalanche or
+  /// snowball strategies (the simulator computes extras itself).
+  @JsonKey(name: 'extra_payment_cents')
+  int? get extraPaymentCents => throw _privateConstructorUsedError;
+
+  /// Serializes this DebtPayoffTarget to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of DebtPayoffTarget
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $DebtPayoffTargetCopyWith<DebtPayoffTarget> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $DebtPayoffTargetCopyWith<$Res> {
+  factory $DebtPayoffTargetCopyWith(
+    DebtPayoffTarget value,
+    $Res Function(DebtPayoffTarget) then,
+  ) = _$DebtPayoffTargetCopyWithImpl<$Res, DebtPayoffTarget>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'account_id') String accountId,
+    @JsonKey(name: 'min_payment_cents') int minPaymentCents,
+    @JsonKey(name: 'apr_bps') int aprBps,
+    @JsonKey(name: 'extra_payment_cents') int? extraPaymentCents,
+  });
+}
+
+/// @nodoc
+class _$DebtPayoffTargetCopyWithImpl<$Res, $Val extends DebtPayoffTarget>
+    implements $DebtPayoffTargetCopyWith<$Res> {
+  _$DebtPayoffTargetCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of DebtPayoffTarget
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? accountId = null,
+    Object? minPaymentCents = null,
+    Object? aprBps = null,
+    Object? extraPaymentCents = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            accountId: null == accountId
+                ? _value.accountId
+                : accountId // ignore: cast_nullable_to_non_nullable
+                      as String,
+            minPaymentCents: null == minPaymentCents
+                ? _value.minPaymentCents
+                : minPaymentCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            aprBps: null == aprBps
+                ? _value.aprBps
+                : aprBps // ignore: cast_nullable_to_non_nullable
+                      as int,
+            extraPaymentCents: freezed == extraPaymentCents
+                ? _value.extraPaymentCents
+                : extraPaymentCents // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$DebtPayoffTargetImplCopyWith<$Res>
+    implements $DebtPayoffTargetCopyWith<$Res> {
+  factory _$$DebtPayoffTargetImplCopyWith(
+    _$DebtPayoffTargetImpl value,
+    $Res Function(_$DebtPayoffTargetImpl) then,
+  ) = __$$DebtPayoffTargetImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'account_id') String accountId,
+    @JsonKey(name: 'min_payment_cents') int minPaymentCents,
+    @JsonKey(name: 'apr_bps') int aprBps,
+    @JsonKey(name: 'extra_payment_cents') int? extraPaymentCents,
+  });
+}
+
+/// @nodoc
+class __$$DebtPayoffTargetImplCopyWithImpl<$Res>
+    extends _$DebtPayoffTargetCopyWithImpl<$Res, _$DebtPayoffTargetImpl>
+    implements _$$DebtPayoffTargetImplCopyWith<$Res> {
+  __$$DebtPayoffTargetImplCopyWithImpl(
+    _$DebtPayoffTargetImpl _value,
+    $Res Function(_$DebtPayoffTargetImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of DebtPayoffTarget
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? accountId = null,
+    Object? minPaymentCents = null,
+    Object? aprBps = null,
+    Object? extraPaymentCents = freezed,
+  }) {
+    return _then(
+      _$DebtPayoffTargetImpl(
+        accountId: null == accountId
+            ? _value.accountId
+            : accountId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        minPaymentCents: null == minPaymentCents
+            ? _value.minPaymentCents
+            : minPaymentCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        aprBps: null == aprBps
+            ? _value.aprBps
+            : aprBps // ignore: cast_nullable_to_non_nullable
+                  as int,
+        extraPaymentCents: freezed == extraPaymentCents
+            ? _value.extraPaymentCents
+            : extraPaymentCents // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$DebtPayoffTargetImpl implements _DebtPayoffTarget {
+  const _$DebtPayoffTargetImpl({
+    @JsonKey(name: 'account_id') required this.accountId,
+    @JsonKey(name: 'min_payment_cents') required this.minPaymentCents,
+    @JsonKey(name: 'apr_bps') required this.aprBps,
+    @JsonKey(name: 'extra_payment_cents') this.extraPaymentCents,
+  });
+
+  factory _$DebtPayoffTargetImpl.fromJson(Map<String, dynamic> json) =>
+      _$$DebtPayoffTargetImplFromJson(json);
+
+  /// References accounts.id. The simulator snapshots the
+  /// account's current_balance at plan-creation time below;
+  /// the account_id is kept so the UI can resolve the name +
+  /// honour deletes (a target whose account is gone is
+  /// silently dropped from the projection).
+  @override
+  @JsonKey(name: 'account_id')
+  final String accountId;
+
+  /// Minimum required payment per month (cents). Auto-computed
+  /// at creation time from balance + APR; the user can override
+  /// to match their actual statement minimum.
+  @override
+  @JsonKey(name: 'min_payment_cents')
+  final int minPaymentCents;
+
+  /// APR in basis points. Captured per-target so a saved plan
+  /// stays stable if the account's interest_rate changes — same
+  /// reasoning as scenario_events.payoff_apr_bps.
+  @override
+  @JsonKey(name: 'apr_bps')
+  final int aprBps;
+
+  /// For [DebtPayoffStrategy.custom]: extra-over-minimum to
+  /// pay on this debt each month. Null/zero on avalanche or
+  /// snowball strategies (the simulator computes extras itself).
+  @override
+  @JsonKey(name: 'extra_payment_cents')
+  final int? extraPaymentCents;
+
+  @override
+  String toString() {
+    return 'DebtPayoffTarget(accountId: $accountId, minPaymentCents: $minPaymentCents, aprBps: $aprBps, extraPaymentCents: $extraPaymentCents)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DebtPayoffTargetImpl &&
+            (identical(other.accountId, accountId) ||
+                other.accountId == accountId) &&
+            (identical(other.minPaymentCents, minPaymentCents) ||
+                other.minPaymentCents == minPaymentCents) &&
+            (identical(other.aprBps, aprBps) || other.aprBps == aprBps) &&
+            (identical(other.extraPaymentCents, extraPaymentCents) ||
+                other.extraPaymentCents == extraPaymentCents));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    accountId,
+    minPaymentCents,
+    aprBps,
+    extraPaymentCents,
+  );
+
+  /// Create a copy of DebtPayoffTarget
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DebtPayoffTargetImplCopyWith<_$DebtPayoffTargetImpl> get copyWith =>
+      __$$DebtPayoffTargetImplCopyWithImpl<_$DebtPayoffTargetImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$DebtPayoffTargetImplToJson(this);
+  }
+}
+
+abstract class _DebtPayoffTarget implements DebtPayoffTarget {
+  const factory _DebtPayoffTarget({
+    @JsonKey(name: 'account_id') required final String accountId,
+    @JsonKey(name: 'min_payment_cents') required final int minPaymentCents,
+    @JsonKey(name: 'apr_bps') required final int aprBps,
+    @JsonKey(name: 'extra_payment_cents') final int? extraPaymentCents,
+  }) = _$DebtPayoffTargetImpl;
+
+  factory _DebtPayoffTarget.fromJson(Map<String, dynamic> json) =
+      _$DebtPayoffTargetImpl.fromJson;
+
+  /// References accounts.id. The simulator snapshots the
+  /// account's current_balance at plan-creation time below;
+  /// the account_id is kept so the UI can resolve the name +
+  /// honour deletes (a target whose account is gone is
+  /// silently dropped from the projection).
+  @override
+  @JsonKey(name: 'account_id')
+  String get accountId;
+
+  /// Minimum required payment per month (cents). Auto-computed
+  /// at creation time from balance + APR; the user can override
+  /// to match their actual statement minimum.
+  @override
+  @JsonKey(name: 'min_payment_cents')
+  int get minPaymentCents;
+
+  /// APR in basis points. Captured per-target so a saved plan
+  /// stays stable if the account's interest_rate changes — same
+  /// reasoning as scenario_events.payoff_apr_bps.
+  @override
+  @JsonKey(name: 'apr_bps')
+  int get aprBps;
+
+  /// For [DebtPayoffStrategy.custom]: extra-over-minimum to
+  /// pay on this debt each month. Null/zero on avalanche or
+  /// snowball strategies (the simulator computes extras itself).
+  @override
+  @JsonKey(name: 'extra_payment_cents')
+  int? get extraPaymentCents;
+
+  /// Create a copy of DebtPayoffTarget
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$DebtPayoffTargetImplCopyWith<_$DebtPayoffTargetImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
 Scenario _$ScenarioFromJson(Map<String, dynamic> json) {
   return _Scenario.fromJson(json);
 }
@@ -50,6 +348,28 @@ mixin _$Scenario {
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
+  /// Which kind of scenario this is. Defaults to general so
+  /// existing rows (where the column has the SQL default) decode
+  /// cleanly. See [ScenarioKind] for the semantics.
+  ScenarioKind get kind => throw _privateConstructorUsedError;
+
+  /// Debt-payoff target list. Null for kind=general. The freezed
+  /// JSON converter handles the JSONB column directly.
+  @JsonKey(name: 'debt_payoff_targets')
+  List<DebtPayoffTarget>? get debtPayoffTargets =>
+      throw _privateConstructorUsedError;
+
+  /// Strategy for allocating extra-over-minimum payment across
+  /// the targets. Null for kind=general.
+  @JsonKey(name: 'debt_payoff_strategy')
+  DebtPayoffStrategy? get debtPayoffStrategy =>
+      throw _privateConstructorUsedError;
+
+  /// Total monthly $ the user is committing across all debts in
+  /// the plan (cents). Null for kind=general.
+  @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+  int? get debtPayoffMonthlyBudgetCents => throw _privateConstructorUsedError;
+
   /// Serializes this Scenario to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -80,6 +400,13 @@ abstract class $ScenarioCopyWith<$Res> {
     DateTime? targetDate,
     DateTime createdAt,
     DateTime updatedAt,
+    ScenarioKind kind,
+    @JsonKey(name: 'debt_payoff_targets')
+    List<DebtPayoffTarget>? debtPayoffTargets,
+    @JsonKey(name: 'debt_payoff_strategy')
+    DebtPayoffStrategy? debtPayoffStrategy,
+    @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+    int? debtPayoffMonthlyBudgetCents,
   });
 }
 
@@ -112,6 +439,10 @@ class _$ScenarioCopyWithImpl<$Res, $Val extends Scenario>
     Object? targetDate = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? kind = null,
+    Object? debtPayoffTargets = freezed,
+    Object? debtPayoffStrategy = freezed,
+    Object? debtPayoffMonthlyBudgetCents = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -171,6 +502,23 @@ class _$ScenarioCopyWithImpl<$Res, $Val extends Scenario>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime,
+            kind: null == kind
+                ? _value.kind
+                : kind // ignore: cast_nullable_to_non_nullable
+                      as ScenarioKind,
+            debtPayoffTargets: freezed == debtPayoffTargets
+                ? _value.debtPayoffTargets
+                : debtPayoffTargets // ignore: cast_nullable_to_non_nullable
+                      as List<DebtPayoffTarget>?,
+            debtPayoffStrategy: freezed == debtPayoffStrategy
+                ? _value.debtPayoffStrategy
+                : debtPayoffStrategy // ignore: cast_nullable_to_non_nullable
+                      as DebtPayoffStrategy?,
+            debtPayoffMonthlyBudgetCents:
+                freezed == debtPayoffMonthlyBudgetCents
+                ? _value.debtPayoffMonthlyBudgetCents
+                : debtPayoffMonthlyBudgetCents // ignore: cast_nullable_to_non_nullable
+                      as int?,
           )
           as $Val,
     );
@@ -201,6 +549,13 @@ abstract class _$$ScenarioImplCopyWith<$Res>
     DateTime? targetDate,
     DateTime createdAt,
     DateTime updatedAt,
+    ScenarioKind kind,
+    @JsonKey(name: 'debt_payoff_targets')
+    List<DebtPayoffTarget>? debtPayoffTargets,
+    @JsonKey(name: 'debt_payoff_strategy')
+    DebtPayoffStrategy? debtPayoffStrategy,
+    @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+    int? debtPayoffMonthlyBudgetCents,
   });
 }
 
@@ -232,6 +587,10 @@ class __$$ScenarioImplCopyWithImpl<$Res>
     Object? targetDate = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? kind = null,
+    Object? debtPayoffTargets = freezed,
+    Object? debtPayoffStrategy = freezed,
+    Object? debtPayoffMonthlyBudgetCents = freezed,
   }) {
     return _then(
       _$ScenarioImpl(
@@ -291,6 +650,22 @@ class __$$ScenarioImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime,
+        kind: null == kind
+            ? _value.kind
+            : kind // ignore: cast_nullable_to_non_nullable
+                  as ScenarioKind,
+        debtPayoffTargets: freezed == debtPayoffTargets
+            ? _value._debtPayoffTargets
+            : debtPayoffTargets // ignore: cast_nullable_to_non_nullable
+                  as List<DebtPayoffTarget>?,
+        debtPayoffStrategy: freezed == debtPayoffStrategy
+            ? _value.debtPayoffStrategy
+            : debtPayoffStrategy // ignore: cast_nullable_to_non_nullable
+                  as DebtPayoffStrategy?,
+        debtPayoffMonthlyBudgetCents: freezed == debtPayoffMonthlyBudgetCents
+            ? _value.debtPayoffMonthlyBudgetCents
+            : debtPayoffMonthlyBudgetCents // ignore: cast_nullable_to_non_nullable
+                  as int?,
       ),
     );
   }
@@ -314,7 +689,13 @@ class _$ScenarioImpl implements _Scenario {
     this.targetDate,
     required this.createdAt,
     required this.updatedAt,
-  });
+    this.kind = ScenarioKind.general,
+    @JsonKey(name: 'debt_payoff_targets')
+    final List<DebtPayoffTarget>? debtPayoffTargets,
+    @JsonKey(name: 'debt_payoff_strategy') this.debtPayoffStrategy,
+    @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+    this.debtPayoffMonthlyBudgetCents,
+  }) : _debtPayoffTargets = debtPayoffTargets;
 
   factory _$ScenarioImpl.fromJson(Map<String, dynamic> json) =>
       _$$ScenarioImplFromJson(json);
@@ -362,9 +743,45 @@ class _$ScenarioImpl implements _Scenario {
   @override
   final DateTime updatedAt;
 
+  /// Which kind of scenario this is. Defaults to general so
+  /// existing rows (where the column has the SQL default) decode
+  /// cleanly. See [ScenarioKind] for the semantics.
+  @override
+  @JsonKey()
+  final ScenarioKind kind;
+
+  /// Debt-payoff target list. Null for kind=general. The freezed
+  /// JSON converter handles the JSONB column directly.
+  final List<DebtPayoffTarget>? _debtPayoffTargets;
+
+  /// Debt-payoff target list. Null for kind=general. The freezed
+  /// JSON converter handles the JSONB column directly.
+  @override
+  @JsonKey(name: 'debt_payoff_targets')
+  List<DebtPayoffTarget>? get debtPayoffTargets {
+    final value = _debtPayoffTargets;
+    if (value == null) return null;
+    if (_debtPayoffTargets is EqualUnmodifiableListView)
+      return _debtPayoffTargets;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  /// Strategy for allocating extra-over-minimum payment across
+  /// the targets. Null for kind=general.
+  @override
+  @JsonKey(name: 'debt_payoff_strategy')
+  final DebtPayoffStrategy? debtPayoffStrategy;
+
+  /// Total monthly $ the user is committing across all debts in
+  /// the plan (cents). Null for kind=general.
+  @override
+  @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+  final int? debtPayoffMonthlyBudgetCents;
+
   @override
   String toString() {
-    return 'Scenario(id: $id, householdId: $householdId, createdBy: $createdBy, parentId: $parentId, name: $name, description: $description, baseDate: $baseDate, isBaseline: $isBaseline, color: $color, isGoal: $isGoal, targetAmount: $targetAmount, targetDate: $targetDate, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Scenario(id: $id, householdId: $householdId, createdBy: $createdBy, parentId: $parentId, name: $name, description: $description, baseDate: $baseDate, isBaseline: $isBaseline, color: $color, isGoal: $isGoal, targetAmount: $targetAmount, targetDate: $targetDate, createdAt: $createdAt, updatedAt: $updatedAt, kind: $kind, debtPayoffTargets: $debtPayoffTargets, debtPayoffStrategy: $debtPayoffStrategy, debtPayoffMonthlyBudgetCents: $debtPayoffMonthlyBudgetCents)';
   }
 
   @override
@@ -395,7 +812,20 @@ class _$ScenarioImpl implements _Scenario {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.kind, kind) || other.kind == kind) &&
+            const DeepCollectionEquality().equals(
+              other._debtPayoffTargets,
+              _debtPayoffTargets,
+            ) &&
+            (identical(other.debtPayoffStrategy, debtPayoffStrategy) ||
+                other.debtPayoffStrategy == debtPayoffStrategy) &&
+            (identical(
+                  other.debtPayoffMonthlyBudgetCents,
+                  debtPayoffMonthlyBudgetCents,
+                ) ||
+                other.debtPayoffMonthlyBudgetCents ==
+                    debtPayoffMonthlyBudgetCents));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -416,6 +846,10 @@ class _$ScenarioImpl implements _Scenario {
     targetDate,
     createdAt,
     updatedAt,
+    kind,
+    const DeepCollectionEquality().hash(_debtPayoffTargets),
+    debtPayoffStrategy,
+    debtPayoffMonthlyBudgetCents,
   );
 
   /// Create a copy of Scenario
@@ -448,6 +882,13 @@ abstract class _Scenario implements Scenario {
     final DateTime? targetDate,
     required final DateTime createdAt,
     required final DateTime updatedAt,
+    final ScenarioKind kind,
+    @JsonKey(name: 'debt_payoff_targets')
+    final List<DebtPayoffTarget>? debtPayoffTargets,
+    @JsonKey(name: 'debt_payoff_strategy')
+    final DebtPayoffStrategy? debtPayoffStrategy,
+    @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+    final int? debtPayoffMonthlyBudgetCents,
   }) = _$ScenarioImpl;
 
   factory _Scenario.fromJson(Map<String, dynamic> json) =
@@ -495,6 +936,30 @@ abstract class _Scenario implements Scenario {
   DateTime get createdAt;
   @override
   DateTime get updatedAt;
+
+  /// Which kind of scenario this is. Defaults to general so
+  /// existing rows (where the column has the SQL default) decode
+  /// cleanly. See [ScenarioKind] for the semantics.
+  @override
+  ScenarioKind get kind;
+
+  /// Debt-payoff target list. Null for kind=general. The freezed
+  /// JSON converter handles the JSONB column directly.
+  @override
+  @JsonKey(name: 'debt_payoff_targets')
+  List<DebtPayoffTarget>? get debtPayoffTargets;
+
+  /// Strategy for allocating extra-over-minimum payment across
+  /// the targets. Null for kind=general.
+  @override
+  @JsonKey(name: 'debt_payoff_strategy')
+  DebtPayoffStrategy? get debtPayoffStrategy;
+
+  /// Total monthly $ the user is committing across all debts in
+  /// the plan (cents). Null for kind=general.
+  @override
+  @JsonKey(name: 'debt_payoff_monthly_budget_cents')
+  int? get debtPayoffMonthlyBudgetCents;
 
   /// Create a copy of Scenario
   /// with the given fields replaced by the non-null parameter values.

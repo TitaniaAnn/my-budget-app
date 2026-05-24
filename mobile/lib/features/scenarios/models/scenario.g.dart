@@ -6,6 +6,24 @@ part of 'scenario.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_$DebtPayoffTargetImpl _$$DebtPayoffTargetImplFromJson(
+  Map<String, dynamic> json,
+) => _$DebtPayoffTargetImpl(
+  accountId: json['account_id'] as String,
+  minPaymentCents: (json['min_payment_cents'] as num).toInt(),
+  aprBps: (json['apr_bps'] as num).toInt(),
+  extraPaymentCents: (json['extra_payment_cents'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$$DebtPayoffTargetImplToJson(
+  _$DebtPayoffTargetImpl instance,
+) => <String, dynamic>{
+  'account_id': instance.accountId,
+  'min_payment_cents': instance.minPaymentCents,
+  'apr_bps': instance.aprBps,
+  'extra_payment_cents': instance.extraPaymentCents,
+};
+
 _$ScenarioImpl _$$ScenarioImplFromJson(Map<String, dynamic> json) =>
     _$ScenarioImpl(
       id: json['id'] as String,
@@ -24,6 +42,18 @@ _$ScenarioImpl _$$ScenarioImplFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['target_date'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      kind:
+          $enumDecodeNullable(_$ScenarioKindEnumMap, json['kind']) ??
+          ScenarioKind.general,
+      debtPayoffTargets: (json['debt_payoff_targets'] as List<dynamic>?)
+          ?.map((e) => DebtPayoffTarget.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      debtPayoffStrategy: $enumDecodeNullable(
+        _$DebtPayoffStrategyEnumMap,
+        json['debt_payoff_strategy'],
+      ),
+      debtPayoffMonthlyBudgetCents:
+          (json['debt_payoff_monthly_budget_cents'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$$ScenarioImplToJson(_$ScenarioImpl instance) =>
@@ -42,4 +72,22 @@ Map<String, dynamic> _$$ScenarioImplToJson(_$ScenarioImpl instance) =>
       'target_date': instance.targetDate?.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
+      'kind': _$ScenarioKindEnumMap[instance.kind]!,
+      'debt_payoff_targets': instance.debtPayoffTargets
+          ?.map((e) => e.toJson())
+          .toList(),
+      'debt_payoff_strategy':
+          _$DebtPayoffStrategyEnumMap[instance.debtPayoffStrategy],
+      'debt_payoff_monthly_budget_cents': instance.debtPayoffMonthlyBudgetCents,
     };
+
+const _$ScenarioKindEnumMap = {
+  ScenarioKind.general: 'general',
+  ScenarioKind.debtPayoff: 'debt_payoff',
+};
+
+const _$DebtPayoffStrategyEnumMap = {
+  DebtPayoffStrategy.avalanche: 'avalanche',
+  DebtPayoffStrategy.snowball: 'snowball',
+  DebtPayoffStrategy.custom: 'custom',
+};

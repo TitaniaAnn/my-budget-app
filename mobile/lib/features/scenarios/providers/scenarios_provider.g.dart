@@ -26,7 +26,7 @@ final scenariosProvider = AutoDisposeFutureProvider<List<Scenario>>.internal(
 // ignore: unused_element
 typedef ScenariosRef = AutoDisposeFutureProviderRef<List<Scenario>>;
 String _$scenarioCardSummaryHash() =>
-    r'fb7c04fa9593a8c2a4e4decdd1730e732a397deb';
+    r'28aa2cf759760cd886068e99548f2c73b5cd4992';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -286,7 +286,7 @@ class _ScenarioCardSummaryProviderElement
   String get scenarioId => (origin as ScenarioCardSummaryProvider).scenarioId;
 }
 
-String _$scenarioDetailHash() => r'c70cc386c151485e4e3721ad46facce066b67ed7';
+String _$scenarioDetailHash() => r'73eabf2346ded4d7a1ac44b380afa43b9647cb57';
 
 /// Full detail for a single scenario: events + projection.
 ///
