@@ -23,14 +23,22 @@ class AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCreditCard = account.accountType == AccountType.creditCard;
-    // Liability balances are stored as negative cents but shown as the
-    // magnitude owed ("$500.00" rather than "-$500.00").
+    // Liability balances are stored as negative cents (debt) but
+    // shown as the magnitude. A CC with currentBalance > 0 is in
+    // CREDIT territory (post-overpayment / refund) — the label and
+    // colour need to flip, same fix as AccountDetailScreen.
     final isLiability = account.accountType.isLiability;
     final balance = account.currentBalance;
+    final inCredit = isLiability && balance > 0;
     final displayCents = isLiability ? balance.abs() : balance;
     final limit = account.creditLimit;
-    final utilization = isCreditCard && limit != null && limit > 0
-        ? creditUtilization(balance.abs(), limit)
+    // Signed credit-utilisation percentage: positive when in debt
+    // (standard), negative when in credit (visualises "headroom
+    // below zero"). The bar clamps at 0..1 so negative empties it;
+    // the label still shows the signed percentage so the credit
+    // position is visible.
+    final signedUtilization = isCreditCard && limit != null && limit > 0
+        ? -balance / limit * 100
         : null;
 
     final colors = context.appColors;
@@ -93,7 +101,12 @@ class AccountCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
-                          color: isLiability
+                          // CC in credit territory shows the income
+                          // colour (bank owes user), debt shows
+                          // expense, asset accounts use sign vs zero.
+                          color: inCredit
+                              ? colors.income
+                              : isLiability
                               ? colors.expense
                               : balance >= 0
                               ? context.cs.onSurface
@@ -112,7 +125,7 @@ class AccountCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (utilization != null) ...[
+              if (signedUtilization != null) ...[
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -120,13 +133,16 @@ class AccountCard extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: (utilization / 100).clamp(0, 1),
+                          // Negative utilisation (credit balance)
+                          // clamps to 0 — bar empties; signed % in
+                          // the label tells the story.
+                          value: (signedUtilization / 100).clamp(0, 1),
                           minHeight: 4,
                           backgroundColor: Theme.of(context).dividerColor,
                           valueColor: AlwaysStoppedAnimation(
-                            utilization > 80
+                            signedUtilization > 80
                                 ? colors.expense
-                                : utilization > 50
+                                : signedUtilization > 50
                                 ? colors.warning
                                 : colors.income,
                           ),
@@ -135,7 +151,7 @@ class AccountCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${utilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
+                      '${signedUtilization.toStringAsFixed(0)}% of ${formatCurrency(limit!)}',
                       style: TextStyle(fontSize: 11, color: colors.textSubtle),
                     ),
                   ],
