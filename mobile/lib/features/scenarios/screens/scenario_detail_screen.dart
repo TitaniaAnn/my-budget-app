@@ -883,8 +883,11 @@ class _DebtPayoffBodyState extends ConsumerState<_DebtPayoffBody> {
         const SizedBox(height: 16),
         if (_view == _DebtView.summary)
           _DebtSummaryChart(result: result, accent: widget.accent)
-        else
+        else ...[
+          _PerDebtChart(result: result, accounts: accounts, targets: targets),
+          const SizedBox(height: 16),
           _PerDebtList(result: result, accounts: accounts, targets: targets),
+        ],
         const SizedBox(height: 20),
         _OneOffSection(
           scenario: scenario,
@@ -1216,6 +1219,204 @@ class _DebtSummaryChart extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Distinct colors cycled across debt lines in [_PerDebtChart].
+/// Eight slots — a household with more debts than this is rare;
+/// extras wrap around and rely on the legend to disambiguate.
+const _perDebtPalette = <Color>[
+  Color(0xFF6366F1), // indigo
+  Color(0xFF22C55E), // green
+  Color(0xFFEF4444), // red
+  Color(0xFFF59E0B), // amber
+  Color(0xFF3B82F6), // blue
+  Color(0xFFEC4899), // pink
+  Color(0xFF14B8A6), // teal
+  Color(0xFFF97316), // orange
+];
+
+/// Multi-line chart showing each debt's remaining principal over
+/// the simulated months — one line per debt. Renders the family
+/// payoff race in a single view: the user can see which debt
+/// clears first, the slope of the rest, and where the lines fall
+/// off as each debt zeroes.
+///
+/// X-axis: months from now. Y-axis: dollars. Colors cycle through
+/// [_perDebtPalette]; the legend below the chart pairs each color
+/// with its account name so a debt without a custom account color
+/// is still identifiable.
+class _PerDebtChart extends StatelessWidget {
+  const _PerDebtChart({
+    required this.result,
+    required this.accounts,
+    required this.targets,
+  });
+  final MultiDebtPayoffResult result;
+  final List<Account> accounts;
+  final List<DebtPayoffTarget> targets;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    if (result.months.isEmpty || targets.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Walk in target order so colors stay stable across renders
+    // (the simulator's `balances` map keying-by-id has no order).
+    final lines = <_PerDebtLine>[];
+    for (var i = 0; i < targets.length; i++) {
+      final t = targets[i];
+      final start = result.startingPrincipals[t.accountId];
+      if (start == null) continue; // dropped at sim start (zero balance)
+      final spots = <FlSpot>[FlSpot(0, start / 100)];
+      for (var m = 0; m < result.months.length; m++) {
+        final bal = result.months[m].balances[t.accountId] ?? 0;
+        spots.add(FlSpot((m + 1).toDouble(), bal / 100));
+      }
+      final acct = accounts.where((a) => a.id == t.accountId).firstOrNull;
+      lines.add(
+        _PerDebtLine(
+          name: acct?.name ?? '(deleted)',
+          color: _perDebtPalette[lines.length % _perDebtPalette.length],
+          spots: spots,
+        ),
+      );
+    }
+    if (lines.isEmpty) return const SizedBox.shrink();
+
+    final maxX = lines.first.spots.last.x;
+    final maxY =
+        lines
+            .expand((l) => l.spots.map((s) => s.y))
+            .fold<double>(0, (a, b) => a > b ? a : b) *
+        1.05;
+    final fmt = NumberFormat.compactCurrency(symbol: '\$');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 220,
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: maxX,
+              minY: 0,
+              maxY: maxY,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: cs.outlineVariant.withValues(alpha: 0.4),
+                  strokeWidth: 1,
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 56,
+                    getTitlesWidget: (v, _) => Text(
+                      fmt.format(v),
+                      style: TextStyle(fontSize: 10, color: cs.outline),
+                    ),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: (maxX / 4).clamp(1, double.infinity),
+                    getTitlesWidget: (v, _) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${v.toInt()}mo',
+                        style: TextStyle(fontSize: 10, color: cs.outline),
+                      ),
+                    ),
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              lineBarsData: [
+                for (final line in lines)
+                  LineChartBarData(
+                    spots: line.spots,
+                    isCurved: false,
+                    color: line.color,
+                    barWidth: 2,
+                    dotData: const FlDotData(show: false),
+                  ),
+              ],
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
+                    final line = lines[s.barIndex];
+                    return LineTooltipItem(
+                      '${line.name}\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            for (final line in lines)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: line.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    line.name,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.outline,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Internal helper bundling a per-debt line's name + color + points
+/// so the build method doesn't juggle three parallel lists.
+class _PerDebtLine {
+  const _PerDebtLine({
+    required this.name,
+    required this.color,
+    required this.spots,
+  });
+  final String name;
+  final Color color;
+  final List<FlSpot> spots;
 }
 
 /// Per-debt list. Each row shows the starting principal, the
