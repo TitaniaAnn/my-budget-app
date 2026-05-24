@@ -344,6 +344,158 @@ void main() {
     });
   });
 
+  group('simulateMultiDebtPayoff — one-off payments', () {
+    test('untargeted lump-sum joins that month\'s extra budget', () {
+      // Two debts, avalanche, $50 extra/month base budget. A $200
+      // untargeted lump-sum in month 2 should land on the highest-
+      // APR debt (B) on top of the normal extra. Compare to a
+      // baseline run with no lump-sum.
+      final base = simulateMultiDebtPayoff(
+        targets: [
+          _t('A', minPaymentCents: 2500, aprBps: 500),
+          _t('B', minPaymentCents: 2500, aprBps: 2400),
+        ],
+        startingPrincipals: const {'A': 200000, 'B': 200000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000, // $50 mins + $50 extra
+        startDate: start,
+        maxMonths: 6,
+      );
+      final withLump = simulateMultiDebtPayoff(
+        targets: [
+          _t('A', minPaymentCents: 2500, aprBps: 500),
+          _t('B', minPaymentCents: 2500, aprBps: 2400),
+        ],
+        startingPrincipals: const {'A': 200000, 'B': 200000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+        oneOffPayments: [
+          OneOffPaymentInput(
+            // Month 2 of the simulation = February 2026.
+            date: DateTime(2026, 2, 15),
+            amountCents: 20000,
+          ),
+        ],
+        maxMonths: 6,
+      );
+      // Month 2 (index 1) of withLump should pay ~$200 more on B
+      // than the baseline did.
+      expect(
+        withLump.months[1].payments['B']! - base.months[1].payments['B']!,
+        20000,
+      );
+      expect(withLump.months[1].payments['A'], base.months[1].payments['A']);
+    });
+
+    test('targeted lump-sum pre-pays its debt regardless of strategy', () {
+      // Avalanche would route extra to B (24% APR). A targeted
+      // lump-sum on A should land on A anyway — strategy bypassed
+      // for that payment.
+      final r = simulateMultiDebtPayoff(
+        targets: [
+          _t('A', minPaymentCents: 2500, aprBps: 500),
+          _t('B', minPaymentCents: 2500, aprBps: 2400),
+        ],
+        startingPrincipals: const {'A': 200000, 'B': 200000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+        oneOffPayments: [
+          OneOffPaymentInput(
+            date: DateTime(2026, 2, 15),
+            amountCents: 20000,
+            accountId: 'A',
+          ),
+        ],
+        maxMonths: 6,
+      );
+      // Month 2 payment on A = $25 min + $200 targeted = $225.
+      expect(r.months[1].payments['A'], 22500);
+      // Strategy still routes the $50 leftover extra to B.
+      expect(r.months[1].payments['B'], 7500);
+    });
+
+    test('targeted lump-sum clips against remaining principal', () {
+      // A $5000 lump-sum on a $200 debt overpays by far. The
+      // simulator must clip the payment to the principal and not
+      // drive the balance negative.
+      final r = simulateMultiDebtPayoff(
+        targets: [
+          _t('A', minPaymentCents: 2500, aprBps: 0),
+          _t('B', minPaymentCents: 2500, aprBps: 2400),
+        ],
+        startingPrincipals: const {'A': 20000, 'B': 200000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+        oneOffPayments: [
+          OneOffPaymentInput(
+            date: DateTime(2026, 2, 15),
+            amountCents: 500000,
+            accountId: 'A',
+          ),
+        ],
+        maxMonths: 6,
+      );
+      // After month 1 min, A is at $175. The lump-sum pays the
+      // remaining $175 and stops — no negative balance, no
+      // overflow to B.
+      expect(r.months[1].balances['A'], 0);
+      expect(r.payoffDates['A'], DateTime(2026, 2, 28));
+    });
+
+    test('targeted lump-sum on already-paid debt is a graceful no-op', () {
+      // A clears in 4 months on its own; the lump-sum is scheduled
+      // for month 10. The simulator must not crash, not reflow the
+      // amount into the budget, and not mutate anything.
+      final r = simulateMultiDebtPayoff(
+        targets: [_t('A', minPaymentCents: 10000, aprBps: 0)],
+        startingPrincipals: const {'A': 40000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+        oneOffPayments: [
+          OneOffPaymentInput(
+            date: DateTime(2026, 10, 15),
+            amountCents: 50000,
+            accountId: 'A',
+          ),
+        ],
+        maxMonths: 12,
+      );
+      // A clears in 4 months under its own steam; sim early-exits
+      // before October.
+      expect(r.allPaidOff, isTrue);
+      expect(r.months.length, 4);
+      expect(r.totalPaidCents, 40000);
+    });
+
+    test('zero or negative amount is ignored', () {
+      // Defensive — a stale form state could submit a zero. Sim
+      // should produce the same result as no lump-sum at all.
+      final base = simulateMultiDebtPayoff(
+        targets: [_t('A', minPaymentCents: 10000, aprBps: 0)],
+        startingPrincipals: const {'A': 50000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+      );
+      final withZero = simulateMultiDebtPayoff(
+        targets: [_t('A', minPaymentCents: 10000, aprBps: 0)],
+        startingPrincipals: const {'A': 50000},
+        strategy: DebtPayoffStrategy.avalanche,
+        monthlyBudgetCents: 10000,
+        startDate: start,
+        oneOffPayments: [
+          OneOffPaymentInput(date: DateTime(2026, 3, 1), amountCents: 0),
+        ],
+      );
+      expect(withZero.totalPaidCents, base.totalPaidCents);
+      expect(withZero.months.length, base.months.length);
+    });
+  });
+
   group('recommendedMinPayment', () {
     test('zero principal returns 0', () {
       expect(recommendedMinPayment(principalCents: 0, aprBps: 2000), 0);

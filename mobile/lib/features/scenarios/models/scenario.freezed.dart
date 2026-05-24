@@ -15,6 +15,238 @@ final _privateConstructorUsedError = UnsupportedError(
   'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
 );
 
+OneOffPayment _$OneOffPaymentFromJson(Map<String, dynamic> json) {
+  return _OneOffPayment.fromJson(json);
+}
+
+/// @nodoc
+mixin _$OneOffPayment {
+  /// Calendar date the payment lands. The simulator buckets it
+  /// to the iteration whose monthEnd shares the same year+month.
+  DateTime get date => throw _privateConstructorUsedError;
+
+  /// Magnitude in cents (positive).
+  @JsonKey(name: 'amount_cents')
+  int get amountCents => throw _privateConstructorUsedError;
+
+  /// Optional — when set, the lump-sum pre-pays this specific
+  /// debt (bypasses strategy). Null = strategy-routed.
+  @JsonKey(name: 'account_id')
+  String? get accountId => throw _privateConstructorUsedError;
+
+  /// Serializes this OneOffPayment to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of OneOffPayment
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $OneOffPaymentCopyWith<OneOffPayment> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $OneOffPaymentCopyWith<$Res> {
+  factory $OneOffPaymentCopyWith(
+    OneOffPayment value,
+    $Res Function(OneOffPayment) then,
+  ) = _$OneOffPaymentCopyWithImpl<$Res, OneOffPayment>;
+  @useResult
+  $Res call({
+    DateTime date,
+    @JsonKey(name: 'amount_cents') int amountCents,
+    @JsonKey(name: 'account_id') String? accountId,
+  });
+}
+
+/// @nodoc
+class _$OneOffPaymentCopyWithImpl<$Res, $Val extends OneOffPayment>
+    implements $OneOffPaymentCopyWith<$Res> {
+  _$OneOffPaymentCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of OneOffPayment
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? date = null,
+    Object? amountCents = null,
+    Object? accountId = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            date: null == date
+                ? _value.date
+                : date // ignore: cast_nullable_to_non_nullable
+                      as DateTime,
+            amountCents: null == amountCents
+                ? _value.amountCents
+                : amountCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            accountId: freezed == accountId
+                ? _value.accountId
+                : accountId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$OneOffPaymentImplCopyWith<$Res>
+    implements $OneOffPaymentCopyWith<$Res> {
+  factory _$$OneOffPaymentImplCopyWith(
+    _$OneOffPaymentImpl value,
+    $Res Function(_$OneOffPaymentImpl) then,
+  ) = __$$OneOffPaymentImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    DateTime date,
+    @JsonKey(name: 'amount_cents') int amountCents,
+    @JsonKey(name: 'account_id') String? accountId,
+  });
+}
+
+/// @nodoc
+class __$$OneOffPaymentImplCopyWithImpl<$Res>
+    extends _$OneOffPaymentCopyWithImpl<$Res, _$OneOffPaymentImpl>
+    implements _$$OneOffPaymentImplCopyWith<$Res> {
+  __$$OneOffPaymentImplCopyWithImpl(
+    _$OneOffPaymentImpl _value,
+    $Res Function(_$OneOffPaymentImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of OneOffPayment
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? date = null,
+    Object? amountCents = null,
+    Object? accountId = freezed,
+  }) {
+    return _then(
+      _$OneOffPaymentImpl(
+        date: null == date
+            ? _value.date
+            : date // ignore: cast_nullable_to_non_nullable
+                  as DateTime,
+        amountCents: null == amountCents
+            ? _value.amountCents
+            : amountCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        accountId: freezed == accountId
+            ? _value.accountId
+            : accountId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$OneOffPaymentImpl implements _OneOffPayment {
+  const _$OneOffPaymentImpl({
+    required this.date,
+    @JsonKey(name: 'amount_cents') required this.amountCents,
+    @JsonKey(name: 'account_id') this.accountId,
+  });
+
+  factory _$OneOffPaymentImpl.fromJson(Map<String, dynamic> json) =>
+      _$$OneOffPaymentImplFromJson(json);
+
+  /// Calendar date the payment lands. The simulator buckets it
+  /// to the iteration whose monthEnd shares the same year+month.
+  @override
+  final DateTime date;
+
+  /// Magnitude in cents (positive).
+  @override
+  @JsonKey(name: 'amount_cents')
+  final int amountCents;
+
+  /// Optional — when set, the lump-sum pre-pays this specific
+  /// debt (bypasses strategy). Null = strategy-routed.
+  @override
+  @JsonKey(name: 'account_id')
+  final String? accountId;
+
+  @override
+  String toString() {
+    return 'OneOffPayment(date: $date, amountCents: $amountCents, accountId: $accountId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$OneOffPaymentImpl &&
+            (identical(other.date, date) || other.date == date) &&
+            (identical(other.amountCents, amountCents) ||
+                other.amountCents == amountCents) &&
+            (identical(other.accountId, accountId) ||
+                other.accountId == accountId));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, date, amountCents, accountId);
+
+  /// Create a copy of OneOffPayment
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$OneOffPaymentImplCopyWith<_$OneOffPaymentImpl> get copyWith =>
+      __$$OneOffPaymentImplCopyWithImpl<_$OneOffPaymentImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$OneOffPaymentImplToJson(this);
+  }
+}
+
+abstract class _OneOffPayment implements OneOffPayment {
+  const factory _OneOffPayment({
+    required final DateTime date,
+    @JsonKey(name: 'amount_cents') required final int amountCents,
+    @JsonKey(name: 'account_id') final String? accountId,
+  }) = _$OneOffPaymentImpl;
+
+  factory _OneOffPayment.fromJson(Map<String, dynamic> json) =
+      _$OneOffPaymentImpl.fromJson;
+
+  /// Calendar date the payment lands. The simulator buckets it
+  /// to the iteration whose monthEnd shares the same year+month.
+  @override
+  DateTime get date;
+
+  /// Magnitude in cents (positive).
+  @override
+  @JsonKey(name: 'amount_cents')
+  int get amountCents;
+
+  /// Optional — when set, the lump-sum pre-pays this specific
+  /// debt (bypasses strategy). Null = strategy-routed.
+  @override
+  @JsonKey(name: 'account_id')
+  String? get accountId;
+
+  /// Create a copy of OneOffPayment
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$OneOffPaymentImplCopyWith<_$OneOffPaymentImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
 DebtPayoffTarget _$DebtPayoffTargetFromJson(Map<String, dynamic> json) {
   return _DebtPayoffTarget.fromJson(json);
 }
@@ -370,6 +602,13 @@ mixin _$Scenario {
   @JsonKey(name: 'debt_payoff_monthly_budget_cents')
   int? get debtPayoffMonthlyBudgetCents => throw _privateConstructorUsedError;
 
+  /// Optional list of one-off lump-sum extra payments (tax
+  /// refunds, bonuses). Null for kind=general or until the user
+  /// adds one to a debt-payoff plan. See [OneOffPayment].
+  @JsonKey(name: 'debt_payoff_one_off_payments')
+  List<OneOffPayment>? get debtPayoffOneOffPayments =>
+      throw _privateConstructorUsedError;
+
   /// Serializes this Scenario to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -407,6 +646,8 @@ abstract class $ScenarioCopyWith<$Res> {
     DebtPayoffStrategy? debtPayoffStrategy,
     @JsonKey(name: 'debt_payoff_monthly_budget_cents')
     int? debtPayoffMonthlyBudgetCents,
+    @JsonKey(name: 'debt_payoff_one_off_payments')
+    List<OneOffPayment>? debtPayoffOneOffPayments,
   });
 }
 
@@ -443,6 +684,7 @@ class _$ScenarioCopyWithImpl<$Res, $Val extends Scenario>
     Object? debtPayoffTargets = freezed,
     Object? debtPayoffStrategy = freezed,
     Object? debtPayoffMonthlyBudgetCents = freezed,
+    Object? debtPayoffOneOffPayments = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -519,6 +761,10 @@ class _$ScenarioCopyWithImpl<$Res, $Val extends Scenario>
                 ? _value.debtPayoffMonthlyBudgetCents
                 : debtPayoffMonthlyBudgetCents // ignore: cast_nullable_to_non_nullable
                       as int?,
+            debtPayoffOneOffPayments: freezed == debtPayoffOneOffPayments
+                ? _value.debtPayoffOneOffPayments
+                : debtPayoffOneOffPayments // ignore: cast_nullable_to_non_nullable
+                      as List<OneOffPayment>?,
           )
           as $Val,
     );
@@ -556,6 +802,8 @@ abstract class _$$ScenarioImplCopyWith<$Res>
     DebtPayoffStrategy? debtPayoffStrategy,
     @JsonKey(name: 'debt_payoff_monthly_budget_cents')
     int? debtPayoffMonthlyBudgetCents,
+    @JsonKey(name: 'debt_payoff_one_off_payments')
+    List<OneOffPayment>? debtPayoffOneOffPayments,
   });
 }
 
@@ -591,6 +839,7 @@ class __$$ScenarioImplCopyWithImpl<$Res>
     Object? debtPayoffTargets = freezed,
     Object? debtPayoffStrategy = freezed,
     Object? debtPayoffMonthlyBudgetCents = freezed,
+    Object? debtPayoffOneOffPayments = freezed,
   }) {
     return _then(
       _$ScenarioImpl(
@@ -666,6 +915,10 @@ class __$$ScenarioImplCopyWithImpl<$Res>
             ? _value.debtPayoffMonthlyBudgetCents
             : debtPayoffMonthlyBudgetCents // ignore: cast_nullable_to_non_nullable
                   as int?,
+        debtPayoffOneOffPayments: freezed == debtPayoffOneOffPayments
+            ? _value._debtPayoffOneOffPayments
+            : debtPayoffOneOffPayments // ignore: cast_nullable_to_non_nullable
+                  as List<OneOffPayment>?,
       ),
     );
   }
@@ -695,7 +948,10 @@ class _$ScenarioImpl implements _Scenario {
     @JsonKey(name: 'debt_payoff_strategy') this.debtPayoffStrategy,
     @JsonKey(name: 'debt_payoff_monthly_budget_cents')
     this.debtPayoffMonthlyBudgetCents,
-  }) : _debtPayoffTargets = debtPayoffTargets;
+    @JsonKey(name: 'debt_payoff_one_off_payments')
+    final List<OneOffPayment>? debtPayoffOneOffPayments,
+  }) : _debtPayoffTargets = debtPayoffTargets,
+       _debtPayoffOneOffPayments = debtPayoffOneOffPayments;
 
   factory _$ScenarioImpl.fromJson(Map<String, dynamic> json) =>
       _$$ScenarioImplFromJson(json);
@@ -779,9 +1035,28 @@ class _$ScenarioImpl implements _Scenario {
   @JsonKey(name: 'debt_payoff_monthly_budget_cents')
   final int? debtPayoffMonthlyBudgetCents;
 
+  /// Optional list of one-off lump-sum extra payments (tax
+  /// refunds, bonuses). Null for kind=general or until the user
+  /// adds one to a debt-payoff plan. See [OneOffPayment].
+  final List<OneOffPayment>? _debtPayoffOneOffPayments;
+
+  /// Optional list of one-off lump-sum extra payments (tax
+  /// refunds, bonuses). Null for kind=general or until the user
+  /// adds one to a debt-payoff plan. See [OneOffPayment].
+  @override
+  @JsonKey(name: 'debt_payoff_one_off_payments')
+  List<OneOffPayment>? get debtPayoffOneOffPayments {
+    final value = _debtPayoffOneOffPayments;
+    if (value == null) return null;
+    if (_debtPayoffOneOffPayments is EqualUnmodifiableListView)
+      return _debtPayoffOneOffPayments;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   String toString() {
-    return 'Scenario(id: $id, householdId: $householdId, createdBy: $createdBy, parentId: $parentId, name: $name, description: $description, baseDate: $baseDate, isBaseline: $isBaseline, color: $color, isGoal: $isGoal, targetAmount: $targetAmount, targetDate: $targetDate, createdAt: $createdAt, updatedAt: $updatedAt, kind: $kind, debtPayoffTargets: $debtPayoffTargets, debtPayoffStrategy: $debtPayoffStrategy, debtPayoffMonthlyBudgetCents: $debtPayoffMonthlyBudgetCents)';
+    return 'Scenario(id: $id, householdId: $householdId, createdBy: $createdBy, parentId: $parentId, name: $name, description: $description, baseDate: $baseDate, isBaseline: $isBaseline, color: $color, isGoal: $isGoal, targetAmount: $targetAmount, targetDate: $targetDate, createdAt: $createdAt, updatedAt: $updatedAt, kind: $kind, debtPayoffTargets: $debtPayoffTargets, debtPayoffStrategy: $debtPayoffStrategy, debtPayoffMonthlyBudgetCents: $debtPayoffMonthlyBudgetCents, debtPayoffOneOffPayments: $debtPayoffOneOffPayments)';
   }
 
   @override
@@ -825,12 +1100,16 @@ class _$ScenarioImpl implements _Scenario {
                   debtPayoffMonthlyBudgetCents,
                 ) ||
                 other.debtPayoffMonthlyBudgetCents ==
-                    debtPayoffMonthlyBudgetCents));
+                    debtPayoffMonthlyBudgetCents) &&
+            const DeepCollectionEquality().equals(
+              other._debtPayoffOneOffPayments,
+              _debtPayoffOneOffPayments,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     householdId,
@@ -850,7 +1129,8 @@ class _$ScenarioImpl implements _Scenario {
     const DeepCollectionEquality().hash(_debtPayoffTargets),
     debtPayoffStrategy,
     debtPayoffMonthlyBudgetCents,
-  );
+    const DeepCollectionEquality().hash(_debtPayoffOneOffPayments),
+  ]);
 
   /// Create a copy of Scenario
   /// with the given fields replaced by the non-null parameter values.
@@ -889,6 +1169,8 @@ abstract class _Scenario implements Scenario {
     final DebtPayoffStrategy? debtPayoffStrategy,
     @JsonKey(name: 'debt_payoff_monthly_budget_cents')
     final int? debtPayoffMonthlyBudgetCents,
+    @JsonKey(name: 'debt_payoff_one_off_payments')
+    final List<OneOffPayment>? debtPayoffOneOffPayments,
   }) = _$ScenarioImpl;
 
   factory _Scenario.fromJson(Map<String, dynamic> json) =
@@ -960,6 +1242,13 @@ abstract class _Scenario implements Scenario {
   @override
   @JsonKey(name: 'debt_payoff_monthly_budget_cents')
   int? get debtPayoffMonthlyBudgetCents;
+
+  /// Optional list of one-off lump-sum extra payments (tax
+  /// refunds, bonuses). Null for kind=general or until the user
+  /// adds one to a debt-payoff plan. See [OneOffPayment].
+  @override
+  @JsonKey(name: 'debt_payoff_one_off_payments')
+  List<OneOffPayment>? get debtPayoffOneOffPayments;
 
   /// Create a copy of Scenario
   /// with the given fields replaced by the non-null parameter values.

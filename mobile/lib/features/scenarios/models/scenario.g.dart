@@ -6,6 +6,20 @@ part of 'scenario.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_$OneOffPaymentImpl _$$OneOffPaymentImplFromJson(Map<String, dynamic> json) =>
+    _$OneOffPaymentImpl(
+      date: DateTime.parse(json['date'] as String),
+      amountCents: (json['amount_cents'] as num).toInt(),
+      accountId: json['account_id'] as String?,
+    );
+
+Map<String, dynamic> _$$OneOffPaymentImplToJson(_$OneOffPaymentImpl instance) =>
+    <String, dynamic>{
+      'date': instance.date.toIso8601String(),
+      'amount_cents': instance.amountCents,
+      'account_id': instance.accountId,
+    };
+
 _$DebtPayoffTargetImpl _$$DebtPayoffTargetImplFromJson(
   Map<String, dynamic> json,
 ) => _$DebtPayoffTargetImpl(
@@ -54,6 +68,10 @@ _$ScenarioImpl _$$ScenarioImplFromJson(Map<String, dynamic> json) =>
       ),
       debtPayoffMonthlyBudgetCents:
           (json['debt_payoff_monthly_budget_cents'] as num?)?.toInt(),
+      debtPayoffOneOffPayments:
+          (json['debt_payoff_one_off_payments'] as List<dynamic>?)
+              ?.map((e) => OneOffPayment.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
 
 Map<String, dynamic> _$$ScenarioImplToJson(_$ScenarioImpl instance) =>
@@ -79,6 +97,9 @@ Map<String, dynamic> _$$ScenarioImplToJson(_$ScenarioImpl instance) =>
       'debt_payoff_strategy':
           _$DebtPayoffStrategyEnumMap[instance.debtPayoffStrategy],
       'debt_payoff_monthly_budget_cents': instance.debtPayoffMonthlyBudgetCents,
+      'debt_payoff_one_off_payments': instance.debtPayoffOneOffPayments
+          ?.map((e) => e.toJson())
+          .toList(),
     };
 
 const _$ScenarioKindEnumMap = {

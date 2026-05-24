@@ -150,6 +150,7 @@ class ScenariosRepository {
     List<DebtPayoffTarget>? debtPayoffTargets,
     DebtPayoffStrategy? debtPayoffStrategy,
     int? debtPayoffMonthlyBudgetCents,
+    List<OneOffPayment>? debtPayoffOneOffPayments,
   }) async {
     final data = await supabase
         .from('scenarios')
@@ -176,6 +177,9 @@ class ScenariosRepository {
               .toList(),
           'debt_payoff_strategy': ?debtPayoffStrategy?.name,
           'debt_payoff_monthly_budget_cents': ?debtPayoffMonthlyBudgetCents,
+          'debt_payoff_one_off_payments': ?debtPayoffOneOffPayments
+              ?.map((p) => p.toJson())
+              .toList(),
         })
         .select()
         .single();
@@ -197,6 +201,7 @@ class ScenariosRepository {
     List<DebtPayoffTarget>? debtPayoffTargets,
     DebtPayoffStrategy? debtPayoffStrategy,
     int? debtPayoffMonthlyBudgetCents,
+    List<OneOffPayment>? debtPayoffOneOffPayments,
   }) async {
     final data = await supabase
         .from('scenarios')
@@ -212,6 +217,9 @@ class ScenariosRepository {
               .toList(),
           'debt_payoff_strategy': ?debtPayoffStrategy?.name,
           'debt_payoff_monthly_budget_cents': ?debtPayoffMonthlyBudgetCents,
+          'debt_payoff_one_off_payments': ?debtPayoffOneOffPayments
+              ?.map((p) => p.toJson())
+              .toList(),
         })
         .eq('id', scenarioId)
         .select()

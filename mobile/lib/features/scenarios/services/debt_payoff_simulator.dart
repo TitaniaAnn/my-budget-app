@@ -127,12 +127,29 @@ class _SimDebt {
 /// extras). When it falls below the sum of minimums the
 /// simulator bails with allPaidOff=false rather than emit
 /// growing-debt months.
+/// One-off lump-sum extra payment landing on a specific calendar
+/// month. [accountId] null → joins that month's extra budget and
+/// flows through [DebtPayoffStrategy]; set → pre-pays the named
+/// debt before strategy allocation. The simulator buckets each
+/// one-off by `(date.year, date.month)`.
+class OneOffPaymentInput {
+  const OneOffPaymentInput({
+    required this.date,
+    required this.amountCents,
+    this.accountId,
+  });
+  final DateTime date;
+  final int amountCents;
+  final String? accountId;
+}
+
 MultiDebtPayoffResult simulateMultiDebtPayoff({
   required List<DebtPayoffTarget> targets,
   required Map<String, int> startingPrincipals,
   required DebtPayoffStrategy strategy,
   required int monthlyBudgetCents,
   required DateTime startDate,
+  List<OneOffPaymentInput> oneOffPayments = const [],
   int maxMonths = 600,
 }) {
   // Resolve to mutable sim state, dropping targets whose account
@@ -184,6 +201,19 @@ MultiDebtPayoffResult simulateMultiDebtPayoff({
     );
   }
 
+  // Bucket one-offs by (year, month) so per-iteration lookup is
+  // O(1). Same key encoding as the monthEnd date the simulator
+  // emits — `(year, month)` ignores the day, which is the
+  // intended contract (a payment dated March 15 lands in the
+  // March cycle that ends March 31).
+  final oneOffsByMonth = <int, List<OneOffPaymentInput>>{};
+  int monthKey(int y, int m) => y * 100 + m;
+  for (final o in oneOffPayments) {
+    if (o.amountCents <= 0) continue;
+    final k = monthKey(o.date.year, o.date.month);
+    (oneOffsByMonth[k] ??= []).add(o);
+  }
+
   final months = <MultiDebtMonth>[];
   final payoffDates = <String, DateTime?>{
     for (final d in debts) d.accountId: null,
@@ -220,6 +250,39 @@ MultiDebtPayoffResult simulateMultiDebtPayoff({
       paymentsThisMonth[d.accountId] = minApplied;
       totalInterest += interest;
       totalPaid += minApplied;
+    }
+
+    // ── Step 1b: one-off lump-sums for this month ─────────────
+    // Targeted lump-sums pre-pay their specific debt (bypass
+    // strategy); untargeted ones fold into extraBudget so they
+    // flow through the strategy in step 2.
+    final lumps = oneOffsByMonth[monthKey(monthEnd.year, monthEnd.month)];
+    if (lumps != null) {
+      for (final lump in lumps) {
+        if (lump.accountId != null) {
+          final d = debts
+              .where((d) => d.accountId == lump.accountId && !d.paidOff)
+              .firstOrNull;
+          if (d == null) {
+            // Lump-sum to a debt that's already paid off (or was
+            // dropped at sim start) — graceful no-op. The user-
+            // entered amount can't help here; we don't reflow it
+            // into extraBudget because the user explicitly chose
+            // a target.
+            continue;
+          }
+          final pay = math.min(lump.amountCents, d.principalCents);
+          d.principalCents -= pay;
+          paymentsThisMonth[d.accountId] =
+              (paymentsThisMonth[d.accountId] ?? 0) + pay;
+          totalPaid += pay;
+          if (d.principalCents <= 0 && payoffDates[d.accountId] == null) {
+            payoffDates[d.accountId] = monthEnd;
+          }
+        } else {
+          extraBudget += lump.amountCents;
+        }
+      }
     }
 
     // ── Step 2: allocate extras per strategy ──────────────────

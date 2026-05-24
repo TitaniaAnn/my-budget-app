@@ -40,6 +40,31 @@ enum DebtPayoffStrategy {
   custom,
 }
 
+/// A one-off lump-sum extra payment in a debt-payoff plan
+/// (tax refund, bonus, sold-the-couch). Stored as JSON inside
+/// `scenarios.debt_payoff_one_off_payments`. When [accountId] is
+/// null the simulator routes the lump-sum through the chosen
+/// strategy; when it's set, the simulator pre-pays that specific
+/// debt before strategy allocation.
+@freezed
+class OneOffPayment with _$OneOffPayment {
+  const factory OneOffPayment({
+    /// Calendar date the payment lands. The simulator buckets it
+    /// to the iteration whose monthEnd shares the same year+month.
+    required DateTime date,
+
+    /// Magnitude in cents (positive).
+    @JsonKey(name: 'amount_cents') required int amountCents,
+
+    /// Optional — when set, the lump-sum pre-pays this specific
+    /// debt (bypasses strategy). Null = strategy-routed.
+    @JsonKey(name: 'account_id') String? accountId,
+  }) = _OneOffPayment;
+
+  factory OneOffPayment.fromJson(Map<String, dynamic> json) =>
+      _$OneOffPaymentFromJson(json);
+}
+
 /// One debt in a debt-payoff plan. Stored as JSON inside
 /// `scenarios.debt_payoff_targets` — short list, read with the
 /// scenario, never queried independently.
@@ -129,6 +154,12 @@ class Scenario with _$Scenario {
     /// the plan (cents). Null for kind=general.
     @JsonKey(name: 'debt_payoff_monthly_budget_cents')
     int? debtPayoffMonthlyBudgetCents,
+
+    /// Optional list of one-off lump-sum extra payments (tax
+    /// refunds, bonuses). Null for kind=general or until the user
+    /// adds one to a debt-payoff plan. See [OneOffPayment].
+    @JsonKey(name: 'debt_payoff_one_off_payments')
+    List<OneOffPayment>? debtPayoffOneOffPayments,
   }) = _Scenario;
 
   factory Scenario.fromJson(Map<String, dynamic> json) =>
