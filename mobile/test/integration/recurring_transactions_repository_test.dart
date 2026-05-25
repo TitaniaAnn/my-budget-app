@@ -514,5 +514,57 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── Cross-household account_id constraint (migration 044) ─────────────
+    //
+    // The "members can manage recurring_transactions" policy used to
+    // gate on household_id only — letting a member create a rule with
+    // their own household_id but a foreign account_id. Migration 044
+    // added the account_id IN (...) clause to WITH CHECK.
+
+    group('cross-household account_id constraint', () {
+      test(
+        'INSERT with own household_id + foreign account_id is rejected',
+        () async {
+          final other = await Harness.bootstrap(testTag: 'recurring-c3');
+          final otherAccountId = other.accountId;
+
+          await harness.client.auth.signInWithPassword(
+            email: harness.email,
+            password: Harness.testPassword,
+          );
+
+          try {
+            await expectLater(
+              harness.client.from('recurring_transactions').insert({
+                'household_id': harness.householdId,
+                'account_id': otherAccountId, // ← foreign account
+                'created_by': harness.userId,
+                'amount_cents': -999,
+                'description': 'cross-household recurring',
+                'cadence': 'monthly',
+                'next_occurrence_date': '2026-07-01',
+                'is_active': true,
+              }),
+              throwsA(anything),
+              reason:
+                  'WITH CHECK must reject when account_id belongs to a '
+                  'household other than the row\'s household_id.',
+            );
+          } finally {
+            await harness.client.auth.signInWithPassword(
+              email: other.email,
+              password: Harness.testPassword,
+            );
+            await other.dispose();
+            await harness.client.auth.signInWithPassword(
+              email: harness.email,
+              password: Harness.testPassword,
+            );
+          }
+        },
+        skip: reason,
+      );
+    });
   });
 }

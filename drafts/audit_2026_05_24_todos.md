@@ -46,7 +46,7 @@ Same shape repeats in:
 - `create_transfer` (see H1)
 - `recurring_transactions` policy ([supabase/migrations/031_recurring_transactions.sql:90-96](../supabase/migrations/031_recurring_transactions.sql))
 - `holdings` policy ([supabase/migrations/027_holdings.sql:100-106](../supabase/migrations/027_holdings.sql))
-- `target_allocations` policy ([supabase/migrations/035_target_allocations.sql:52-58](../supabase/migrations/035_target_allocations.sql))
+- ~~`target_allocations` policy~~ — **CORRECTION:** that table has no `account_id` column (PK is `(household_id, asset_class)`), so there's nothing to constrain. Audit was wrong on this one. ([supabase/migrations/035_target_allocations.sql:25-34](../supabase/migrations/035_target_allocations.sql))
 
 **Fix:** new migration `044_constrain_account_id_to_household.sql`. Add to each WITH CHECK:
 ```sql

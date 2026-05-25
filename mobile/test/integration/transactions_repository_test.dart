@@ -1531,6 +1531,63 @@ void main() {
       );
     });
 
+    // ── Cross-household account_id constraint (migration 044) ─────────────
+    //
+    // The INSERT policy validates household_id against household_members.
+    // Without the migration 044 additional clause, a member could insert
+    // a transaction with their own household_id but an account_id from
+    // another household — recalculate_account_balance would then silently
+    // fold that rogue row into the victim's balance.
+
+    group('cross-household account_id constraint', () {
+      test(
+        'INSERT with own household_id + foreign account_id is rejected',
+        () async {
+          final other = await Harness.bootstrap(testTag: 'tx-c3');
+          final otherAccountId = other.accountId;
+
+          // Sign back in as the original test user.
+          await harness.client.auth.signInWithPassword(
+            email: harness.email,
+            password: Harness.testPassword,
+          );
+
+          try {
+            await expectLater(
+              harness.client.from('transactions').insert({
+                'household_id': harness.householdId,
+                'account_id': otherAccountId, // ← foreign account
+                'entered_by': harness.userId,
+                'amount': -1000,
+                'currency': 'USD',
+                'description': 'cross-household attack',
+                'transaction_date': DateTime.now()
+                    .toIso8601String()
+                    .substring(0, 10),
+                'pending': false,
+                'source': 'manual',
+              }),
+              throwsA(anything),
+              reason:
+                  'WITH CHECK must reject when account_id belongs to a '
+                  'household other than the row\'s household_id.',
+            );
+          } finally {
+            await harness.client.auth.signInWithPassword(
+              email: other.email,
+              password: Harness.testPassword,
+            );
+            await other.dispose();
+            await harness.client.auth.signInWithPassword(
+              email: harness.email,
+              password: Harness.testPassword,
+            );
+          }
+        },
+        skip: reason,
+      );
+    });
+
     // ── sumPositiveAmountsForAccountsSince ────────────────────────────────
     //
     // Roth-contribution tally used by RothIraUnderusedRule. The bug
