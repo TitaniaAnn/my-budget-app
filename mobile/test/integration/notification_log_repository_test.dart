@@ -53,6 +53,7 @@ void main() {
     test('claimKeys returns every fresh key on first call', () async {
       final claimed = await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['budget_over:b1:2026-05-01', 'large_tx:t1'],
       );
       expect(
@@ -67,11 +68,14 @@ void main() {
     test('claimKeys returns empty for a key already in the log', () async {
       await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['budget_over:b1:2026-05-01'],
       );
-      // Second claimer for the same key — must lose the race.
+      // Second claimer for the same (household, key, user) — must
+      // lose the race.
       final secondAttempt = await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['budget_over:b1:2026-05-01'],
       );
       expect(
@@ -87,10 +91,12 @@ void main() {
     test('claimKeys returns only the NEW keys in a mixed batch', () async {
       await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['budget_over:b1:2026-05-01'],
       );
       final claimed = await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: [
           'budget_over:b1:2026-05-01', // already in log
           'large_tx:t1', // fresh
@@ -119,17 +125,20 @@ void main() {
         {
           'household_id': harness.householdId,
           'dedup_key': 'old',
+          'user_id': harness.userId,
           'fired_at': stale,
           'source': 'client',
         },
       ]);
       await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['new1', 'new2'],
       );
 
       final recent = await repo.recentKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         since: DateTime.now().toUtc().subtract(const Duration(days: 90)),
       );
       expect(
@@ -147,6 +156,7 @@ void main() {
       // belong to has no visible rows.
       final foreign = await repo.recentKeys(
         householdId: '00000000-0000-0000-0000-000000000000',
+        userId: harness.userId,
         since: DateTime.now().toUtc().subtract(const Duration(days: 90)),
       );
       expect(foreign, isEmpty);
@@ -163,12 +173,14 @@ void main() {
         {
           'household_id': harness.householdId,
           'dedup_key': 'stale',
+          'user_id': harness.userId,
           'fired_at': stale,
           'source': 'server',
         },
       ]);
       await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['fresh1', 'fresh2'],
       );
 
@@ -186,6 +198,7 @@ void main() {
       // The two fresh rows must survive — pruning is strictly by age.
       final remaining = await repo.recentKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         since: DateTime.now().toUtc().subtract(const Duration(days: 365)),
       );
       expect(remaining, {'fresh1', 'fresh2'});
@@ -194,6 +207,7 @@ void main() {
     test('clearAll wipes every row for the household', () async {
       await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['k1', 'k2', 'k3'],
       );
 
@@ -201,6 +215,7 @@ void main() {
 
       final remaining = await repo.recentKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         since: DateTime.now().toUtc().subtract(const Duration(days: 365)),
       );
       expect(
@@ -215,6 +230,7 @@ void main() {
       // the rows really left, not just stale-flagged).
       final reclaimed = await repo.claimKeys(
         householdId: harness.householdId,
+        userId: harness.userId,
         keys: ['k1', 'k2', 'k3'],
       );
       expect(reclaimed, {'k1', 'k2', 'k3'});
@@ -225,6 +241,7 @@ void main() {
       () async {
         await repo.claimKeys(
           householdId: harness.householdId,
+          userId: harness.userId,
           keys: ['a', 'b', 'c'],
         );
 
@@ -245,5 +262,114 @@ void main() {
       },
       skip: reason,
     );
+
+    // ── H4 (migration 046): per-user dedup ────────────────────────────
+    test(
+      'per-user dedup: member A claiming a key does NOT silence member B',
+      () async {
+        // Pre-046 the PK was (household_id, dedup_key) — any member
+        // could pre-claim ANY key in the household, including ones
+        // namespaced after another member's budget alerts. With the
+        // user_id added to the PK, A and B each occupy their own
+        // dedup namespace.
+        //
+        // Setup: invite a second user into A's household via
+        // household_members, then sign in as B and confirm B can
+        // claim the exact same key A already claimed.
+
+        await repo.claimKeys(
+          householdId: harness.householdId,
+          userId: harness.userId,
+          keys: ['budget_over:dining:2026-05-01'],
+        );
+
+        // Bootstrap a second user. Their bootstrap signs them in;
+        // then directly insert them into A's household_members so
+        // their JWT can claim under the SAME household_id.
+        final other = await Harness.bootstrap(testTag: 'notif-log-multi');
+        // Use service-role-equivalent path: do the member-add as the
+        // original owner who has owner permission on the household.
+        await harness.client.auth.signInWithPassword(
+          email: harness.email,
+          password: Harness.testPassword,
+        );
+        await harness.client.from('household_members').insert({
+          'household_id': harness.householdId,
+          'user_id': other.userId,
+          'role': 'partner',
+          'display_name': 'B',
+        });
+
+        // Sign back in as the new member.
+        await harness.client.auth.signInWithPassword(
+          email: other.email,
+          password: Harness.testPassword,
+        );
+
+        try {
+          final claimedByOther = await repo.claimKeys(
+            householdId: harness.householdId,
+            userId: other.userId,
+            keys: ['budget_over:dining:2026-05-01'],
+          );
+          expect(
+            claimedByOther,
+            {'budget_over:dining:2026-05-01'},
+            reason:
+                'member B must be able to claim a key member A already '
+                'claimed — per-user dedup means their (household, key, '
+                'user_id) tuple is distinct.',
+          );
+        } finally {
+          // Restore A's session for any tearDown that follows.
+          await harness.client.auth.signInWithPassword(
+            email: harness.email,
+            password: Harness.testPassword,
+          );
+          await other.dispose();
+        }
+      },
+      skip: reason,
+    );
+
+    test('RLS rejects a write with user_id != auth.uid()', () async {
+      // Defense in depth: even if a malicious client crafted a
+      // payload setting user_id to another member's id (to
+      // silence them), the INSERT policy added in migration 046
+      // rejects it.
+      final other = await Harness.bootstrap(testTag: 'notif-log-rls');
+      final otherUserId = other.userId;
+      // Sign back in as A; try to claim under B's user_id.
+      await harness.client.auth.signInWithPassword(
+        email: harness.email,
+        password: Harness.testPassword,
+      );
+
+      try {
+        await expectLater(
+          harness.client.from('notification_log').insert({
+            'household_id': harness.householdId,
+            'dedup_key': 'attack',
+            'user_id': otherUserId, // ← someone else's
+            'source': 'client',
+          }),
+          throwsA(anything),
+          reason:
+              'WITH CHECK must reject when user_id != auth.uid(); '
+              'otherwise a member could pre-claim another member\'s '
+              'dedup slot and silence them.',
+        );
+      } finally {
+        await harness.client.auth.signInWithPassword(
+          email: other.email,
+          password: Harness.testPassword,
+        );
+        await other.dispose();
+        await harness.client.auth.signInWithPassword(
+          email: harness.email,
+          password: Harness.testPassword,
+        );
+      }
+    }, skip: reason);
   });
 }

@@ -146,26 +146,28 @@ serve(async (req) => {
 
   try {
     const evaluated = await evaluateForHousehold(supabase, body.household_id);
-    // Atomic dedup against the shared notification_log. Whichever
-    // pass — server here, in-app engine on the client — inserts
-    // first wins; the loser sees its INSERT skipped by ON CONFLICT
-    // and doesn't fire. See migration 039.
-    const claimed = await claimUnfired(supabase, body.household_id, evaluated);
-    const delivery = await deliverViaFcm(supabase, body.household_id, claimed);
+    // Per-user dispatch — migration 046 made notification_log dedup
+    // per (household, key, user_id), so each member's claim is
+    // independent. The server claims once per user that has a push
+    // token (no token = no push to consider, and that user's in-app
+    // engine will claim its own row when they next open the app).
+    const dispatch = await dispatchPerUser(
+      supabase,
+      body.household_id,
+      evaluated,
+    );
     return Response.json({
       household_id: body.household_id,
       evaluated: evaluated.length,
-      pending: claimed.length,
-      sent: delivery.sent,
+      pending: dispatch.pending,
+      sent: dispatch.sent,
       // Tokens FCM said were dead and that we removed from
       // device_push_tokens. Surfaced so a scheduler can flag noisy
       // households (lots of stale tokens) for follow-up.
-      invalidated: delivery.invalidated,
+      invalidated: dispatch.invalidated,
       // When FIREBASE_SERVER_KEY is unset we surface the payload
       // so callers can verify the evaluation without real FCM.
-      preview: delivery.sent === 0 && claimed.length > 0
-        ? claimed
-        : undefined,
+      preview: dispatch.preview,
     }, { status: 200 });
   } catch (err) {
     return jsonError(500, String(err));
@@ -187,29 +189,31 @@ function safeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-/// Tries to claim each pending key in notification_log via
-/// INSERT ... ON CONFLICT DO NOTHING RETURNING. The keys that come
-/// back are the ones we successfully wrote (i.e., no other pass
-/// fired them). The keys that DON'T come back are already in the
-/// log — we drop them so the user doesn't see the same alert via
-/// two paths.
-async function claimUnfired(
+/// Per-user atomic claim against notification_log. Inserts one row
+/// per pending notification for THIS user; on PK conflict
+/// (household_id, dedup_key, user_id) the row is skipped via
+/// ignoreDuplicates. The returned rows are only the new inserts —
+/// keys this user has already seen via in-app or a prior server
+/// pass come back empty and aren't pushed again.
+async function claimUnfiredForUser(
   supabase: SupabaseClient,
   householdId: string,
+  userId: string,
   pending: PendingNotification[],
 ): Promise<PendingNotification[]> {
   if (pending.length === 0) return [];
   const rows = pending.map((n) => ({
     household_id: householdId,
     dedup_key: n.key,
+    user_id: userId,
     source: "server",
   }));
-  // ignoreDuplicates: true → DO NOTHING on PK conflict (the PK is
-  // (household_id, dedup_key)). Returned rows are only the new
-  // ones; existing rows are skipped silently.
   const { data: claimedRows, error } = await supabase
     .from("notification_log")
-    .upsert(rows, { onConflict: "household_id,dedup_key", ignoreDuplicates: true })
+    .upsert(rows, {
+      onConflict: "household_id,dedup_key,user_id",
+      ignoreDuplicates: true,
+    })
     .select("dedup_key");
   if (error) throw error;
   const claimedKeys = new Set(
@@ -425,73 +429,122 @@ function currentPeriodRange(period: string): { from: string; to: string } {
   }
 }
 
-// ─── FCM delivery ──────────────────────────────────────────────
+// ─── Per-user dispatch ─────────────────────────────────────────
 
-interface DeliveryReport {
+interface DispatchReport {
+  pending: number; // total keys claimed across all users (was: claimed length)
   sent: number;
   invalidated: number;
+  // Only set when FIREBASE_SERVER_KEY is unset — surfaces what would
+  // have been pushed across all users so tests can verify evaluation
+  // + claim behaviour without a real Firebase project. Deduplicated
+  // by key for compactness (the per-user fan-out is an
+  // implementation detail; the preview is "what notifications fired").
+  preview?: PendingNotification[];
 }
 
-async function deliverViaFcm(
+/// Group device tokens by user, then for each user: claim the dedup
+/// keys under their user_id (migration 046) and push to their tokens.
+/// Members who didn't get a token of their own won't get a push and
+/// also won't get a dedup row written for them — when they next open
+/// the app the in-app engine will claim its own row and fire the
+/// alert. That's the per-user dedup contract.
+async function dispatchPerUser(
   supabase: SupabaseClient,
   householdId: string,
   pending: PendingNotification[],
-): Promise<DeliveryReport> {
-  if (pending.length === 0) return { sent: 0, invalidated: 0 };
-  const serverKey = Deno.env.get("FIREBASE_SERVER_KEY");
-  if (!serverKey) {
-    // No Firebase yet — log + return zeros, the caller sees
-    // `preview` in the response so tests can assert on what would
-    // have been sent. Treats this path as "stubbed" rather than
-    // "failed."
-    console.log(
-      `[send-notification] FIREBASE_SERVER_KEY unset; would send ${pending.length} notifications`,
-    );
-    return { sent: 0, invalidated: 0 };
+): Promise<DispatchReport> {
+  if (pending.length === 0) {
+    return { pending: 0, sent: 0, invalidated: 0 };
   }
 
-  const { data: tokens } = await supabase
+  // Pull all (token, user_id) pairs for the household. The query is
+  // small (tens of rows even for a busy multi-device family).
+  const { data: tokenRows } = await supabase
     .from("device_push_tokens")
-    .select("token")
+    .select("token, user_id")
     .eq("household_id", householdId);
-  if (!tokens || tokens.length === 0) return { sent: 0, invalidated: 0 };
+  if (!tokenRows || tokenRows.length === 0) {
+    return { pending: 0, sent: 0, invalidated: 0 };
+  }
 
+  // Group by user. A user with multiple devices gets every claimed
+  // notification pushed to each of them.
+  const tokensByUser = new Map<string, string[]>();
+  for (const r of tokenRows as Array<{ token: string; user_id: string }>) {
+    const list = tokensByUser.get(r.user_id) ?? [];
+    list.push(r.token);
+    tokensByUser.set(r.user_id, list);
+  }
+
+  const serverKey = Deno.env.get("FIREBASE_SERVER_KEY");
+  const previewBuf: PendingNotification[] = [];
+  const previewSeen = new Set<string>();
+  let pendingCount = 0;
   let sent = 0;
-  // Tokens FCM tells us are dead — collected here so we can do one
-  // batch DELETE at the end rather than one per failure.
   const invalidTokens = new Set<string>();
-  for (const t of tokens) {
-    if (invalidTokens.has(t.token)) continue;
-    for (const n of pending) {
-      // Legacy FCM HTTP API — Firebase has a v1 OAuth-scoped API
-      // we'd ideally use, but the legacy server-key form is the
-      // simplest credential to handle from an Edge Function. A
-      // follow-up can swap when we're ready to take the OAuth dep.
-      const res = await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `key=${serverKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: t.token,
-          notification: { title: n.title, body: n.body },
-          // tag matches the local-engine's hashCode-keyed update-
-          // in-place so two devices in the same household don't
-          // stack the same alert.
-          data: { tag: n.key },
-        }),
-      });
-      if (!res.ok) continue;
-      // FCM returns 200 even for known-bad tokens; the real verdict
-      // is in the body's `results[].error`. Pull it out and decide.
-      const body = await res.json().catch(() => null);
-      if (isFcmTokenInvalid(body)) {
-        invalidTokens.add(t.token);
-        // Don't waste the remaining notifications on this token.
-        break;
+
+  for (const [userId, userTokens] of tokensByUser) {
+    const claimed = await claimUnfiredForUser(
+      supabase,
+      householdId,
+      userId,
+      pending,
+    );
+    pendingCount += claimed.length;
+    if (claimed.length === 0) continue;
+
+    // Accumulate preview before deciding whether to actually push,
+    // so the stubbed-mode response still shows what would have been
+    // delivered.
+    for (const n of claimed) {
+      if (!previewSeen.has(n.key)) {
+        previewSeen.add(n.key);
+        previewBuf.push(n);
       }
-      sent += 1;
+    }
+
+    if (!serverKey) {
+      console.log(
+        `[send-notification] FIREBASE_SERVER_KEY unset; would push ` +
+          `${claimed.length} notifications to user ${userId}`,
+      );
+      continue;
+    }
+
+    for (const token of userTokens) {
+      if (invalidTokens.has(token)) continue;
+      for (const n of claimed) {
+        // Legacy FCM HTTP API — Firebase has a v1 OAuth-scoped API
+        // we'd ideally use, but the legacy server-key form is the
+        // simplest credential to handle from an Edge Function. A
+        // follow-up can swap when we're ready to take the OAuth dep.
+        const res = await fetch("https://fcm.googleapis.com/fcm/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `key=${serverKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: token,
+            notification: { title: n.title, body: n.body },
+            // tag matches the local-engine's hashCode-keyed update-
+            // in-place so two devices in the same household don't
+            // stack the same alert.
+            data: { tag: n.key },
+          }),
+        });
+        if (!res.ok) continue;
+        // FCM returns 200 even for known-bad tokens; the real verdict
+        // is in the body's `results[].error`. Pull it out and decide.
+        const body = await res.json().catch(() => null);
+        if (isFcmTokenInvalid(body)) {
+          invalidTokens.add(token);
+          // Don't waste the remaining notifications on this token.
+          break;
+        }
+        sent += 1;
+      }
     }
   }
 
@@ -512,7 +565,14 @@ async function deliverViaFcm(
       .in("token", [...invalidTokens]);
   }
 
-  return { sent, invalidated: invalidTokens.size };
+  return {
+    pending: pendingCount,
+    sent,
+    invalidated: invalidTokens.size,
+    // Only surface preview when Firebase is stubbed; otherwise it
+    // would just repeat what was actually pushed.
+    preview: serverKey ? undefined : previewBuf,
+  };
 }
 
 /// True when the FCM response body indicates the token is dead.

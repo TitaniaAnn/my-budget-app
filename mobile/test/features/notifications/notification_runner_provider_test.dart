@@ -23,6 +23,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mybudget/core/providers/household_provider.dart';
+import 'package:mybudget/features/auth/providers/auth_provider.dart';
 import 'package:mybudget/features/budget/providers/budget_provider.dart';
 import 'package:mybudget/features/currency/providers/rates_to_display_provider.dart';
 import 'package:mybudget/features/dashboard/providers/dashboard_provider.dart';
@@ -34,6 +35,17 @@ import 'package:mybudget/features/notifications/services/notification_service.da
 import 'package:mybudget/features/settings/providers/settings_provider.dart';
 import 'package:mybudget/features/transactions/models/transaction.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
+
+/// Minimal Supabase User stub — the runner only reads `.id`. Building
+/// a real one keeps the override one-liner-shaped at every call site.
+final _testUser = User(
+  id: 'test-user-id',
+  appMetadata: const {},
+  userMetadata: const {},
+  aud: 'authenticated',
+  createdAt: '2026-01-01T00:00:00Z',
+);
 
 class _RecordingDispatcher implements LocalNotificationDispatcher {
   final List<({String tag, String title, String body})> shown = [];
@@ -74,6 +86,7 @@ class _FakeNotificationLogRepository extends NotificationLogRepository {
   @override
   Future<Set<String>> recentKeys({
     required String householdId,
+    required String userId,
     required DateTime since,
   }) async {
     return _serverKeys;
@@ -82,6 +95,7 @@ class _FakeNotificationLogRepository extends NotificationLogRepository {
   @override
   Future<Set<String>> claimKeys({
     required String householdId,
+    required String userId,
     required Iterable<String> keys,
   }) async {
     final list = keys.toList();
@@ -165,6 +179,11 @@ ProviderContainer _buildContainer({
         () => _StubSettingsNotifier(settings),
       ),
       householdIdProvider.overrideWith((_) async => householdId),
+      // The runner shorts on a null current user (no point claiming
+      // dedup rows without a user_id under the migration 046
+      // per-user PK). Override with a fixed stub so happy-path tests
+      // proceed.
+      currentUserProvider.overrideWith((_) => _testUser),
       householdInfoProvider.overrideWith((_) async => _householdInfo()),
       ratesToDisplayProvider.overrideWith(
         (_) async => const <String, double>{},

@@ -18,6 +18,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/household_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../budget/providers/budget_provider.dart';
 import '../../currency/providers/rates_to_display_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
@@ -55,6 +56,11 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return 0;
 
+  // Per-user dedup (migration 046) needs the caller's user id to
+  // scope claims and merges. No user → no notifications to show.
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return 0;
+
   final dashboard = await ref.watch(dashboardDataProvider.future);
   final budgets = await ref.watch(budgetDataProvider.future);
 
@@ -70,9 +76,12 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
   final logRepo = ref.read(notificationLogRepositoryProvider);
 
   // Merge server-fired keys into the dedup map so the in-app
-  // engine respects pushes the dispatcher already sent.
+  // engine respects pushes the dispatcher already sent. Scoped to
+  // THIS user via migration 046 — another household member's
+  // server-fire doesn't suppress our evaluation.
   final serverKeys = await logRepo.recentKeys(
     householdId: householdId,
+    userId: user.id,
     since: now.subtract(_serverLogLookback),
   );
   final mergedLastFired = <String, DateTime>{
@@ -100,6 +109,7 @@ Future<int> runNotifications(RunNotificationsRef ref) async {
   // here.
   final claimed = await logRepo.claimKeys(
     householdId: householdId,
+    userId: user.id,
     keys: pending.map((n) => n.key),
   );
   final toShow = pending.where((n) => claimed.contains(n.key)).toList();
