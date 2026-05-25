@@ -129,7 +129,9 @@ Grep for `PGRST301`, `JWT expired`, `onTokenRefreshError`: zero hits. The router
 
 ## HIGH (real but lower-blast-radius)
 
-### [ ] H1 — Six leaked `TextEditingController`s in inline dialogs (S)
+### [x] H1 — Six leaked `TextEditingController`s in inline dialogs (S)
+
+**CLOSED.** Wrapped each dialog body in `try { … } finally { ctrl.dispose(); }`. Patched in settings_screen (`_editDisplayName`, `_editHouseholdName`, `_inviteMember`, `_joinWithCode`), notification_settings_screen (`_editThreshold`), and currency_settings_screen (`_showCurrencyPickerDialog`). Pattern mirrors the existing one at `add_transaction_sheet._createTag`.
 
 - [settings_screen.dart:273, 307, 376, 486](../mobile/lib/features/settings/screens/settings_screen.dart) — Display Name, Household Name, Invite Email, Invite Code dialogs each `final ctrl = TextEditingController(...)` with no `dispose()`.
 - [notification_settings_screen.dart:141](../mobile/lib/features/notifications/screens/notification_settings_screen.dart) — threshold-edit dialog.
@@ -139,7 +141,9 @@ The correct pattern exists at [add_transaction_sheet.dart:214](../mobile/lib/fea
 
 ---
 
-### [ ] H2 — Receipt orphans in Storage when DB delete succeeds but Storage delete fails (S)
+### [x] H2 — Receipt orphans in Storage when DB delete succeeds but Storage delete fails (S)
+
+**CLOSED.** Repo `deleteReceipt` now sequences storage-first (with a single transient retry) then DB. Tradeoff: a storage-success / DB-fail leaves a "broken" receipt with a 404 image — but the row is still RLS-readable so a retry-from-UI cleans it up (storage.remove is idempotent). The prior parallel pattern silently orphaned storage objects whenever DB won the race. Caller wraps in try/catch + `showErrorSnackBar` so failures are visible. Documented limit case (DB-fail-after-storage-success) inline as a follow-up for the senior fix (pending-delete queue Edge Function).
 
 [mobile/lib/features/receipts/repositories/receipts_repository.dart:246-256](../mobile/lib/features/receipts/repositories/receipts_repository.dart) — `Future.wait([db.delete, storage.remove])` runs both in parallel with no compensation. If DB wins and Storage fails, the row is gone, RLS blocks any path read, and the file is permanently orphaned and uncountable. Header comment acknowledges as "acceptable for personal use" but it accumulates silently.
 
@@ -147,7 +151,9 @@ The correct pattern exists at [add_transaction_sheet.dart:214](../mobile/lib/fea
 
 ---
 
-### [ ] H3 — OCR `pending` receipts stuck forever with no UI escape (M)
+### [x] H3 — OCR `pending` receipts stuck forever with no UI escape (M)
+
+**CLOSED.** Added `ReceiptsRepository.retryOcr(receiptId)` → invokes `supabase.functions.invoke('process-receipt-ocr', body: {receipt_id})`. Receipt detail screen shows a compact "Retry OCR" TextButton next to the status chip when the receipt is `failed` OR `pending` for more than an hour (`_kOcrStuckAfter = Duration(hours: 1)`). Button disables while a retry is in-flight so a double-tap can't queue two invocations. On success, invalidates `receiptProvider(receiptId)` so the chip updates. Failures bubble through `showErrorSnackBar` → mapper.
 
 [mobile/lib/features/receipts/repositories/receipts_repository.dart:97](../mobile/lib/features/receipts/repositories/receipts_repository.dart) sets `ocr_status: 'pending'` on upload but nothing in Dart invokes the OCR Edge Function. Production OCR is external (per CLAUDE.md). If that backend is down for any window, every upload in that window stays `'pending'` indefinitely.
 
@@ -157,7 +163,9 @@ The correct pattern exists at [add_transaction_sheet.dart:214](../mobile/lib/fea
 
 ---
 
-### [ ] H4 — `bulkImport` deletes scheduler rows BEFORE the upsert; abort mid-flight loses recurring history (M)
+### [x] H4 — `bulkImport` deletes scheduler rows BEFORE the upsert; abort mid-flight loses recurring history (M)
+
+**CLOSED via SQL function** (the senior path per CLAUDE.md's "Atomicity via RPC, not Dart loops" rule). Migration 052 adds `bulk_import_transactions(p_rows JSONB, p_reconciled_ids UUID[])` → `INTEGER inserted_count`. The function does (DELETE matched scheduler rows + INSERT … ON CONFLICT DO NOTHING) in one transaction; a failure rolls both back. Dart `bulkImport` still computes the reconciliation matches (matchRecurringDuplicates — pure / well-tested), just hands the resolved IDs + bank rows across the RPC. Existing 3 integration tests for bulkImport reconciliation still pass against the new atomic path. Runs under caller's RLS (no SECURITY DEFINER). Granted to authenticated only.
 
 [mobile/lib/features/transactions/repositories/transactions_repository.dart:593-674](../mobile/lib/features/transactions/repositories/transactions_repository.dart):
 1. SELECT recurring rows (`:611-628`)
@@ -170,7 +178,9 @@ Spotify scheduler row vanishes, bank import never lands, next dashboard load won
 
 ---
 
-### [ ] H5 — `_deleteTransferConfirmed` / `_deleteTransaction` swallow errors silently (S)
+### [x] H5 — `_deleteTransferConfirmed` / `_deleteTransaction` swallow errors silently (S)
+
+**CLOSED.** Wrapped both methods in `try { … } catch (e) { showErrorSnackBar(e); }` and added the missing `if (!mounted) return` after `confirmDestructive`. Network failures now flow through the central error mapper instead of vanishing. Matches the existing pattern in `_save` / `_bulkDelete`.
 
 [transactions_screen.dart:573-593](../mobile/lib/features/transactions/screens/transactions_screen.dart) and `:728-741`. No try/catch around `deleteTransfer` / `recalculateBalance`; network failure → no feedback, confirm dialog already closed. Also no `if (!mounted) return` after `confirmDestructive`.
 
@@ -178,7 +188,9 @@ The single-transaction `_save` and `_bulkDelete` (`:435+`) wrap correctly. These
 
 ---
 
-### [ ] H6 — Login/register only catch `AuthException`; network failures silently break the button (S)
+### [x] H6 — Login/register only catch `AuthException`; network failures silently break the button (S)
+
+**CLOSED.** Both auth screens get an extra `catch (e) { showErrorSnackBar(e); }` after the typed `on AuthException`. The central mapper (C5) translates `SocketException` / `TimeoutException` to "Couldn't reach the server. Check your connection." so the user no longer sees the spinner stop with no message.
 
 [login_screen.dart:36-50](../mobile/lib/features/auth/screens/login_screen.dart), [register_screen.dart:42-60](../mobile/lib/features/auth/screens/register_screen.dart) — `SocketException`, `TimeoutException`, `ClientException` bubble through; `_loading` resets via `finally`, but the user sees no error and the button just stops spinning. Form looks broken.
 
@@ -186,7 +198,9 @@ The single-transaction `_save` and `_bulkDelete` (`:435+`) wrap correctly. These
 
 ---
 
-### [ ] H7 — Concurrent edits across devices: last-write-wins, no version check (M)
+### [x] H7 — Concurrent edits across devices: last-write-wins, no version check (M)
+
+**CLOSED via the cheap shape the audit suggested.** Added `ConcurrentUpdateException` (in `core/error/error_mapper.dart`). `updateTransaction` takes an optional `expectedUpdatedAt: DateTime` parameter — when supplied, the UPDATE adds `.eq('updated_at', expectedUpdatedAt.toUtc().toIso8601String())` as a precondition and uses `.select('id')` to count affected rows; an empty result throws `ConcurrentUpdateException`. The BEFORE-UPDATE trigger refreshes `updated_at` on every write (migration 001), so a concurrent edit naturally invalidates the filter. The transaction-edit sheet now passes `widget.transaction!.updatedAt`. Mapper translates the exception to "This was edited from another device — refresh and try again." 2 new integration tests pin both the stale (throws) and fresh (succeeds) paths; mapper test added. Other UPDATE paths (`setUserCategory`, `setReceiptId`, etc.) intentionally NOT covered — those are single-screen actions on freshly-loaded data where last-write-wins is the user's intent. Expand on a per-flow basis when the concurrent-edit hazard becomes real.
 
 There's no optimistic concurrency control anywhere. No `updated_at` precondition, no version column. Two devices in the same household editing the same transaction: spouse A re-categorizes "Whole Foods" → Groceries; spouse B re-categorizes the same row → Restaurants 30 seconds later; A's change vanishes silently.
 
