@@ -26,7 +26,19 @@
             </intent-filter>
             <!-- Supabase auth callback. The matching redirect URL is set in
                  supabase/config.toml; keep the two in sync. Used for email
-                 confirmation, password reset, and OAuth flows. -->
+                 confirmation, password reset, and OAuth flows.
+
+                 Security note (audit M5): a custom URL scheme like
+                 "mybudget://" can be claimed by any installed Android app
+                 declaring the same filter. A malicious app could intercept
+                 the auth callback and steal the authorization code. We rely
+                 on Supabase's PKCE flow (AuthFlowType.pkce, the default) to
+                 mitigate: the malicious app would still need the original
+                 client's PKCE verifier, which never leaves this app.
+
+                 DO NOT switch to AuthFlowType.implicit without first moving
+                 to App Links (autoVerify="true" + hosted assetlinks.json),
+                 or this becomes a real authorization-code-theft surface. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>

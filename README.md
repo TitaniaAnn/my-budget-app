@@ -292,6 +292,17 @@ The `supabase/migrations/` folder is a small case study in iterating on a live s
 
 ---
 
+## Security notes
+
+A few invariants worth knowing if you're picking the code up cold:
+
+- **Custom URL scheme + PKCE.** The Android intent filter handles `mybudget://auth/callback` (Supabase auth deep link). Custom schemes can be claimed by other installed apps, so we rely on Supabase's PKCE flow (`AuthFlowType.pkce`, the default) to make the callback safe — a malicious app intercepting the auth code can't redeem it without the PKCE verifier, which never leaves this app. Switching to `AuthFlowType.implicit` requires moving to App Links (autoVerified `assetlinks.json`) first; the AndroidManifest carries a comment to that effect.
+- **All money in integer cents.** Never introduce `numeric`/`float`/`double` for monetary values. Use the `decimal` package for conversions; `parseToCents` / `formatCurrency` for I/O.
+- **RLS is the only authorization layer.** Every user-data table is scoped by `household_id` via RLS policies. New tables MUST add a policy that joins through `household_members`. The integration suite at [`mobile/test/integration/`](mobile/test/integration/) has caught two RLS-recursion bugs that mocks would have missed; cross-household tests there are the way to verify a new policy actually holds.
+- **TIMESTAMPTZ writes use `.toUtc().toIso8601String()`.** A bare `DateTime.now().toIso8601String()` produces a timezone-naive string that Postgres interprets as UTC, silently shifting the stored time by the host's offset. Same pattern applies to any DateTime serialized to a string for storage or cross-device sync.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
