@@ -381,35 +381,39 @@ Future<String?> _showCurrencyPickerDialog(
   required String initial,
 }) async {
   final controller = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        textCapitalization: TextCapitalization.characters,
-        autofocus: true,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-          LengthLimitingTextInputFormatter(3),
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.characters,
+          autofocus: true,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+            LengthLimitingTextInputFormatter(3),
+          ],
+          decoration: const InputDecoration(
+            hintText: '3-letter ISO code (e.g. USD)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final code = controller.text.trim().toUpperCase();
+              if (code.length == 3) Navigator.of(ctx).pop(code);
+            },
+            child: const Text('Save'),
+          ),
         ],
-        decoration: const InputDecoration(
-          hintText: '3-letter ISO code (e.g. USD)',
-        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final code = controller.text.trim().toUpperCase();
-            if (code.length == 3) Navigator.of(ctx).pop(code);
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ),
-  );
+    );
+  } finally {
+    controller.dispose();
+  }
 }

@@ -44,6 +44,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } on AuthException catch (e) {
       if (mounted) context.showErrorSnackBar(e.message);
+    } catch (e) {
+      // Audit H6: pre-fix only AuthException was caught, so
+      // SocketException / TimeoutException / ClientException
+      // bubbled through `finally` and the user saw the spinner
+      // stop with no error — form looked broken. Route through
+      // the central mapper so connection failures get
+      // "Couldn't reach the server" copy.
+      if (mounted) context.showErrorSnackBar(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

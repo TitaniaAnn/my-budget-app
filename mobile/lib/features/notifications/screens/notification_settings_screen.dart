@@ -139,42 +139,46 @@ class NotificationSettingsScreen extends ConsumerWidget {
         .read(notificationSettingsNotifierProvider)
         .largeTxThresholdCents;
     final controller = TextEditingController(text: (current / 100).toString());
-    final result = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Large-transaction threshold'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+    try {
+      final result = await showDialog<int>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Large-transaction threshold'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            decoration: const InputDecoration(prefixText: r'$'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final cents = parseToCents(controller.text);
+                if (cents <= 0) {
+                  Navigator.of(ctx).pop();
+                  return;
+                }
+                Navigator.of(ctx).pop(cents);
+              },
+              child: const Text('Save'),
+            ),
           ],
-          decoration: const InputDecoration(prefixText: r'$'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final cents = parseToCents(controller.text);
-              if (cents <= 0) {
-                Navigator.of(ctx).pop();
-                return;
-              }
-              Navigator.of(ctx).pop(cents);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (result != null) {
-      await ref
-          .read(notificationSettingsNotifierProvider.notifier)
-          .setLargeTxThresholdCents(result);
+      );
+      if (result != null) {
+        await ref
+            .read(notificationSettingsNotifierProvider.notifier)
+            .setLargeTxThresholdCents(result);
+      }
+    } finally {
+      controller.dispose();
     }
   }
 }

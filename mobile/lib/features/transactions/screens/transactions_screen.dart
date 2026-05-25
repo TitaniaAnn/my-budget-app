@@ -581,14 +581,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           '(${formatCurrency(tx.amount.abs(), currency: tx.currency)}, '
           '${kLongDate.format(tx.transactionDate)}).',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
     final repo = ref.read(transactionsRepositoryProvider);
     final accountsRepo = ref.read(accountsRepositoryProvider);
-    final affected = await repo.deleteTransfer(transferId);
-    for (final accountId in affected) {
-      await accountsRepo.recalculateBalance(accountId);
+    try {
+      final affected = await repo.deleteTransfer(transferId);
+      for (final accountId in affected) {
+        await accountsRepo.recalculateBalance(accountId);
+      }
+      invalidateLedger(ref);
+    } catch (e) {
+      // Audit H5: pre-fix this swallowed network failures
+      // silently — the confirm dialog had already closed, leaving
+      // the user with no feedback and the transfer still in the
+      // ledger. Surface it.
+      if (mounted) context.showErrorSnackBar(e);
     }
-    invalidateLedger(ref);
   }
 
   Future<void> _recategorize() async {
@@ -730,12 +738,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       message:
           'Delete "${tx.merchant ?? tx.description}" for ${formatCurrency(tx.amount.abs(), currency: tx.currency)}?',
     );
-    if (confirmed) {
+    if (!confirmed || !mounted) return;
+    try {
       await ref.read(transactionsRepositoryProvider).deleteTransaction(tx.id);
       await ref
           .read(accountsRepositoryProvider)
           .recalculateBalance(tx.accountId);
       invalidateLedger(ref);
+    } catch (e) {
+      // Audit H5: pre-fix this swallowed network failures
+      // silently — confirm dialog had closed, row still in the
+      // ledger, user got no feedback. Surface it.
+      if (mounted) context.showErrorSnackBar(e);
     }
   }
 }

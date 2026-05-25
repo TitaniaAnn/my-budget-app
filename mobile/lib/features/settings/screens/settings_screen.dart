@@ -236,10 +236,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           ListTile(
-            leading: Icon(
-              Icons.logout_outlined,
-              color: context.cs.error,
-            ),
+            leading: Icon(Icons.logout_outlined, color: context.cs.error),
             title: Text(
               // Honest label: this flow signs the user out and asks
               // them to follow up out-of-band for actual deletion.
@@ -277,31 +274,35 @@ class SettingsScreen extends ConsumerWidget {
     String current,
   ) async {
     final ctrl = TextEditingController(text: current);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Display Name'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
-          textCapitalization: TextCapitalization.words,
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Display Name'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Name'),
+            textCapitalization: TextCapitalization.words,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (result != null && result.isNotEmpty) {
-      await ref.read(settingsRepositoryProvider).updateDisplayName(result);
-      ref.invalidate(profileProvider);
+      );
+      if (result != null && result.isNotEmpty) {
+        await ref.read(settingsRepositoryProvider).updateDisplayName(result);
+        ref.invalidate(profileProvider);
+      }
+    } finally {
+      ctrl.dispose();
     }
   }
 
@@ -311,36 +312,40 @@ class SettingsScreen extends ConsumerWidget {
     String current,
   ) async {
     final ctrl = TextEditingController(text: current);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Household Name'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
-          textCapitalization: TextCapitalization.words,
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Household Name'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Name'),
+            textCapitalization: TextCapitalization.words,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (result != null && result.isNotEmpty) {
-      final householdId = await ref.read(householdIdProvider.future);
-      if (householdId != null) {
-        await ref
-            .read(settingsRepositoryProvider)
-            .updateHouseholdName(householdId, result);
-        ref.invalidate(householdInfoProvider);
+      );
+      if (result != null && result.isNotEmpty) {
+        final householdId = await ref.read(householdIdProvider.future);
+        if (householdId != null) {
+          await ref
+              .read(settingsRepositoryProvider)
+              .updateHouseholdName(householdId, result);
+          ref.invalidate(householdInfoProvider);
+        }
       }
+    } finally {
+      ctrl.dispose();
     }
   }
 
@@ -382,31 +387,131 @@ class SettingsScreen extends ConsumerWidget {
     final emailCtrl = TextEditingController();
     String selectedRole = 'partner';
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (dialogCtx, setState) => AlertDialog(
-          title: const Text('Invite Member'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: emailCtrl,
-                autofocus: true,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email address'),
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => StatefulBuilder(
+          builder: (dialogCtx, setState) => AlertDialog(
+            title: const Text('Invite Member'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: emailCtrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Email address'),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedRole,
+                  decoration: const InputDecoration(labelText: 'Role'),
+                  items: const [
+                    DropdownMenuItem(value: 'partner', child: Text('Partner')),
+                    DropdownMenuItem(value: 'child', child: Text('Child')),
+                  ],
+                  onChanged: (v) => setState(() => selectedRole = v!),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: selectedRole,
-                decoration: const InputDecoration(labelText: 'Role'),
-                items: const [
-                  DropdownMenuItem(value: 'partner', child: Text('Partner')),
-                  DropdownMenuItem(value: 'child', child: Text('Child')),
-                ],
-                onChanged: (v) => setState(() => selectedRole = v!),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                child: const Text('Generate Code'),
               ),
             ],
+          ),
+        ),
+      );
+
+      if (confirmed != true || emailCtrl.text.trim().isEmpty) return;
+
+      try {
+        final code = await ref
+            .read(settingsRepositoryProvider)
+            .createInvite(
+              householdId: householdId,
+              email: emailCtrl.text.trim(),
+              role: selectedRole,
+            );
+        if (context.mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (dialogCtx) => AlertDialog(
+              title: const Text('Invite Code'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Share this code with ${emailCtrl.text.trim()}:'),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        dialogCtx,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      code,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Expires in 7 days',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(dialogCtx).colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          context.showSnackBar('Failed to create invite: $e');
+        }
+      }
+    } finally {
+      emailCtrl.dispose();
+    }
+  }
+
+  Future<void> _joinWithCode(BuildContext context, WidgetRef ref) async {
+    final codeCtrl = TextEditingController();
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Join Household'),
+          content: TextField(
+            controller: codeCtrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Invite code',
+              hintText: 'e.g. AB12CD34',
+            ),
           ),
           actions: [
             TextButton(
@@ -415,121 +520,28 @@ class SettingsScreen extends ConsumerWidget {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Generate Code'),
+              child: const Text('Join'),
             ),
           ],
         ),
-      ),
-    );
+      );
 
-    if (confirmed != true || emailCtrl.text.trim().isEmpty) return;
+      if (confirmed != true || codeCtrl.text.trim().isEmpty) return;
 
-    try {
-      final code = await ref
+      final error = await ref
           .read(settingsRepositoryProvider)
-          .createInvite(
-            householdId: householdId,
-            email: emailCtrl.text.trim(),
-            role: selectedRole,
-          );
-      if (context.mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (dialogCtx) => AlertDialog(
-            title: const Text('Invite Code'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Share this code with ${emailCtrl.text.trim()}:'),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      dialogCtx,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    code,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 6,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Expires in 7 days',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(dialogCtx).colorScheme.outline,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('Done'),
-              ),
-            ],
-          ),
-        );
+          .acceptInvite(codeCtrl.text.trim());
+
+      if (!context.mounted) return;
+
+      if (error != null) {
+        context.showSnackBar(error);
+      } else {
+        ref.invalidate(householdInfoProvider);
+        context.showSnackBar('Welcome to your new household!');
       }
-    } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to create invite: $e');
-      }
-    }
-  }
-
-  Future<void> _joinWithCode(BuildContext context, WidgetRef ref) async {
-    final codeCtrl = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Join Household'),
-        content: TextField(
-          controller: codeCtrl,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            labelText: 'Invite code',
-            hintText: 'e.g. AB12CD34',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Join'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || codeCtrl.text.trim().isEmpty) return;
-
-    final error = await ref
-        .read(settingsRepositoryProvider)
-        .acceptInvite(codeCtrl.text.trim());
-
-    if (!context.mounted) return;
-
-    if (error != null) {
-      context.showSnackBar(error);
-    } else {
-      ref.invalidate(householdInfoProvider);
-      context.showSnackBar('Welcome to your new household!');
+    } finally {
+      codeCtrl.dispose();
     }
   }
 
