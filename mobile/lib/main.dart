@@ -23,7 +23,22 @@ void main() async {
     'Missing Supabase credentials. Run with --dart-define-from-file=.env.json',
   );
 
-  await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+  // Audit C4: pre-fix `Supabase.initialize` was un-wrapped. On
+  // captive-portal Wi-Fi, airplane mode, or DNS hijack at launch
+  // it threw before runApp and the user saw a blank window — no
+  // error message, no retry, no offline indicator. Wrap and
+  // surface a retry screen.
+  //
+  // Supabase.initialize is idempotent (the SDK short-circuits on
+  // _isInitialized), so the retry simply calls main() again. On
+  // success the second pass takes the fast path through init and
+  // proceeds to runApp normally.
+  try {
+    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+  } catch (e) {
+    runApp(_InitErrorApp(error: e, onRetry: main));
+    return;
+  }
 
   // ONNX Runtime is a singleton — must be initialised before any
   // OrtSession is constructed. Safe to call even when the ML model
@@ -33,6 +48,61 @@ void main() async {
   // ProviderScope is required at the root so all Riverpod providers are
   // accessible anywhere in the widget tree.
   runApp(const ProviderScope(child: MyBudgetApp()));
+}
+
+/// Standalone MaterialApp shown when Supabase init throws at launch.
+/// Themed minimally so it works without any providers (we haven't
+/// mounted ProviderScope yet on the failing path).
+class _InitErrorApp extends StatelessWidget {
+  const _InitErrorApp({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'MyBudget',
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_outlined, size: 56),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Couldn't connect to the backend",
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Check your network connection and try again. If you '
+                    'just launched the app on captive-portal Wi-Fi, sign '
+                    'into the portal first.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Root widget. Watches [appRouterProvider] so the router is rebuilt

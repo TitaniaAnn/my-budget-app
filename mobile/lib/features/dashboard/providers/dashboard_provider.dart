@@ -254,17 +254,20 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     );
   }
 
-  // Run the recurring scheduler before we fetch dashboard data so
-  // any rules due today materialise into transactions FIRST —
-  // otherwise the dashboard would show stale numbers for one frame
-  // until the next refresh. Riverpod caches the result (keepAlive),
-  // so this is effectively a one-shot per app process: the await
-  // is free on subsequent dashboard loads.
-  await ref.watch(runRecurringSchedulerProvider.future);
+  // Trigger the recurring scheduler. Fire-and-forget — audit C7:
+  // the pre-fix `await` meant a single failed scheduler pass (RLS
+  // hiccup, transient DB pool exhaustion) put the entire dashboard
+  // into its error view, blocking the user from doing anything
+  // until the RPC succeeded. Emitted recurring rows are
+  // nice-to-have, not blocking; the next dashboard load (or the
+  // explicit refresh button) will surface them on success.
+  // The provider is keepAlive so the call still runs at most once
+  // per app process.
+  // ignore: unused_result
+  ref.read(runRecurringSchedulerProvider.future);
 
   // Trigger the notifications pass (budget-over + large-tx). Fire-
-  // and-forget by design: the dashboard doesn't depend on its
-  // result and shouldn't be blocked by a misbehaving plugin. The
+  // and-forget for the same reasons as the scheduler above. The
   // provider is keepAlive so the engine still runs once per app
   // process even though we don't await.
   // ignore: unused_result

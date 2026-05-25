@@ -69,7 +69,9 @@ Do (1) immediately. Do (2) when prioritized.
 
 ---
 
-### [ ] C4 — `main()` crashes silently on Supabase init failure → blank screen (S)
+### [x] C4 — `main()` crashes silently on Supabase init failure → blank screen (S)
+
+**CLOSED.** Wrapped `Supabase.initialize` in try/catch in `main.dart`. On failure, falls back to `runApp(_InitErrorApp(onRetry: main))` — a standalone MaterialApp (no ProviderScope needed, since we haven't mounted it yet on the failing path) that shows a cloud-off icon, "Couldn't connect to the backend" + captive-portal hint + a Retry button. The retry button calls `main()` again; `Supabase.initialize` is idempotent in the SDK (short-circuits on `_isInitialized`), so on success the second pass proceeds normally to `runApp(ProviderScope(...))`.
 
 [mobile/lib/main.dart:17-36](../mobile/lib/main.dart) — `await Supabase.initialize(...)` is not wrapped. On captive-portal Wi-Fi, airplane mode, or DNS hijack at launch, this throws before `runApp`. User sees a blank window with no error, no retry, no offline indicator.
 
@@ -115,7 +117,9 @@ Grep for `PGRST301`, `JWT expired`, `onTokenRefreshError`: zero hits. The router
 
 ---
 
-### [ ] C7 — Dashboard hard-fails when scheduler RPC errors (XS)
+### [x] C7 — Dashboard hard-fails when scheduler RPC errors (XS)
+
+**CLOSED.** Changed `await ref.watch(runRecurringSchedulerProvider.future)` to `ref.read(runRecurringSchedulerProvider.future)` (with the `unused_result` ignore) — mirrors the notifications-runner pattern just below it. The provider is still `keepAlive` so the call still runs at most once per app process; we just no longer block the dashboard render on its completion. Tradeoff: on the cycle a rule emits, the user may see one frame of pre-emission data before the next dashboard load picks up the new rows. The audit explicitly accepts that — "Emitted recurring rows are nice-to-have, not blocking."
 
 [mobile/lib/features/dashboard/providers/dashboard_provider.dart:263](../mobile/lib/features/dashboard/providers/dashboard_provider.dart) — `await runRecurringSchedulerProvider`. The comment promises "A single failed pass shouldn't bring the whole app down" but the `await` means a scheduler exception (RLS hiccup, transient DB pool exhaustion) puts the dashboard into its error view. The user can't use the app until the RPC succeeds. Notifications runner is correctly fire-and-forget (`:271`); scheduler should be too.
 
