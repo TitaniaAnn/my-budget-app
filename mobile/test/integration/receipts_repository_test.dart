@@ -726,5 +726,103 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── H5 (migration 047): storage_path household prefix ──────────────
+    //
+    // The receipts INSERT policy gates only on household_id. The
+    // storage DELETE policy authorises by looking up
+    // receipts.storage_path = storage.objects.name. Pre-fix this
+    // let a member craft a receipts row in THEIR household with
+    // another household's storage_path, then delete the victim's
+    // image. Migration 047 added a row-level CHECK requiring
+    // storage_path (and thumbnail_path when set) to live under the
+    // row's own household_id prefix.
+
+    group('storage_path household-prefix constraint', () {
+      test(
+        'rejects INSERT with storage_path under another household_id',
+        () async {
+          // Use a UUID that doesn't match the harness household so
+          // the prefix check fails. The other-household value
+          // doesn't have to exist — the CHECK doesn't look up the
+          // referenced storage object; it just validates the path
+          // string starts with this row's own household_id.
+          const otherHousehold = '00000000-0000-0000-0000-000000000999';
+
+          await expectLater(
+            harness.client.from('receipts').insert({
+              'household_id': harness.householdId,
+              'uploaded_by': harness.userId,
+              'storage_path': '$otherHousehold/some-receipt.jpg',
+              'ocr_status': 'pending',
+            }),
+            throwsA(anything),
+            reason:
+                'CHECK constraint must reject a storage_path whose '
+                'prefix is not the row\'s own household_id.',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'rejects UPDATE that rewrites storage_path to another household',
+        () async {
+          // The constraint also has to hold for UPDATEs — otherwise
+          // a row could be inserted with a valid path, then the
+          // attacker UPDATEs it to a foreign one and runs the
+          // delete. Pin the same shape via UPDATE.
+          final inserted = await harness.client
+              .from('receipts')
+              .insert({
+                'household_id': harness.householdId,
+                'uploaded_by': harness.userId,
+                'storage_path':
+                    '${harness.householdId}/legit-${DateTime.now().microsecondsSinceEpoch}.jpg',
+                'ocr_status': 'pending',
+              })
+              .select('id')
+              .single();
+
+          await expectLater(
+            harness.client
+                .from('receipts')
+                .update({
+                  'storage_path':
+                      '00000000-0000-0000-0000-000000000999/attack.jpg',
+                })
+                .eq('id', inserted['id']),
+            throwsA(anything),
+            reason:
+                'CHECK fires on UPDATE too; otherwise the attack is '
+                'just two steps (insert valid → rewrite to victim).',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'accepts a storage_path correctly prefixed with the row\'s household',
+        () async {
+          // Negative-of-the-negative — sanity check the constraint
+          // isn't over-broad and reject legitimate inserts. The
+          // production upload code builds paths this way; the
+          // happy path must keep working.
+          final inserted = await harness.client
+              .from('receipts')
+              .insert({
+                'household_id': harness.householdId,
+                'uploaded_by': harness.userId,
+                'storage_path':
+                    '${harness.householdId}/ok-${DateTime.now().microsecondsSinceEpoch}.jpg',
+                'ocr_status': 'pending',
+              })
+              .select('id')
+              .single();
+          expect(inserted['id'], isNotNull);
+        },
+        skip: reason,
+      );
+    });
   });
 }
