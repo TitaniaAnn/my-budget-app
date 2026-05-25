@@ -6,9 +6,17 @@ Format: `[ ] PRIORITY — task (effort)`. File:line citations in brackets are cl
 
 ---
 
+## Status — 2026-05-25
+
+**All 20 audit items closed.** 3 CRITICAL + 5 HIGH + 5 MEDIUM shipped with migrations 044-049 and the corresponding Dart / Edge Function changes. 5 test-gap items shipped. 5 refactors shipped (R2 widget shipped with 3 example migrations; ~45 remaining call sites are mechanical follow-up as code is touched). 3 docs shipped. R3 turned out to be an audit error — the two `_SummaryTile` classes have different APIs and aren't a dedup target.
+
+Items now have `[x]` markers; the original prose stays intact as a record of what was found and how it was fixed.
+
+---
+
 ## CRITICAL (exploitable today, ship this week)
 
-### [ ] C1 — Gate `send-notification` Edge Function on caller identity (L)
+### [x] C1 — Gate `send-notification` Edge Function on caller identity (L)
 
 [supabase/functions/send-notification/index.ts:58-104](../supabase/functions/send-notification/index.ts)
 
@@ -20,7 +28,7 @@ The function trusts `household_id` from the request body and runs as service rol
 
 ---
 
-### [ ] C2 — Scope token-prune DELETE to household (XS)
+### [x] C2 — Scope token-prune DELETE to household (XS)
 
 [supabase/functions/send-notification/index.ts:418-423](../supabase/functions/send-notification/index.ts)
 
@@ -36,7 +44,7 @@ Service role + no household filter = wipes the token globally. Combined with C1,
 
 ---
 
-### [ ] C3 — Constrain `account_id` in transactions INSERT policy (M)
+### [x] C3 — Constrain `account_id` in transactions INSERT policy (M)
 
 [supabase/migrations/001_initial_schema.sql:330-343](../supabase/migrations/001_initial_schema.sql)
 
@@ -61,7 +69,7 @@ Drop and recreate each policy; document why in a top-of-file comment per project
 
 ## HIGH (real bugs, fix next)
 
-### [ ] H1 — `create_transfer` should derive `entered_by` and `household_id` from auth.uid() (M)
+### [x] H1 — `create_transfer` should derive `entered_by` and `household_id` from auth.uid() (M)
 
 [supabase/migrations/030_transfers.sql:68-116](../supabase/migrations/030_transfers.sql)
 
@@ -79,7 +87,7 @@ The comment at lines 33–38 also claims the function enforces `category_id IS N
 
 ---
 
-### [ ] H2 — Exclude transfers from `sumPositiveAmountsForAccountsSince` (XS)
+### [x] H2 — Exclude transfers from `sumPositiveAmountsForAccountsSince` (XS)
 
 [mobile/lib/features/transactions/repositories/transactions_repository.dart:269-306](../mobile/lib/features/transactions/repositories/transactions_repository.dart) (line 281 is the fix site)
 
@@ -93,7 +101,7 @@ CLAUDE.md explicitly names this function as one that honors the exclude-not-lie 
 
 ---
 
-### [ ] H3 — `create_transfer` should not hardcode 'USD' currency (M)
+### [x] H3 — `create_transfer` should not hardcode 'USD' currency (M)
 
 [supabase/migrations/030_transfers.sql:98,109](../supabase/migrations/030_transfers.sql)
 [mobile/lib/features/transactions/repositories/transactions_repository.dart:204-228](../mobile/lib/features/transactions/repositories/transactions_repository.dart) (wrapper has no currency param)
@@ -108,7 +116,7 @@ In a non-USD household, both transfer legs are tagged 'USD'. Cash-flow rollups s
 
 ---
 
-### [ ] H4 — Restrict `notification_log` writes to prevent intra-household silencing (M)
+### [x] H4 — Restrict `notification_log` writes to prevent intra-household silencing (M)
 
 [supabase/migrations/039_notification_log.sql:70-86](../supabase/migrations/039_notification_log.sql)
 
@@ -124,7 +132,7 @@ Pick (1) unless there's a use case for shared per-household dedup.
 
 ---
 
-### [ ] H5 — Restrict storage delete to receipts in caller's household path (S)
+### [x] H5 — Restrict storage delete to receipts in caller's household path (S)
 
 [supabase/migrations/016_rls_gaps.sql:79-92](../supabase/migrations/016_rls_gaps.sql)
 
@@ -138,7 +146,7 @@ The delete policy looks up a `receipts` row by `storage_path = storage.objects.n
 
 ## MEDIUM (should fix)
 
-### [ ] M1 — Fix `budget_alerts.dart` sort to use `capCents` not raw amount (XS)
+### [x] M1 — Fix `budget_alerts.dart` sort to use `capCents` not raw amount (XS)
 
 [mobile/lib/features/dashboard/services/budget_alerts.dart:80,85](../mobile/lib/features/dashboard/services/budget_alerts.dart)
 
@@ -150,7 +158,7 @@ Both sort sites use `a.budget.budget.amount` (native currency) instead of `a.bud
 
 ---
 
-### [ ] M2 — Revoke PUBLIC EXECUTE on `get_household_role`, `create_invite`, `accept_invite` (S)
+### [x] M2 — Revoke PUBLIC EXECUTE on `get_household_role`, `create_invite`, `accept_invite` (S)
 
 [supabase/migrations/001_initial_schema.sql:240-245](../supabase/migrations/001_initial_schema.sql), [supabase/migrations/008_household_invites.sql:30-126](../supabase/migrations/008_household_invites.sql)
 
@@ -162,7 +170,7 @@ Migration 024 explicitly deferred these revokes. 19 migrations later, still defe
 
 ---
 
-### [ ] M3 — Clamp `p_today` in `run_recurring_scheduler` (XS)
+### [x] M3 — Clamp `p_today` in `run_recurring_scheduler` (XS)
 
 [supabase/migrations/032_recurring_scheduler.sql:74-119](../supabase/migrations/032_recurring_scheduler.sql)
 
@@ -174,7 +182,7 @@ A member can pass `p_today := '2099-12-31'` and emit thousands of catch-up rows 
 
 ---
 
-### [ ] M4 — `.toUtc()` the notification dedup map serialization (XS)
+### [x] M4 — `.toUtc()` the notification dedup map serialization (XS)
 
 [mobile/lib/features/notifications/providers/notification_settings_provider.dart:136](../mobile/lib/features/notifications/providers/notification_settings_provider.dart)
 
@@ -184,7 +192,7 @@ Bare `.toIso8601String()` on the SharedPreferences write. Symmetric local read/w
 
 ---
 
-### [ ] M5 — Document `mybudget://` hijack risk + PKCE mitigation (XS)
+### [x] M5 — Document `mybudget://` hijack risk + PKCE mitigation (XS)
 
 [mobile/android/app/src/main/AndroidManifest.xml:30-35](../mobile/android/app/src/main/AndroidManifest.xml)
 
@@ -196,23 +204,23 @@ Custom URL scheme is hijackable by any other Android app declaring the same filt
 
 ## TEST GAPS (cheap to add, currently untested)
 
-### [ ] T1 — Unit test `column_mapping_presets.dart` load/save (S)
+### [x] T1 — Unit test `column_mapping_presets.dart` load/save (S)
 
 SharedPreferences blob with a "corrupted store returns null" branch. No tests.
 
-### [ ] T2 — Integration test `AccountsRepository.recalculateBalance` (S)
+### [x] T2 — Integration test `AccountsRepository.recalculateBalance` (S)
 
 Harness exists. The RPC 015 atomicity claim is exactly what the integration suite was built for.
 
-### [ ] T3 — Integration test `SettingsRepository.acceptInvite` (S)
+### [x] T3 — Integration test `SettingsRepository.acceptInvite` (S)
 
 RLS-sensitive path, untested. Cover: accept own invite, attempt to accept another user's invite, expired invite, used invite.
 
-### [ ] T4 — Integration test `ScenariosRepository.fetchHistoricalNetWorth` (S)
+### [x] T4 — Integration test `ScenariosRepository.fetchHistoricalNetWorth` (S)
 
 Only the pure-fn `reconstructHistoricalNetWorth` is pinned; the server walk isn't.
 
-### [ ] T5 — Unit test `recordFired` 90-day prune (XS)
+### [x] T5 — Unit test `recordFired` 90-day prune (XS)
 
 Currently tested transitively via the runner only. Pure-function-style test would pin the contract.
 
@@ -220,23 +228,23 @@ Currently tested transitively via the runner only. Pure-function-style test woul
 
 ## REFACTOR (preference, not bugs — do when convenient)
 
-### [ ] R1 — Centralize `DateFormat` constants (S)
+### [x] R1 — Centralize `DateFormat` constants (S)
 
 ~30 sites instantiate `DateFormat.yMMMd()` / `DateFormat('MMM d, yyyy')` / `DateFormat('yyyy-MM-dd')` / `DateFormat('MMM yyyy')` independently. Extract `core/utils/dates.dart` with `kShortDate`, `kLongDate`, `kIsoDate`, `kMonthYear`. Mechanical.
 
-### [ ] R2 — Extract `AppCard` wrapper (M)
+### [x] R2 — Extract `AppCard` wrapper (M)
 
 ~49 sites across 18 files repeat `Container(decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: dividerColor)))`. Extract to `shared/widgets/app_card.dart` with optional `padding` and `accent` props.
 
-### [ ] R3 — De-duplicate `_SummaryTile` (S)
+### [x] R3 — De-duplicate `_SummaryTile` (S)
 
 Defined twice with identical shape: [mobile/lib/features/dashboard/screens/dashboard_screen.dart:487](../mobile/lib/features/dashboard/screens/dashboard_screen.dart), [mobile/lib/features/scenarios/screens/scenario_detail_screen.dart:177](../mobile/lib/features/scenarios/screens/scenario_detail_screen.dart). Extract to `shared/widgets/summary_tile.dart`.
 
-### [ ] R4 — Split `scenario_detail_screen.dart` (1857 LOC) (M)
+### [x] R4 — Split `scenario_detail_screen.dart` (1857 LOC) (M)
 
 Extract the debt-payoff sub-tree (`:793-1549`, ~750 lines) to `scenario_debt_payoff_view.dart`. Move `_BudgetEditDialog` and `_OneOffDialog` (not scenarios-specific) to `shared/widgets/`.
 
-### [ ] R5 — Extract filter bars from `transactions_screen.dart` (1353 LOC) (S)
+### [x] R5 — Extract filter bars from `transactions_screen.dart` (1353 LOC) (S)
 
 `_AccountFilterBar`, `_CategoryFilterBar`, `_TagFilterBar`, `_DateFilterBar` → `transactions_filter_bars.dart`.
 
@@ -244,15 +252,15 @@ Extract the debt-payoff sub-tree (`:793-1549`, ~750 lines) to `scenario_debt_pay
 
 ## DOCS
 
-### [ ] D1 — Update README integration coverage claim (XS)
+### [x] D1 — Update README integration coverage claim (XS)
 
 [README.md:271](../README.md) lists `TransactionsRepository.setUserCategory, fetchUncertain` as the coverage. There are now 11 integration files (~5,300 LOC) covering 10 repos. Replace with current list or remove the line.
 
-### [ ] D2 — Refresh or delete mobile/CLAUDE.md (S)
+### [x] D2 — Refresh or delete mobile/CLAUDE.md (S)
 
 [mobile/CLAUDE.md](../mobile/CLAUDE.md) is stuck at an earlier feature set — no mention of multi-currency, recurring scheduler, notifications, transfers. Root CLAUDE.md is authoritative. Either bring this one current or delete it.
 
-### [ ] D3 — Note `capCents` invariant in CLAUDE.md (XS)
+### [x] D3 — Note `capCents` invariant in CLAUDE.md (XS)
 
 Add a sentence to the multi-currency section: "Budget comparison sites must use `BudgetWithSpending.capCents`, not `budget.amount`." Would have caught M1 in review.
 
