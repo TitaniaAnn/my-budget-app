@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
@@ -20,7 +21,6 @@ import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/money_text_field.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
-import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 
 class AddTransferSheet extends ConsumerStatefulWidget {
@@ -102,8 +102,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
       // — same pattern as createTransaction.
       await accountsRepo.recalculateBalance(_fromAccountId!);
       await accountsRepo.recalculateBalance(_toAccountId!);
-      ref.invalidate(accountsProvider);
-      ref.invalidate(transactionsProvider);
+      invalidateLedger(ref);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) context.showErrorSnackBar(e);

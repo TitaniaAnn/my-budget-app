@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
@@ -20,7 +21,6 @@ import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
-import '../providers/transactions_provider.dart';
 import '../repositories/transactions_repository.dart';
 import '../services/categorizer.dart';
 import '../services/column_mapping_presets.dart';
@@ -230,8 +230,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
           );
 
       await accountsRepo.recalculateBalance(_selectedAccountId!);
-      ref.invalidate(transactionsProvider);
-      ref.invalidate(accountsProvider);
+      invalidateLedger(ref);
       if (mounted) {
         Navigator.of(context).pop();
         // Build the toast piecewise. `inserted` is the headline; the

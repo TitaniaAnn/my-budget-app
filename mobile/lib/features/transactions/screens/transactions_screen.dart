@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/dates.dart';
@@ -448,8 +449,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       // — RPCs are independent.
       final accountsRepo = ref.read(accountsRepositoryProvider);
       await Future.wait(affectedAccounts.map(accountsRepo.recalculateBalance));
-      ref.invalidate(accountsProvider);
-      ref.invalidate(transactionsProvider);
+      invalidateLedger(ref);
       setState(_selection.clear);
       if (mounted) {
         context.showSnackBar(
@@ -578,7 +578,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       title: 'Delete Transfer?',
       message:
           'This removes both legs of the transfer '
-          '(${formatCurrency(tx.amount.abs())}, '
+          '(${formatCurrency(tx.amount.abs(), currency: tx.currency)}, '
           '${kLongDate.format(tx.transactionDate)}).',
     );
     if (!confirmed) return;
@@ -588,8 +588,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     for (final accountId in affected) {
       await accountsRepo.recalculateBalance(accountId);
     }
-    ref.invalidate(accountsProvider);
-    ref.invalidate(transactionsProvider);
+    invalidateLedger(ref);
   }
 
   Future<void> _recategorize() async {
@@ -729,15 +728,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       context,
       title: 'Delete Transaction?',
       message:
-          'Delete "${tx.merchant ?? tx.description}" for ${formatCurrency(tx.amount.abs())}?',
+          'Delete "${tx.merchant ?? tx.description}" for ${formatCurrency(tx.amount.abs(), currency: tx.currency)}?',
     );
     if (confirmed) {
       await ref.read(transactionsRepositoryProvider).deleteTransaction(tx.id);
       await ref
           .read(accountsRepositoryProvider)
           .recalculateBalance(tx.accountId);
-      ref.invalidate(accountsProvider);
-      ref.invalidate(transactionsProvider);
+      invalidateLedger(ref);
     }
   }
 }

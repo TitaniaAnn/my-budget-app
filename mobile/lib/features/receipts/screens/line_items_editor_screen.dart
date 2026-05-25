@@ -17,6 +17,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/money.dart';
@@ -144,10 +145,11 @@ class _LineItemsEditorScreenState extends ConsumerState<LineItemsEditorScreen> {
       if (tagWrites.isNotEmpty) await Future.wait(tagWrites);
 
       // The receipt detail screen's list re-reads to render the new
-      // items; the budget aggregation reads receipt_line_items.
-      // category_id now that Option B is live (see migration 026), so
-      // it needs to invalidate too.
+      // items; the ledger helper also re-fetches budgets / dashboard
+      // because line-item category edits shift Option B spend
+      // (migration 029).
       ref.invalidate(receiptLineItemsProvider(widget.receiptId));
+      invalidateLedger(ref);
 
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
