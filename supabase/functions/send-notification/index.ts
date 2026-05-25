@@ -412,13 +412,19 @@ async function deliverViaFcm(
   }
 
   // Prune any tokens FCM flagged as dead so we stop pushing to
-  // uninstalled / unregistered devices. The Edge Function uses the
-  // service role so this DELETE bypasses RLS (the table is
-  // user-scoped via RLS for clients).
+  // uninstalled / unregistered devices. Scoped to this household:
+  // device_push_tokens has UNIQUE(user_id, token), so the same
+  // token CAN coexist on two households when a user is a member
+  // of both. Without the household_id filter, the service-role
+  // DELETE would wipe the token from the other household too —
+  // an attacker who can craft an invalid token (via a compromised
+  // device or by registering a known-dead token) could weaponise
+  // this to purge legitimate tokens globally.
   if (invalidTokens.size > 0) {
     await supabase
       .from("device_push_tokens")
       .delete()
+      .eq("household_id", householdId)
       .in("token", [...invalidTokens]);
   }
 
