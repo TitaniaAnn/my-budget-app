@@ -66,12 +66,81 @@ serve(async (req) => {
   }
   if (!body.household_id) return jsonError(400, "household_id is required");
 
+  // Two ways a caller can prove they're allowed to dispatch for
+  // this household_id. Both rely on the same Authorization header
+  // shape ("Bearer <token>"); the function decides which path
+  // applies from the token's content.
+  //
+  //   1. CRON path — token equals the env-configured CRON_SECRET.
+  //      Used by the pg_cron job that fans this function out per
+  //      household. Trusts the body's household_id verbatim because
+  //      the scheduler is the source of truth for which households
+  //      to dispatch.
+  //
+  //   2. JWT path — token is a Supabase-issued user JWT. The
+  //      function verifies the JWT, then confirms the calling user
+  //      is a member of body.household_id via household_members.
+  //      Used by any client-initiated dispatch (today: none, but
+  //      keeps the door open for an "evaluate now" UI affordance).
+  //
+  // If neither path validates the function returns 401/403 — never
+  // proceeds to evaluation. Pre-fix this whole gate was missing:
+  // the function trusted any caller with the anon key (which ships
+  // in every release) and read budget/transaction text into the
+  // `preview` response field for ANY household_id they passed.
+  const auth = req.headers.get("Authorization") ?? "";
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : "";
+  if (!token) return jsonError(401, "missing bearer token");
+
+  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
+  const isCron = cronSecret !== "" && safeEqual(token, cronSecret);
+
+  if (!isCron) {
+    // JWT path. Validate the token against Supabase auth and
+    // require the caller to be a member of body.household_id.
+    // Anon-key client because auth.getUser is a public endpoint
+    // that takes the JWT to verify; service role isn't needed and
+    // would be wrong here (we WANT to inherit the caller's RLS
+    // scope when checking household membership below).
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } },
+    );
+    const { data: userData, error: userErr } = await userClient.auth.getUser(
+      token,
+    );
+    if (userErr || !userData?.user) {
+      return jsonError(401, "invalid or expired token");
+    }
+    // RLS on household_members already gates SELECT to rows where
+    // user_id = auth.uid(); querying via the user client means a
+    // returned row is by construction the caller's own membership.
+    // An empty result = not a member of the requested household =
+    // 403.
+    const { data: memberRows, error: memberErr } = await userClient
+      .from("household_members")
+      .select("household_id")
+      .eq("household_id", body.household_id)
+      .limit(1);
+    if (memberErr) return jsonError(500, String(memberErr));
+    if (!memberRows || memberRows.length === 0) {
+      return jsonError(
+        403,
+        "caller is not a member of the requested household",
+      );
+    }
+  }
+
+  // Past the gate: do the actual work with the service-role
+  // client. Service role bypasses RLS — the per-user RLS on
+  // device_push_tokens hides other members' tokens from one
+  // another, but a server-side dispatcher legitimately needs to
+  // see all of them.
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    // Service role bypasses RLS — the per-user RLS on
-    // device_push_tokens hides other members' tokens from one
-    // another, but a server-side dispatcher legitimately needs to
-    // see all of them.
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
@@ -102,6 +171,21 @@ serve(async (req) => {
     return jsonError(500, String(err));
   }
 });
+
+/// Constant-time string compare to keep CRON_SECRET validation
+/// out of the timing-attack window. Length leakage doesn't help
+/// an attacker meaningfully (the secret is random), but the
+/// content compare loop runs in time proportional to the matched
+/// prefix when written naïvely — short-circuiting on the first
+/// mismatched byte. This walks every byte regardless.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
 
 /// Tries to claim each pending key in notification_log via
 /// INSERT ... ON CONFLICT DO NOTHING RETURNING. The keys that come
