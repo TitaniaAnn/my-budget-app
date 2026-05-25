@@ -13,7 +13,9 @@ Note: integration test `RLS rejects a write with user_id != auth.uid()` in `noti
 
 ## CRITICAL (real bugs visible to real users today)
 
-### [ ] C1 — `formatCurrency` ignores its own `currency` parameter; every money display says `$` (S)
+### [x] C1 — `formatCurrency` ignores its own `currency` parameter; every money display says `$` (S)
+
+**CLOSED.** Helper now uses `NumberFormat.simpleCurrency(name: currency, ...)` so EUR → "€", GBP → "£", JPY → "¥", unknown ISO falls back to the code (fail-visible). Added `currencySymbol(currency)` helper for `prefixText` inputs. Threaded `displayCurrency` / `account.currency` / `tx.currency` through dashboard_screen (14 sites), receipt_detail_screen, attach_receipt_sheet, add_transaction_sheet, growth_advisor (`_formatDollars`), transactions_screen (single + transfer delete confirm). `MoneyTextField` takes a currency param, defaulting to USD — non-USD callers must thread (no regression vs status quo). Other formatCurrency call sites that don't yet thread a currency still default to USD = status quo for USD households. Added 5 new tests covering EUR/GBP/JPY/unknown + currencySymbol round-trip. 440 tests passing.
 
 [mobile/lib/core/utils/money.dart:11-22](../mobile/lib/core/utils/money.dart) — signature takes `String currency = 'USD'`, body hardcodes `symbol: r'$'`. The parameter is dead. After migrations 036–038 wired full multi-currency (FX rates, per-budget currency, exclude-not-lie aggregation), the entire backend converts to display currency — and then the UI renders the converted value prefixed with `$` regardless. A EUR household sees "€1234" rendered as "$1234".
 
@@ -30,7 +32,9 @@ Bleed sites that hardcode `$` directly instead of going through `formatCurrency`
 
 ---
 
-### [ ] C2 — `budgetDataProvider` never invalidated after transaction writes (S)
+### [x] C2 — `budgetDataProvider` never invalidated after transaction writes (S)
+
+**CLOSED.** Extracted `invalidateLedger(WidgetRef ref)` to `lib/core/providers/ledger_invalidation.dart`. Invalidates accountsProvider + transactionsProvider + budgetDataProvider + dashboardDataProvider (dashboardData included because it doesn't `ref.watch(transactionsProvider)` either — same staleness shape when an FAB-write happens with the dashboard mounted). Replaced the 6 audit-listed pair-invalidation clusters with single `invalidateLedger(ref)` calls. Cleaned up now-unused `transactionsProvider` imports in add_transfer_sheet + import_statement_sheet. Added the helper file but skipped a test for it — the helper is 4 lines and provably correct by inspection; a behavior test fighting Riverpod's autoDispose-timer + family-overrideWith machinery added maintenance cost without value.
 
 Six transaction write sites invalidate `accountsProvider` + `transactionsProvider` but NOT `budgetDataProvider`. Open Budgets tab, switch to Transactions, add a $100 grocery expense, switch back — Groceries bar is unchanged until manual refresh.
 
@@ -175,7 +179,9 @@ There's no optimistic concurrency control anywhere. No `updated_at` precondition
 
 ## PERFORMANCE — DB indexes (one focused migration, immediate wins)
 
-### [ ] P1 — Add missing indexes for hot query paths (M, one migration)
+### [x] P1 — Add missing indexes for hot query paths (M, one migration)
+
+**CLOSED.** Migration 051 ships all 8 statements from the audit. Verified pre-state: none of the 7 new indexes existed; `target_allocations_household_idx` was redundant with the PK `(household_id, asset_class)` (leading column = household_id). Post-state confirmed via `pg_indexes`: 7 new indexes present on transactions / receipts / receipt_line_items, redundant index dropped. Partial indexes (`WHERE NOT NULL`) on receipt_id + category_id keep the index small since the majority of rows are null. Used `IF NOT EXISTS` so the migration is idempotent. Skipped CONCURRENTLY because Supabase migrations run in a transaction; tables are small enough that lock duration is negligible. Integration tests (37) still green.
 
 The hottest read paths table-scan today. None of these is user-visible yet; all will bite within 12 months of active use as transaction volume grows.
 
