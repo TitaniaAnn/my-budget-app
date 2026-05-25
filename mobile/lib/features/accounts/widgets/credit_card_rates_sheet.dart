@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/dates.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/dialogs.dart';
 import '../../../shared/widgets/field_label.dart';
@@ -109,7 +109,7 @@ class _RateTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  static final _dateFmt = DateFormat('MMM d, yyyy');
+  static final _dateFmt = kLongDate;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +273,7 @@ class _AddEditRateSheetState extends ConsumerState<_AddEditRateSheet> {
   bool _loading = false;
 
   bool get _isEditMode => widget.rate != null;
-  static final _dateFmt = DateFormat('MMM d, yyyy');
+  static final _dateFmt = kLongDate;
 
   @override
   void initState() {

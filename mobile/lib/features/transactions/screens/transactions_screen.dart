@@ -10,8 +10,8 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
-import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -31,45 +31,7 @@ import '../widgets/add_transaction_sheet.dart';
 import '../widgets/add_transfer_sheet.dart';
 import '../widgets/import_statement_sheet.dart';
 import '../widgets/transaction_card.dart';
-// ── Date-range quick filter ────────────────────────────────────────────────────
-
-enum _DateFilter {
-  all('All time'),
-  thisMonth('This month'),
-  lastMonth('Last month'),
-  last90('Last 90 days'),
-  thisYear('This year');
-
-  const _DateFilter(this.label);
-  final String label;
-
-  (DateTime? from, DateTime? to) get range {
-    final now = DateTime.now();
-    return switch (this) {
-      _DateFilter.all => (null, null),
-      _DateFilter.thisMonth => (
-        DateTime(now.year, now.month, 1),
-        DateTime(now.year, now.month + 1, 0),
-      ),
-      _DateFilter.lastMonth => (
-        DateTime(now.year, now.month - 1, 1),
-        DateTime(now.year, now.month, 0),
-      ),
-      _DateFilter.last90 => (
-        DateTime(
-          now.year,
-          now.month,
-          now.day,
-        ).subtract(const Duration(days: 89)),
-        DateTime(now.year, now.month, now.day),
-      ),
-      _DateFilter.thisYear => (
-        DateTime(now.year, 1, 1),
-        DateTime(now.year, 12, 31),
-      ),
-    };
-  }
-}
+import '../widgets/transactions_filter_bars.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -114,7 +76,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String? _selectedAccountId;
   String? _selectedCategoryId;
   String? _selectedTagId;
-  _DateFilter _dateFilter = _DateFilter.thisMonth;
+  DateFilter _dateFilter = DateFilter.thisMonth;
   String _search = '';
   bool _showSearch = false;
   bool _recategorizing = false;
@@ -259,14 +221,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           accountsAsync.when(
             loading: () => const SizedBox(height: 48),
             error: (_, _) => const SizedBox.shrink(),
-            data: (accounts) => _AccountFilterBar(
+            data: (accounts) => AccountFilterBar(
               accounts: accounts,
               selectedId: _selectedAccountId,
               onSelected: (id) => setState(() => _selectedAccountId = id),
             ),
           ),
         // Date filter chips
-        _DateFilterBar(
+        DateFilterBar(
           selected: _dateFilter,
           onSelected: (f) => setState(() => _dateFilter = f),
         ),
@@ -274,7 +236,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ref
                 .watch(categoriesProvider)
                 .whenOrNull(
-                  data: (cats) => _CategoryFilterBar(
+                  data: (cats) => CategoryFilterBar(
                     categories: cats.where((c) => c.parentId == null).toList(),
                     selectedId: _selectedCategoryId,
                     onSelected: (id) =>
@@ -288,7 +250,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         tagsAsync.whenOrNull(
               data: (tags) => tags.isEmpty
                   ? null
-                  : _TagFilterBar(
+                  : TagFilterBar(
                       tags: tags,
                       selectedId: _selectedTagId,
                       onSelected: (id) => setState(() => _selectedTagId = id),
@@ -617,7 +579,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       message:
           'This removes both legs of the transfer '
           '(${formatCurrency(tx.amount.abs())}, '
-          '${DateFormat('MMM d, y').format(tx.transactionDate)}).',
+          '${kLongDate.format(tx.transactionDate)}).',
     );
     if (!confirmed) return;
     final repo = ref.read(transactionsRepositoryProvider);
@@ -729,7 +691,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       //   * lowercases, collapses non-alphanumeric runs to single
       //     dashes, then strips leading/trailing dashes so a tag
       //     named "@home" doesn't become "transactions--home-…"
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final today = kIsoDate.format(DateTime.now());
       final selectedTag = _selectedTagId == null
           ? null
           : tags.where((t) => t.id == _selectedTagId).firstOrNull;
@@ -777,264 +739,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ref.invalidate(accountsProvider);
       ref.invalidate(transactionsProvider);
     }
-  }
-}
-
-// ── Filter bars ───────────────────────────────────────────────────────────────
-
-/// Filter dropdown for the transactions screen — used for both
-/// account and category. Replaces a horizontally-scrolling chip
-/// row so a household with N accounts (or N categories) doesn't
-/// eat a whole strip of vertical space. The button's label shows
-/// the current selection so the filter remains visible at a
-/// glance; the trailing chevron + tap opens the menu.
-class _FilterDropdown extends StatelessWidget {
-  final String allLabel;
-  final List<({String id, String name})> items;
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
-  final IconData icon;
-
-  const _FilterDropdown({
-    required this.allLabel,
-    required this.items,
-    required this.selectedId,
-    required this.onSelected,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final selected = selectedId == null
-        ? null
-        : items.firstWhere(
-            (i) => i.id == selectedId,
-            // If the saved selection no longer matches anything
-            // (account/category deleted), behave as if All is
-            // selected.
-            orElse: () => (id: '', name: allLabel),
-          );
-    final showActive = selected != null && selected.id.isNotEmpty;
-    return PopupMenuButton<String?>(
-      tooltip: allLabel,
-      initialValue: selectedId,
-      onSelected: onSelected,
-      itemBuilder: (_) => <PopupMenuEntry<String?>>[
-        PopupMenuItem<String?>(value: null, child: Text(allLabel)),
-        const PopupMenuDivider(),
-        for (final i in items)
-          PopupMenuItem<String?>(value: i.id, child: Text(i.name)),
-      ],
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: showActive ? cs.primary : cs.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: showActive ? cs.primary : theme.dividerColor,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: showActive
-                  ? Colors.white
-                  : cs.onSurface.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: 6),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 160),
-              child: Text(
-                selected?.name ?? allLabel,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: showActive
-                      ? Colors.white
-                      : cs.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 18,
-              color: showActive
-                  ? Colors.white
-                  : cs.onSurface.withValues(alpha: 0.6),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountFilterBar extends StatelessWidget {
-  final List<Account> accounts;
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
-
-  const _AccountFilterBar({
-    required this.accounts,
-    required this.selectedId,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: _FilterDropdown(
-          allLabel: 'All accounts',
-          items: [for (final a in accounts) (id: a.id, name: a.name)],
-          selectedId: selectedId,
-          onSelected: onSelected,
-          icon: Icons.account_balance_outlined,
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryFilterBar extends StatelessWidget {
-  final List<Category> categories;
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
-
-  const _CategoryFilterBar({
-    required this.categories,
-    required this.selectedId,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (categories.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: _FilterDropdown(
-          allLabel: 'All categories',
-          items: [for (final c in categories) (id: c.id, name: c.name)],
-          selectedId: selectedId,
-          onSelected: onSelected,
-          icon: Icons.label_outline,
-        ),
-      ),
-    );
-  }
-}
-
-/// Horizontal chip row of every tag in the household. Same pill
-/// style as [_CategoryFilterBar] for visual consistency. Selecting
-/// a tag narrows the transactions list to rows carrying that tag;
-/// the "All tags" pill clears the filter. Tag chips are prefixed
-/// with `#` so they can't be confused with category chips on a
-/// glance.
-class _TagFilterBar extends StatelessWidget {
-  final List<TransactionTag> tags;
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
-
-  const _TagFilterBar({
-    required this.tags,
-    required this.selectedId,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _chip(context, null, 'All tags'),
-          ...tags.map((t) => _chip(context, t.id, '#${t.name}')),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(BuildContext context, String? id, String label) {
-    final selected = selectedId == id;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8, bottom: 4),
-      child: GestureDetector(
-        onTap: () => onSelected(id),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).dividerColor,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected
-                    ? Colors.white
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DateFilterBar extends StatelessWidget {
-  final _DateFilter selected;
-  final ValueChanged<_DateFilter> onSelected;
-
-  const _DateFilterBar({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: _DateFilter.values
-            .map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(f.label, style: const TextStyle(fontSize: 12)),
-                  selected: selected == f,
-                  onSelected: (_) => onSelected(f),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
   }
 }
 

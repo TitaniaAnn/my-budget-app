@@ -12,8 +12,8 @@
 // transactions_csv_test.dart.
 
 import 'package:csv/csv.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/utils/dates.dart';
 import '../../accounts/models/account.dart';
 import '../models/transaction.dart';
 import '../models/transaction_tag.dart';
@@ -51,7 +51,7 @@ String transactionsToCsv({
   required Map<String, TransactionTag> tagsById,
   required Map<String, Set<String>> tagAssignments,
 }) {
-  final dateFmt = DateFormat('yyyy-MM-dd');
+  final dateFmt = kIsoDate;
 
   final rows = <List<String>>[
     transactionsCsvHeader,

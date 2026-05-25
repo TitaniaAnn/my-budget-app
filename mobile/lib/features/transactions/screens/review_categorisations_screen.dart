@@ -9,10 +9,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../models/category.dart';
@@ -169,7 +168,7 @@ class _UncertainTileState extends ConsumerState<_UncertainTile> {
           Row(
             children: [
               Text(
-                DateFormat('MMM d').format(tx.transactionDate),
+                kShortDate.format(tx.transactionDate),
                 style: TextStyle(
                   fontSize: 12,
                   color: context.appColors.textSubtle,

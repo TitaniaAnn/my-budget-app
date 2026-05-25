@@ -1,8 +1,8 @@
 // Single transaction row widget used in the grouped list on TransactionsScreen.
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
 import '../models/transaction.dart';
@@ -28,7 +28,7 @@ class TransactionCard extends StatelessWidget {
     this.tags = const [],
   });
 
-  static final _dateFmt = DateFormat('MMM d');
+  static final _dateFmt = kShortDate;
 
   @override
   Widget build(BuildContext context) {

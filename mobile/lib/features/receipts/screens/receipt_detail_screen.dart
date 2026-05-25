@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/dates.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../transactions/models/transaction.dart';
 import '../../transactions/providers/transactions_provider.dart';
@@ -56,7 +57,7 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
       _merchantCtrl.text = receipt.merchantName!;
     }
     if (_dateCtrl.text.isEmpty && receipt.receiptDate != null) {
-      _dateCtrl.text = DateFormat('yyyy-MM-dd').format(receipt.receiptDate!);
+      _dateCtrl.text = kIsoDate.format(receipt.receiptDate!);
     }
     if (_totalCtrl.text.isEmpty && receipt.totalAmount != null) {
       // Display as decimal dollars for editing (stored as cents).

@@ -15,7 +15,7 @@
 // event list or the targets, neither of which the sheet owns).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
@@ -29,7 +29,7 @@ import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
 import '../services/debt_payoff_simulator.dart';
 
-final _isoDateFmt = DateFormat('yyyy-MM-dd');
+final _isoDateFmt = kIsoDate;
 
 /// Preset accent colors the user can pick for a scenario card / chart line.
 const _palette = [

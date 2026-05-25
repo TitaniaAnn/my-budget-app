@@ -1,7 +1,7 @@
 // Bottom sheet for adding or editing a scenario event.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import '../../../core/utils/dates.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
 import '../../accounts/models/account.dart';
@@ -11,7 +11,7 @@ import '../providers/scenarios_provider.dart';
 import '../repositories/scenarios_repository.dart';
 import '../services/payoff_simulator.dart';
 
-final _isoDateFmt = DateFormat('yyyy-MM-dd');
+final _isoDateFmt = kIsoDate;
 
 class AddEventSheet extends ConsumerStatefulWidget {
   const AddEventSheet({super.key, required this.scenarioId, this.existing});

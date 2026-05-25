@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
@@ -79,7 +80,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   bool get _isEditMode => widget.transaction != null;
 
-  static final _dateFmt = DateFormat('MMM d, yyyy');
+  static final _dateFmt = kLongDate;
 
   @override
   void initState() {
@@ -677,7 +678,7 @@ class _PairedReceiptCard extends ConsumerWidget {
   /// mid-submit so a race can't fire two writes against the same row).
   final VoidCallback? onUnpair;
 
-  static final _dateFmt = DateFormat('MMM d, yyyy');
+  static final _dateFmt = kLongDate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
