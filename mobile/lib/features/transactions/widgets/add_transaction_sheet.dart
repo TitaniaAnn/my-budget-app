@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/dates.dart';
@@ -18,6 +18,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/money_text_field.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
 import '../../receipts/providers/receipts_provider.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../receipts/widgets/attach_receipt_sheet.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_tags_provider.dart';
@@ -254,8 +255,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       final accountsRepo = ref.read(accountsRepositoryProvider);
       await repo.deleteTransaction(widget.transaction!.id);
       await accountsRepo.recalculateBalance(widget.transaction!.accountId);
-      ref.invalidate(accountsProvider);
-      ref.invalidate(transactionsProvider);
+      invalidateLedger(ref);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) context.showErrorSnackBar(e);
@@ -339,8 +339,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       }
 
       await accountsRepo.recalculateBalance(affectedAccountId);
-      ref.invalidate(accountsProvider);
-      ref.invalidate(transactionsProvider);
+      invalidateLedger(ref);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) context.showErrorSnackBar(e);
@@ -684,7 +683,13 @@ class _PairedReceiptCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = context.appColors;
-    final fmt = NumberFormat.currency(symbol: r'$');
+    // Display totals in the household's currency so a EUR-household
+    // sees "€12.34" rather than the pre-C1 hardcoded "$12.34".
+    // Receipts don't carry their own currency column today; if that
+    // changes, switch to `receipt.currency`.
+    final displayCurrency = ref
+        .watch(householdInfoProvider)
+        .maybeWhen(data: (h) => h.displayCurrency, orElse: () => 'USD');
     final receiptAsync = ref.watch(receiptProvider(receiptId));
 
     return Container(
@@ -755,7 +760,7 @@ class _PairedReceiptCard extends ConsumerWidget {
                     Text(
                       receipt.totalAmount != null
                           ? '${_dateFmt.format(shownDate)} · '
-                                '${fmt.format(receipt.totalAmount! / 100)}'
+                                '${formatCurrency(receipt.totalAmount!, currency: displayCurrency)}'
                           : _dateFmt.format(shownDate),
                       style: TextStyle(fontSize: 12, color: colors.textSubtle),
                     ),

@@ -18,6 +18,46 @@ void main() {
     test('renders single-cent values', () {
       expect(money.formatCurrency(1), '\$0.01');
     });
+
+    // ── C1 (multi-currency display): the `currency` parameter must
+    // route to the right ICU symbol; before the fix it was ignored
+    // and every render said "$" regardless of the household's
+    // displayCurrency.
+    test('honours the currency parameter for EUR', () {
+      expect(money.formatCurrency(1234, currency: 'EUR'), '€12.34');
+    });
+
+    test('honours the currency parameter for GBP', () {
+      expect(money.formatCurrency(1234, currency: 'GBP'), '£12.34');
+    });
+
+    test('honours the currency parameter for JPY (no minor units)', () {
+      // JPY's "natural" decimal-digit count is 0, but our formatter
+      // forces 2 to keep alignment with the cents-storage contract.
+      // The symbol must still resolve to '¥'.
+      expect(money.formatCurrency(123400, currency: 'JPY'), startsWith('¥'));
+    });
+
+    test('falls back to the ISO code for an unknown currency', () {
+      // ICU returns the code itself when it doesn't recognise the
+      // currency — the right "fail visible" behaviour vs. silently
+      // dropping back to '$'.
+      final out = money.formatCurrency(1234, currency: 'XYZ');
+      expect(out, contains('XYZ'));
+      expect(out, isNot(contains(r'$')));
+    });
+  });
+
+  group('currencySymbol', () {
+    test('returns the locale-aware symbol for known ISO codes', () {
+      expect(money.currencySymbol('USD'), '\$');
+      expect(money.currencySymbol('EUR'), '€');
+      expect(money.currencySymbol('GBP'), '£');
+    });
+
+    test('falls back to the ISO code for unknown currencies', () {
+      expect(money.currencySymbol('XYZ'), 'XYZ');
+    });
   });
 
   group('centsToString', () {

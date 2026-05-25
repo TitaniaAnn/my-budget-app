@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/money.dart';
 import '../../../shared/widgets/sheet_scaffold.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../transactions/repositories/transactions_repository.dart';
 import '../models/receipt.dart';
@@ -67,6 +69,14 @@ class _AttachReceiptSheetState extends ConsumerState<AttachReceiptSheet> {
   @override
   Widget build(BuildContext context) {
     final unpairedAsync = ref.watch(unpairedReceiptsProvider);
+    // Render totals in the household's display currency. Receipts
+    // don't carry their own currency column today, so a household
+    // that changes display currency sees historical receipts
+    // re-rendered in the new symbol — same contract as everywhere
+    // else.
+    final displayCurrency = ref
+        .watch(householdInfoProvider)
+        .maybeWhen(data: (h) => h.displayCurrency, orElse: () => 'USD');
 
     return AppSheetScaffold(
       title: 'Attach Receipt',
@@ -92,6 +102,7 @@ class _AttachReceiptSheetState extends ConsumerState<AttachReceiptSheet> {
               receipts: receipts,
               attachingId: _attachingReceiptId,
               onPick: _attach,
+              currency: displayCurrency,
             );
           },
         ),
@@ -144,16 +155,17 @@ class _ReceiptList extends StatelessWidget {
     required this.receipts,
     required this.attachingId,
     required this.onPick,
+    required this.currency,
   });
 
   final List<Receipt> receipts;
   final String? attachingId;
   final ValueChanged<Receipt> onPick;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fmt = NumberFormat.currency(symbol: r'$');
     final dateFmt = DateFormat.yMMMd();
 
     return ListView.separated(
@@ -191,7 +203,7 @@ class _ReceiptList extends StatelessWidget {
                 )
               : Text(
                   r.totalAmount != null
-                      ? fmt.format(r.totalAmount! / 100)
+                      ? formatCurrency(r.totalAmount!, currency: currency)
                       : '—',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,

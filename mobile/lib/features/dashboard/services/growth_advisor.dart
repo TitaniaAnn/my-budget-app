@@ -16,6 +16,7 @@
 // expand DashboardData and the dashboard provider together — the
 // rule itself stays a pure function.
 
+import '../../../core/utils/money.dart';
 import '../../accounts/models/account.dart';
 import '../../transactions/models/transaction.dart';
 import '../providers/dashboard_provider.dart';
@@ -180,7 +181,7 @@ class CreditCardCarryRule implements GrowthRule {
     if (worst == null) return null;
 
     final aprPct = (worst.interestRate! * 100).toStringAsFixed(1);
-    final dollars = _formatDollars(worstBalance);
+    final dollars = _formatDollars(worstBalance, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.warning,
@@ -241,7 +242,7 @@ class SavingsRateRule implements GrowthRule {
         severity: SuggestionSeverity.warning,
         title: 'Spending more than you earn',
         detail:
-            'This month\'s spending is ${_formatDollars(gap)} above '
+            'This month\'s spending is ${_formatDollars(gap, data.displayCurrency)} above '
             'income. Closing the gap is the first lever before any '
             'investing strategy.',
       );
@@ -314,7 +315,7 @@ class IdleCashRule implements GrowthRule {
     );
     if (hasRecentContribution) return null;
 
-    final dollars = _formatDollars(liquid);
+    final dollars = _formatDollars(liquid, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.opportunity,
@@ -405,7 +406,7 @@ class AccountFeesRule implements GrowthRule {
     final annualised = (feeSpend * 365) ~/ 90;
     if (annualised < _annualThresholdCents) return null;
 
-    final dollars = _formatDollars(annualised);
+    final dollars = _formatDollars(annualised, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.opportunity,
@@ -491,10 +492,10 @@ class RothIraUnderusedRule implements GrowthRule {
     // hard limit and the silence threshold — read as "you've used
     // ~the full limit" instead.
     final gapStr = gap > 0
-        ? '${_formatDollars(gap)} left before the deadline'
+        ? '${_formatDollars(gap, data.displayCurrency)} left before the deadline'
         : 'roughly at the limit';
-    final contributedStr = _formatDollars(contributed);
-    final limitStr = _formatDollars(annualLimitCents);
+    final contributedStr = _formatDollars(contributed, data.displayCurrency);
+    final limitStr = _formatDollars(annualLimitCents, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.opportunity,
@@ -611,8 +612,8 @@ class SubscriptionDriftRule implements GrowthRule {
     if (growth < _flagPctIncrease) return null;
 
     final pctStr = (growth * 100).toStringAsFixed(0);
-    final currentStr = _formatDollars(currentSpend);
-    final priorStr = _formatDollars(priorAvg);
+    final currentStr = _formatDollars(currentSpend, data.displayCurrency);
+    final priorStr = _formatDollars(priorAvg, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.info,
@@ -704,7 +705,7 @@ class NetWorthTrajectoryRule implements GrowthRule {
     }
     final baselineAvg = baselineSum ~/ (series.length - baselineStart);
     final gap = baselineAvg - current;
-    final gapStr = _formatDollars(gap);
+    final gapStr = _formatDollars(gap, data.displayCurrency);
     return GrowthSuggestion(
       id: id,
       severity: SuggestionSeverity.info,
@@ -720,14 +721,20 @@ class NetWorthTrajectoryRule implements GrowthRule {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Whole-dollar formatter for in-suggestion strings. Avoids decimals
+/// Whole-amount formatter for in-suggestion strings. Avoids decimals
 /// because the suggestion text is observational, not exact accounting
 /// — "$3,400" reads better than "$3,400.00" in a one-liner.
-String _formatDollars(int cents) {
+///
+/// Honours the household's [currency] for the prefix glyph (audit C1:
+/// pre-fix this hardcoded '\$' so EUR/GBP households saw their advice
+/// stated in dollars).
+String _formatDollars(int cents, String currency) {
   final dollars = (cents / 100).round();
   // Comma-grouped manually so the engine doesn't pull in intl
-  // formatting for a trivial transform. Negative inputs aren't
-  // expected here (callers pass magnitudes); fall through if so.
+  // formatting for the digit pass. Negative inputs aren't expected
+  // here (callers pass magnitudes); fall through if so. Currency
+  // prefix routes through the shared helper so the glyph matches
+  // every other money render in the app.
   final negative = dollars < 0;
   final digits = dollars.abs().toString();
   final buf = StringBuffer();
@@ -735,7 +742,7 @@ String _formatDollars(int cents) {
     if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
     buf.write(digits[i]);
   }
-  return '${negative ? '-' : ''}\$$buf';
+  return '${negative ? '-' : ''}${currencySymbol(currency)}$buf';
 }
 
 /// Converts a transaction's signed amount into the household's

@@ -7,18 +7,35 @@ import 'package:decimal/decimal.dart';
 import 'package:intl/intl.dart';
 
 /// Formats integer cents as a locale-aware currency string.
-/// Example: 1234 → "$12.34"
+/// `currency` is the 3-letter ISO code (USD, EUR, GBP, …); the
+/// formatter resolves the matching symbol via ICU. Defaults to USD
+/// for single-currency installs and tests; multi-currency render
+/// sites must thread the active currency through explicitly.
+/// Example: 1234, currency: 'USD' → "$12.34"
+///          1234, currency: 'EUR' → "€12.34"
 String formatCurrency(
   int cents, {
   String currency = 'USD',
   String locale = 'en_US',
 }) {
-  final formatter = NumberFormat.currency(
+  final formatter = NumberFormat.simpleCurrency(
     locale: locale,
-    symbol: r'$',
+    name: currency,
     decimalDigits: 2,
   );
   return formatter.format(cents / 100);
+}
+
+/// Returns the locale-aware currency symbol for [currency] (USD →
+/// `$`, EUR → `€`, GBP → `£`). Used by inputs that need just the
+/// prefix glyph without formatting a value. Delegates to the same
+/// ICU table [formatCurrency] uses so the symbol always matches
+/// what a formatted total would print.
+String currencySymbol(String currency, {String locale = 'en_US'}) {
+  return NumberFormat.simpleCurrency(
+    locale: locale,
+    name: currency,
+  ).currencySymbol;
 }
 
 /// Formats cents as a plain decimal string without a currency symbol.

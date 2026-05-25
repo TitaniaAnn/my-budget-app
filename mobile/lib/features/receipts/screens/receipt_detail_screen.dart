@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/dates.dart';
+import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../transactions/models/transaction.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../transactions/repositories/transactions_repository.dart';
@@ -430,15 +432,21 @@ class _OcrStatusChip extends StatelessWidget {
 // Line items list
 // ---------------------------------------------------------------------------
 
-class _LineItemsList extends StatelessWidget {
+class _LineItemsList extends ConsumerWidget {
   const _LineItemsList({required this.items});
 
   final List<ReceiptLineItem> items;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final fmt = NumberFormat.currency(symbol: '\$');
+    // Audit C1: line-item amounts must render in the household's
+    // display currency, not a hardcoded "$". Receipts don't carry
+    // their own currency column today — if that changes, switch to
+    // the receipt's currency rather than the household's.
+    final currency = ref
+        .watch(householdInfoProvider)
+        .maybeWhen(data: (h) => h.displayCurrency, orElse: () => 'USD');
 
     return Column(
       children: [
@@ -469,8 +477,8 @@ class _LineItemsList extends StatelessWidget {
                 Text(
                   // Discounts display as negative.
                   item.isDiscount
-                      ? '-${fmt.format(item.amount / 100)}'
-                      : fmt.format(item.amount / 100),
+                      ? '-${formatCurrency(item.amount, currency: currency)}'
+                      : formatCurrency(item.amount, currency: currency),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: item.isDiscount
@@ -546,7 +554,6 @@ class _PairedTransactionsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final pairedAsync = ref.watch(transactionsForReceiptProvider(receiptId));
-    final fmt = NumberFormat.currency(symbol: r'$');
     final dateFmt = DateFormat.yMMMd();
 
     return pairedAsync.when(
@@ -583,7 +590,13 @@ class _PairedTransactionsSection extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        fmt.format(tx.amount.abs() / 100),
+                        // Each paired tx renders in its OWN currency
+                        // (transactions.currency, set server-side from
+                        // the account). For a USD-only household this
+                        // is identical to the household symbol; for a
+                        // multi-currency household it correctly shows
+                        // the leg's actual currency.
+                        formatCurrency(tx.amount.abs(), currency: tx.currency),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),

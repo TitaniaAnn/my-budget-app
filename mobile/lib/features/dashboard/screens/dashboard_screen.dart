@@ -121,6 +121,7 @@ class _DashboardBody extends ConsumerWidget {
               child: _SummaryTile(
                 label: 'Spent',
                 cents: data.monthlySpending,
+                currency: data.displayCurrency,
                 icon: Icons.arrow_upward_rounded,
                 color: context.appColors.expense,
               ),
@@ -130,6 +131,7 @@ class _DashboardBody extends ConsumerWidget {
               child: _SummaryTile(
                 label: 'Income',
                 cents: data.monthlyIncome,
+                currency: data.displayCurrency,
                 icon: Icons.arrow_downward_rounded,
                 color: context.appColors.income,
               ),
@@ -141,7 +143,10 @@ class _DashboardBody extends ConsumerWidget {
         // ── 30-day Spending Sparkline ──────────────────────────────────────
         _SectionHeader(title: '30-Day Spending'),
         const SizedBox(height: 10),
-        _SpendingSparkline(spendingByDay: data.spendingByDay),
+        _SpendingSparkline(
+          spendingByDay: data.spendingByDay,
+          currency: data.displayCurrency,
+        ),
         const SizedBox(height: 24),
 
         // ── Budget Health ──────────────────────────────────────────────────
@@ -160,7 +165,12 @@ class _DashboardBody extends ConsumerWidget {
                   onAction: (ctx) => ctx.go('/budget'),
                 ),
                 const SizedBox(height: 10),
-                ...alerts.take(3).map((a) => _BudgetAlertTile(alert: a)),
+                ...alerts.take(3).map(
+                  (a) => _BudgetAlertTile(
+                    alert: a,
+                    currency: data.displayCurrency,
+                  ),
+                ),
                 const SizedBox(height: 24),
               ],
             );
@@ -171,14 +181,14 @@ class _DashboardBody extends ConsumerWidget {
         // Donut + legend, hidden when no holdings are recorded so a
         // household that doesn't use the holdings feature doesn't see
         // an empty section header.
-        const _AssetAllocationSection(),
+        _AssetAllocationSection(currency: data.displayCurrency),
 
         // ── Rebalance suggestions ──────────────────────────────────────────
         // Surfaces any asset class drifted more than 5 percentage
         // points from its user-set target. Quiet by default — only
         // renders when targets are configured AND at least one class
         // is out of band.
-        const _RebalanceSection(),
+        _RebalanceSection(currency: data.displayCurrency),
 
         // ── Top Categories ─────────────────────────────────────────────────
         if (data.topCategories.isNotEmpty) ...[
@@ -191,6 +201,7 @@ class _DashboardBody extends ConsumerWidget {
           _TopCategoriesCard(
             categories: data.topCategories,
             totalSpending: data.monthlySpending,
+            currency: data.displayCurrency,
           ),
           const SizedBox(height: 24),
         ],
@@ -315,7 +326,12 @@ class _NetWorthCard extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          formatCurrency(converted.totalCents),
+          // The headline already reads in the household's display
+          // currency (converted via FX); the symbol must match.
+          formatCurrency(
+            converted.totalCents,
+            currency: converted.displayCurrency,
+          ),
           style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.w800,
@@ -452,7 +468,11 @@ class _AccountsRowState extends State<_AccountsRow> {
                       ),
                       const Spacer(),
                       Text(
-                        formatCurrency(displayCents),
+                        // Per-account balance in the account's OWN
+                        // currency — no FX conversion happens here
+                        // (the net-worth headline is the place for
+                        // converted display).
+                        formatCurrency(displayCents, currency: a.currency),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -488,12 +508,14 @@ class _AccountsRowState extends State<_AccountsRow> {
 class _SummaryTile extends StatelessWidget {
   final String label;
   final int cents;
+  final String currency;
   final IconData icon;
   final Color color;
 
   const _SummaryTile({
     required this.label,
     required this.cents,
+    required this.currency,
     required this.icon,
     required this.color,
   });
@@ -519,7 +541,7 @@ class _SummaryTile extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            formatCurrency(cents),
+            formatCurrency(cents, currency: currency),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -536,7 +558,11 @@ class _SummaryTile extends StatelessWidget {
 /// Each bar is one day; today is on the right. Tapping a bar shows the amount.
 class _SpendingSparkline extends StatelessWidget {
   final List<int> spendingByDay; // 30 items, index 29 = today
-  const _SpendingSparkline({required this.spendingByDay});
+  final String currency;
+  const _SpendingSparkline({
+    required this.spendingByDay,
+    required this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -621,7 +647,7 @@ class _SpendingSparkline extends StatelessWidget {
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
-                      formatCurrency(rod.toY.round()),
+                      formatCurrency(rod.toY.round(), currency: currency),
                       const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -639,7 +665,12 @@ class _SpendingSparkline extends StatelessWidget {
 /// Alert row for a budget that is over or nearing its limit.
 class _BudgetAlertTile extends StatelessWidget {
   final BudgetAlert alert;
-  const _BudgetAlertTile({required this.alert});
+  // Household's display currency — every value rendered here
+  // (spentCents / capCents / projectedCents) is already FX-converted
+  // into this currency by [BudgetWithSpending], so the symbol must
+  // match.
+  final String currency;
+  const _BudgetAlertTile({required this.alert, required this.currency});
 
   @override
   Widget build(BuildContext context) {
@@ -663,15 +694,15 @@ class _BudgetAlertTile extends StatelessWidget {
 
     final bodyText = switch (alert.state) {
       BudgetAlertState.overBudget =>
-        '${formatCurrency(budget.spentCents - budget.capCents)} '
+        '${formatCurrency(budget.spentCents - budget.capCents, currency: currency)} '
             'over budget',
       BudgetAlertState.projectedOver =>
-        'On pace for ${formatCurrency(budget.projectedCents)} '
+        'On pace for ${formatCurrency(budget.projectedCents, currency: currency)} '
             '($projectedPct%) — '
-            '${formatCurrency(budget.projectedCents - budget.capCents)} '
+            '${formatCurrency(budget.projectedCents - budget.capCents, currency: currency)} '
             'over by period end',
       BudgetAlertState.approachingLimit =>
-        '${formatCurrency(budget.capCents - budget.spentCents)} '
+        '${formatCurrency(budget.capCents - budget.spentCents, currency: currency)} '
             'remaining ($pct% used)',
     };
 
@@ -710,7 +741,7 @@ class _BudgetAlertTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                formatCurrency(budget.spentCents),
+                formatCurrency(budget.spentCents, currency: currency),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -718,7 +749,7 @@ class _BudgetAlertTile extends StatelessWidget {
                 ),
               ),
               Text(
-                'of ${formatCurrency(budget.capCents)}',
+                'of ${formatCurrency(budget.capCents, currency: currency)}',
                 style: TextStyle(
                   fontSize: 11,
                   color: context.appColors.textSubtle,
@@ -737,10 +768,14 @@ class _TopCategoriesCard extends StatelessWidget {
   final List<({String? id, String name, String? color, int totalCents})>
   categories;
   final int totalSpending;
+  // Household's display currency — `totalCents` per row is already
+  // FX-converted by `get_category_spending(p_rates: ...)`.
+  final String currency;
 
   const _TopCategoriesCard({
     required this.categories,
     required this.totalSpending,
+    required this.currency,
   });
 
   @override
@@ -776,7 +811,7 @@ class _TopCategoriesCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatCurrency(cat.totalCents),
+                      formatCurrency(cat.totalCents, currency: currency),
                       style: TextStyle(
                         fontSize: 13,
                         color: context.appColors.textMuted,
@@ -924,7 +959,12 @@ class _SuggestionCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _AssetAllocationSection extends ConsumerWidget {
-  const _AssetAllocationSection();
+  const _AssetAllocationSection({required this.currency});
+
+  // Household's display currency — `assetAllocationProvider` already
+  // aggregates per-class totals in this currency (FX-converted from
+  // holdings whose accounts may be in other currencies).
+  final String currency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -943,7 +983,11 @@ class _AssetAllocationSection extends ConsumerWidget {
           children: [
             const _SectionHeader(title: 'Asset Allocation'),
             const SizedBox(height: 10),
-            _AssetAllocationCard(slices: slices, totalCents: total),
+            _AssetAllocationCard(
+              slices: slices,
+              totalCents: total,
+              currency: currency,
+            ),
             const SizedBox(height: 24),
           ],
         );
@@ -955,8 +999,13 @@ class _AssetAllocationSection extends ConsumerWidget {
 class _AssetAllocationCard extends StatelessWidget {
   final List<({AssetClass assetClass, int totalCents})> slices;
   final int totalCents;
+  final String currency;
 
-  const _AssetAllocationCard({required this.slices, required this.totalCents});
+  const _AssetAllocationCard({
+    required this.slices,
+    required this.totalCents,
+    required this.currency,
+  });
 
   void _drillInto(BuildContext context, AssetClass cls) {
     Navigator.of(context).push(
@@ -1025,6 +1074,7 @@ class _AssetAllocationCard extends StatelessWidget {
                     color: s.assetClass.sliceColor,
                     pct: (s.totalCents / totalCents * 100),
                     cents: s.totalCents,
+                    currency: currency,
                     onTap: () => _drillInto(context, s.assetClass),
                   ),
                   if (s != slices.last) const SizedBox(height: 4),
@@ -1043,6 +1093,7 @@ class _LegendRow extends StatelessWidget {
   final Color color;
   final double pct;
   final int cents;
+  final String currency;
 
   /// Tap drills into [HoldingsByClassScreen] for this row's class.
   /// Wrapping the legend in an InkWell rather than a separate
@@ -1056,6 +1107,7 @@ class _LegendRow extends StatelessWidget {
     required this.color,
     required this.pct,
     required this.cents,
+    required this.currency,
     this.onTap,
   });
 
@@ -1083,7 +1135,7 @@ class _LegendRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          formatCurrency(cents),
+          formatCurrency(cents, currency: currency),
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ],
@@ -1112,7 +1164,9 @@ class _LegendRow extends StatelessWidget {
 const int _kRebalanceThresholdBp = 500;
 
 class _RebalanceSection extends ConsumerWidget {
-  const _RebalanceSection();
+  const _RebalanceSection({required this.currency});
+
+  final String currency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1129,7 +1183,11 @@ class _RebalanceSection extends ConsumerWidget {
             const _SectionHeader(title: 'Rebalance Suggestions'),
             const SizedBox(height: 10),
             for (final row in drifted)
-              _RebalanceTile(row: row, portfolioTotalCents: report.totalCents),
+              _RebalanceTile(
+                row: row,
+                portfolioTotalCents: report.totalCents,
+                currency: currency,
+              ),
             const SizedBox(height: 24),
           ],
         );
@@ -1139,10 +1197,15 @@ class _RebalanceSection extends ConsumerWidget {
 }
 
 class _RebalanceTile extends StatelessWidget {
-  const _RebalanceTile({required this.row, required this.portfolioTotalCents});
+  const _RebalanceTile({
+    required this.row,
+    required this.portfolioTotalCents,
+    required this.currency,
+  });
 
   final RebalanceRow row;
   final int portfolioTotalCents;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -1189,9 +1252,9 @@ class _RebalanceTile extends StatelessWidget {
                 Text(
                   isOverweight
                       ? 'Overweight by ${driftPct.toStringAsFixed(1)}% — '
-                            'sell ~${formatCurrency(driftCents.abs())}'
+                            'sell ~${formatCurrency(driftCents.abs(), currency: currency)}'
                       : 'Underweight by ${driftPct.abs().toStringAsFixed(1)}% — '
-                            'buy ~${formatCurrency(driftCents.abs())}',
+                            'buy ~${formatCurrency(driftCents.abs(), currency: currency)}',
                   style: TextStyle(fontSize: 11, color: accent),
                 ),
               ],
