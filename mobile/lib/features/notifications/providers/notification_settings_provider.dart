@@ -131,9 +131,16 @@ Future<void> recordFired({
       if (entry.value.isAfter(cutoff)) entry.key: entry.value,
     for (final k in newKeys) k: now,
   };
+  // .toUtc() so the stored ISO 8601 string is timezone-naive only in
+  // the trailing 'Z' sense, not in the "wrong instant" sense. Bare
+  // toIso8601String() on a local-zone DateTime emits the local wall
+  // time as if it were UTC; if the dedup map ever syncs across
+  // devices (or the host's timezone changes between writes and
+  // reads), the prune cutoff comparison drifts by the offset. Same
+  // bug class CLAUDE.md calls out for TIMESTAMPTZ writes.
   final encoded = jsonEncode({
     for (final entry in merged.entries)
-      entry.key: entry.value.toIso8601String(),
+      entry.key: entry.value.toUtc().toIso8601String(),
   });
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_kLastFiredKey, encoded);
