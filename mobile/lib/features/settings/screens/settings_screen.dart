@@ -237,11 +237,17 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           ListTile(
             leading: Icon(
-              Icons.delete_forever_outlined,
+              Icons.logout_outlined,
               color: context.cs.error,
             ),
             title: Text(
-              'Delete Account',
+              // Honest label: this flow signs the user out and asks
+              // them to follow up out-of-band for actual deletion.
+              // Audit C3: the prior "Delete Account" wording was a
+              // GDPR/CCPA exposure because the data was NOT being
+              // deleted. Replace with a real cascade-delete RPC when
+              // implementing the L-effort follow-up.
+              'Sign Out & Request Deletion',
               style: TextStyle(color: context.cs.error),
             ),
             onTap: () => _confirmDeleteAccount(context, ref),
@@ -531,23 +537,34 @@ class SettingsScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    // Audit C3: the prior dialog claimed "This permanently deletes
+    // your account and all household data" while the body just
+    // called signOut(). That's a GDPR/CCPA exposure for any EU/CA
+    // user — the data was NOT being deleted. Until the real
+    // cascade-delete Edge Function ships, the dialog must be
+    // honest about what actually happens.
     final confirmed = await confirmDestructive(
       context,
-      title: 'Delete Account?',
+      title: 'Sign out and request deletion?',
       message:
-          'This permanently deletes your account and all household data. '
-          'This cannot be undone.',
+          "This app can't delete accounts automatically yet — "
+          'tapping confirm will sign you out. Your data still lives '
+          'in the backend afterwards. To fully remove it, the '
+          'household owner needs to delete the records directly '
+          '(or contact the project maintainer to request deletion).',
     );
     if (confirmed) {
-      // Supabase doesn't expose a delete-user endpoint from the client SDK —
-      // sign out and show guidance to contact support.
+      // Supabase doesn't expose a delete-user endpoint from the
+      // client SDK. The truthful action here is sign-out, paired
+      // with a snackbar that does NOT claim deletion happened.
       await supabase.auth.signOut();
       if (context.mounted) {
         context.go('/login');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Signed out. Contact support to fully delete your account.',
+              'Signed out. Your data still exists in the backend — '
+              'contact the project maintainer to delete it.',
             ),
             duration: Duration(seconds: 6),
           ),

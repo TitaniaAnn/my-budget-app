@@ -53,7 +53,9 @@ Sites:
 
 ---
 
-### [ ] C3 — "Delete Account" dialog is a lie (S, plus a real implementation if you want one)
+### [x] C3 — "Delete Account" dialog is a lie (S, plus a real implementation if you want one)
+
+**CLOSED (path 1, quick fix).** Button renamed "Sign Out & Request Deletion" with `Icons.logout_outlined` (was "Delete Account" + `delete_forever_outlined` — both reinforced the lie). Dialog title is now "Sign out and request deletion?" with body that explicitly says the app can't auto-delete yet, data lives in the backend after sign-out, and the user needs to contact the project maintainer or have the household owner delete the records. Snackbar matches: "Signed out. Your data still exists in the backend — contact the project maintainer to delete it." Path 2 (real cascade-delete Edge Function) deferred — inline comments at both sites tell the next implementer where to swap it in.
 
 [mobile/lib/features/settings/screens/settings_screen.dart:530-557](../mobile/lib/features/settings/screens/settings_screen.dart). The destructive confirm dialog says "This permanently deletes your account and all household data. This cannot be undone." Then it calls `signOut()` and shows "Contact support to fully delete your account."
 
