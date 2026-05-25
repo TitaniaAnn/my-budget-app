@@ -299,6 +299,34 @@ async function evaluateForHousehold(
     .select("id, category_id, amount, currency, period, start_date")
     .eq("household_id", householdId);
   if (budgets) {
+    // Audit P2: group RPC calls by distinct (from, to) period instead
+    // of firing one per budget. A household with N budgets sharing
+    // one period (the typical case for monthly-everything) used to
+    // fire N identical RPCs.
+    type SpendingMap = Map<string, number>;
+    const periodKey = (from: string, to: string) => `${from}|${to}`;
+    const spendingByPeriod = new Map<string, SpendingMap>();
+    const periodsToFetch = new Map<string, { from: string; to: string }>();
+    for (const b of budgets) {
+      const { from, to } = currentPeriodRange(b.period);
+      periodsToFetch.set(periodKey(from, to), { from, to });
+    }
+    await Promise.all(
+      [...periodsToFetch.entries()].map(async ([key, { from, to }]) => {
+        const { data: rpc } = await supabase.rpc("get_category_spending", {
+          p_household_id: householdId,
+          p_from: from,
+          p_to: to,
+          p_rates: rpcRates,
+        });
+        const rows = rpc as
+          | Array<{ category_id: string; net_cents: number }>
+          | null;
+        const map: SpendingMap = new Map();
+        for (const r of rows ?? []) map.set(r.category_id, r.net_cents);
+        spendingByPeriod.set(key, map);
+      }),
+    );
     for (const b of budgets) {
       const { from, to } = currentPeriodRange(b.period);
 
@@ -314,15 +342,8 @@ async function evaluateForHousehold(
         capCents = Math.round(b.amount * rate);
       }
 
-      const { data: rpc } = await supabase.rpc("get_category_spending", {
-        p_household_id: householdId,
-        p_from: from,
-        p_to: to,
-        p_rates: rpcRates,
-      });
-      const row = (rpc as Array<{ category_id: string; net_cents: number }> | null)
-        ?.find((r) => r.category_id === b.category_id);
-      const spent = Math.max(0, row?.net_cents ?? 0);
+      const spendingMap = spendingByPeriod.get(periodKey(from, to));
+      const spent = Math.max(0, spendingMap?.get(b.category_id) ?? 0);
       if (spent <= capCents) continue;
       const overBy = spent - capCents;
       if (overBy < BUDGET_OVER_FLOOR_CENTS) continue;

@@ -130,25 +130,36 @@ Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
   final catMap = {for (final c in cats) c.id: c};
   final rpcRates = ratesToDisplay.isEmpty ? null : ratesToDisplay;
 
-  // Fetch spending for every budget in parallel — each uses its own range.
-  final spendingFutures = budgets.map((b) {
-    final (from, to) = b.period.currentRange();
-    return repo.fetchSpendingByCategory(
-      householdId: householdId,
-      from: from,
-      to: to,
-      ratesToDisplay: rpcRates,
-    );
-  }).toList();
-
-  final spendingMaps = await Future.wait(spendingFutures);
+  // Audit P2: group fetches by distinct (from, to) period instead of
+  // firing one RPC per budget. 10 monthly budgets used to fire 10
+  // identical RPCs; with this grouping each period fires once and the
+  // budgets sharing it pick from the same response. A household with
+  // monthly + weekly + biweekly budgets still benefits — distinct
+  // periods are typically 1-3, not 10.
+  final periodsByBudgetIndex = [
+    for (final b in budgets) b.period.currentRange(),
+  ];
+  final distinctPeriods = periodsByBudgetIndex.toSet();
+  final spendingByPeriod = <(DateTime, DateTime), Map<String, int>>{};
+  await Future.wait([
+    for (final period in distinctPeriods)
+      repo
+          .fetchSpendingByCategory(
+            householdId: householdId,
+            from: period.$1,
+            to: period.$2,
+            ratesToDisplay: rpcRates,
+          )
+          .then((spending) => spendingByPeriod[period] = spending),
+  ]);
 
   return List.generate(budgets.length, (i) {
     final b = budgets[i];
-    final (from, to) = b.period.currentRange();
+    final period = periodsByBudgetIndex[i];
+    final (from, to) = period;
     // Net spend can go negative when refunds exceed debits in a period;
     // floor at zero so the UI doesn't show "-$10 spent".
-    final raw = spendingMaps[i][b.categoryId] ?? 0;
+    final raw = spendingByPeriod[period]![b.categoryId] ?? 0;
     final spent = raw < 0 ? 0 : raw;
     final projected = projectEndOfPeriodSpend(
       spentCents: spent,
