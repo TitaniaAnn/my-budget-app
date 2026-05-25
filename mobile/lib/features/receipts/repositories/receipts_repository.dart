@@ -234,25 +234,65 @@ class ReceiptsRepository {
     return response;
   }
 
-  /// Soft-deletes a receipt by removing both the DB row and Storage object.
+  /// Deletes a receipt's storage object first, then its DB row.
   ///
-  /// KNOWN LIMITATION (acceptable for personal use): this is best-effort,
-  /// not transactional. If the storage delete fails after the row delete
-  /// commits, the storage object is orphaned and unreachable through the
-  /// app — once the row is gone, RLS no longer authorises any
-  /// `{household_id}/...` path read. For a hosted-service rewrite, the
+  /// Audit H2: pre-fix this was a parallel `Future.wait` of the two
+  /// deletes; whenever the DB delete won the race and storage delete
+  /// failed, the storage object became permanently unreachable —
+  /// once the row was gone, RLS no longer authorised any
+  /// `{household_id}/...` path read, so the object just accumulated
+  /// invisible.
+  ///
+  /// Sequencing storage-first with a single retry trades one silent
+  /// failure mode for one visible failure mode:
+  ///
+  ///   * Storage delete fails (both attempts) → DB row stays. The
+  ///     user sees the receipt still in the list and can retry. No
+  ///     orphan.
+  ///   * Storage delete succeeds, DB delete fails → DB row stays as
+  ///     a "broken" receipt (its image URL will 404). The row is
+  ///     still RLS-readable so a retry from the UI cleans it up
+  ///     (storage.remove is idempotent — the second attempt no-ops
+  ///     past the missing object).
+  ///
+  /// The retry covers the dominant failure shape (transient network
+  /// blip during storage.remove). For a hosted-service rewrite, the
   /// senior fix is an Edge Function with a pending-deletion queue
   /// (mark-for-delete in DB, retry storage cleanup with backoff).
+  /// Line items cascade-delete on the DB row (migration 001 sets
+  /// `ON DELETE CASCADE` on `receipt_line_items.receipt_id`) so we
+  /// don't have to delete them by hand.
   Future<void> deleteReceipt({
     required String receiptId,
     required String storagePath,
   }) async {
-    // Explicit type needed: PostgrestFilterBuilder and Future<List<FileObject>>
-    // have different types, so Future.wait can't infer a common Future<T>.
-    await Future.wait<dynamic>([
-      supabase.from('receipts').delete().eq('id', receiptId),
-      supabase.storage.from(_bucket).remove([storagePath]),
-    ]);
+    try {
+      await supabase.storage.from(_bucket).remove([storagePath]);
+    } catch (_) {
+      // One transient retry. Most storage failures are network
+      // blips that resolve on the second attempt; harder failures
+      // (auth, missing bucket) will throw the same exception again
+      // and bubble up to the caller's catch site.
+      await supabase.storage.from(_bucket).remove([storagePath]);
+    }
+    await supabase.from('receipts').delete().eq('id', receiptId);
+  }
+
+  /// Invokes the `process-receipt-ocr` Edge Function to re-attempt
+  /// OCR on a receipt. Used by the "Retry OCR" affordance (audit H3)
+  /// when a receipt is stuck on `pending` or sat at `failed`.
+  ///
+  /// The function sets `ocr_status` to `'processing'` immediately
+  /// and either `'complete'` or `'failed'` after the OCR pass —
+  /// callers should invalidate [receiptProvider] after this returns
+  /// so the UI picks up the new status. In the local dev stub a
+  /// retry produces synthetic line items; in production it
+  /// re-queues the real Cloud Vision pass.
+  Future<void> retryOcr(String receiptId) async {
+    await supabase.functions.invoke(
+      'process-receipt-ocr',
+      body: {'receipt_id': receiptId},
+    );
   }
 
   /// Returns receipts no transaction is currently pointing at, newest

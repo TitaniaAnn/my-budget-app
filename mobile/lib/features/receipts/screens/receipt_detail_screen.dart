@@ -140,12 +140,19 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
     if (confirmed != true || !mounted) return;
 
     final repo = ref.read(receiptsRepositoryProvider);
-    await repo.deleteReceipt(
-      receiptId: receipt.id,
-      storagePath: receipt.storagePath,
-    );
-    ref.invalidate(receiptsProvider);
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await repo.deleteReceipt(
+        receiptId: receipt.id,
+        storagePath: receipt.storagePath,
+      );
+      ref.invalidate(receiptsProvider);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      // Audit H2: a storage failure (both retries) leaves the DB
+      // row intact so the user CAN retry — surface the failure so
+      // they know to do that.
+      if (mounted) context.showErrorSnackBar(e);
+    }
   }
 
   @override
@@ -261,7 +268,21 @@ class _ReceiptDetailBody extends ConsumerWidget {
         // ── OCR status chip ─────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: _OcrStatusChip(status: receipt.ocrStatus),
+          child: Row(
+            children: [
+              _OcrStatusChip(status: receipt.ocrStatus),
+              const SizedBox(width: 12),
+              // Audit H3: when OCR sits at `failed` (production
+              // function errored) or `pending` for more than an hour
+              // (production function never dequeued the row, common
+              // when the external OCR backend is briefly down),
+              // give the user an escape hatch — re-invoke the
+              // function explicitly. Hidden in the happy-path so the
+              // chip doesn't shout for attention.
+              if (_shouldOfferOcrRetry(receipt))
+                _OcrRetryButton(receiptId: receipt.id),
+            ],
+          ),
         ),
 
         // ── Metadata form ───────────────────────────────────────────────
@@ -424,6 +445,74 @@ class _OcrStatusChip extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Threshold beyond which a `pending` OCR row is treated as stuck
+/// rather than "just queued." The production OCR backend usually
+/// completes in seconds; an hour comfortably absorbs cold-start
+/// queues without nagging the user with a retry button on every
+/// fresh upload.
+const _kOcrStuckAfter = Duration(hours: 1);
+
+/// True when the receipt's OCR status warrants a "Retry OCR"
+/// affordance — `failed` always qualifies, `pending` qualifies once
+/// it's been queued long enough to suspect the external backend
+/// dropped it.
+bool _shouldOfferOcrRetry(Receipt r) {
+  if (r.ocrStatus == OcrStatus.failed) return true;
+  if (r.ocrStatus == OcrStatus.pending) {
+    return DateTime.now().toUtc().difference(r.uploadedAt.toUtc()) >
+        _kOcrStuckAfter;
+  }
+  return false;
+}
+
+/// Compact "Retry OCR" button. Disables itself while a retry is
+/// in-flight so a double-tap can't queue two invocations against
+/// the same row. On success the receipt provider is invalidated so
+/// the parent re-renders with the new status.
+class _OcrRetryButton extends ConsumerStatefulWidget {
+  const _OcrRetryButton({required this.receiptId});
+
+  final String receiptId;
+
+  @override
+  ConsumerState<_OcrRetryButton> createState() => _OcrRetryButtonState();
+}
+
+class _OcrRetryButtonState extends ConsumerState<_OcrRetryButton> {
+  bool _busy = false;
+
+  Future<void> _retry() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(receiptsRepositoryProvider)
+          .retryOcr(widget.receiptId);
+      ref.invalidate(receiptProvider(widget.receiptId));
+    } catch (e) {
+      if (mounted) context.showErrorSnackBar(e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: _busy ? null : _retry,
+      icon: _busy
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.refresh, size: 16),
+      label: const Text('Retry OCR'),
+      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
     );
   }
 }
