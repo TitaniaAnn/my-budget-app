@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/providers/household_provider.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
@@ -80,12 +79,15 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
     final repo = ref.read(transactionsRepositoryProvider);
     final accountsRepo = ref.read(accountsRepositoryProvider);
     try {
-      final householdId = await ref.read(householdIdProvider.future);
+      // The RPC derives household + entered_by + currency server-
+      // side from the source account row, so this UI doesn't pass
+      // them. We still gate on "logged in" because an unauthed
+      // call would surface a confusing 'caller is not
+      // authenticated' from the RPC; failing fast is friendlier.
       final user = ref.read(currentUserProvider);
-      if (householdId == null || user == null) throw Exception('Not logged in');
+      if (user == null) throw Exception('Not logged in');
 
       await repo.createTransfer(
-        householdId: householdId,
         fromAccountId: _fromAccountId!,
         toAccountId: _toAccountId!,
         amountCents: amountCents,
@@ -93,7 +95,6 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
         description: _descriptionController.text.trim().isEmpty
             ? 'Transfer'
             : _descriptionController.text.trim(),
-        enteredBy: user.id,
       );
 
       // Both accounts' current_balance has to be recomputed. The
@@ -182,9 +183,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
           const FieldLabel('Description (optional)'),
           TextFormField(
             controller: _descriptionController,
-            decoration: const InputDecoration(
-              hintText: 'e.g. May rent buffer',
-            ),
+            decoration: const InputDecoration(hintText: 'e.g. May rent buffer'),
           ),
           const SizedBox(height: 24),
           LoadingButton.filled(

@@ -830,108 +830,88 @@ void main() {
         return row['id'] as String;
       }
 
-      test(
-        'inserts two legs with matching transfer_id, opposite signs, '
-        'and shared description / date',
-        () async {
-          final savingsId = await insertSavingsAccount();
-          final date = DateTime.utc(2026, 5, 14);
+      test('inserts two legs with matching transfer_id, opposite signs, '
+          'and shared description / date', () async {
+        final savingsId = await insertSavingsAccount();
+        final date = DateTime.utc(2026, 5, 14);
 
-          final transferId = await repo.createTransfer(
-            householdId: harness.householdId,
+        final transferId = await repo.createTransfer(
+          fromAccountId: harness.accountId,
+          toAccountId: savingsId,
+          amountCents: 25000,
+          transactionDate: date,
+          description: 'May rent buffer',
+        );
+
+        final legs = await harness.client
+            .from('transactions')
+            .select('account_id, amount, description, transfer_id')
+            .eq('transfer_id', transferId)
+            .order('amount', ascending: true);
+        expect(
+          legs,
+          hasLength(2),
+          reason: 'create_transfer must insert exactly two rows.',
+        );
+
+        // legs[0] is the negative leg (debit on source), legs[1] is
+        // the positive leg (credit on destination).
+        expect(legs[0]['account_id'], harness.accountId);
+        expect(legs[0]['amount'], -25000);
+        expect(legs[1]['account_id'], savingsId);
+        expect(legs[1]['amount'], 25000);
+
+        expect(legs[0]['description'], 'May rent buffer');
+        expect(legs[1]['description'], 'May rent buffer');
+        expect(legs[0]['transfer_id'], legs[1]['transfer_id']);
+      }, skip: reason);
+
+      test('rejects same source and destination', () async {
+        await expectLater(
+          repo.createTransfer(
             fromAccountId: harness.accountId,
-            toAccountId: savingsId,
-            amountCents: 25000,
-            transactionDate: date,
-            description: 'May rent buffer',
-            enteredBy: harness.userId,
-          );
+            toAccountId: harness.accountId,
+            amountCents: 1000,
+            transactionDate: DateTime.utc(2026, 5, 14),
+            description: 'self-transfer should fail',
+          ),
+          throwsA(anything),
+          reason:
+              'transferring an account to itself has no semantic meaning '
+              '— the RPC must raise rather than silently insert two rows '
+              'on the same ledger.',
+        );
+      }, skip: reason);
 
-          final legs = await harness.client
-              .from('transactions')
-              .select('account_id, amount, description, transfer_id')
-              .eq('transfer_id', transferId)
-              .order('amount', ascending: true);
-          expect(
-            legs,
-            hasLength(2),
-            reason: 'create_transfer must insert exactly two rows.',
-          );
-
-          // legs[0] is the negative leg (debit on source), legs[1] is
-          // the positive leg (credit on destination).
-          expect(legs[0]['account_id'], harness.accountId);
-          expect(legs[0]['amount'], -25000);
-          expect(legs[1]['account_id'], savingsId);
-          expect(legs[1]['amount'], 25000);
-
-          expect(legs[0]['description'], 'May rent buffer');
-          expect(legs[1]['description'], 'May rent buffer');
-          expect(legs[0]['transfer_id'], legs[1]['transfer_id']);
-        },
-        skip: reason,
-      );
-
-      test(
-        'rejects same source and destination',
-        () async {
+      test('rejects non-positive amounts', () async {
+        final savingsId = await insertSavingsAccount();
+        for (final bad in [0, -100]) {
           await expectLater(
             repo.createTransfer(
-              householdId: harness.householdId,
               fromAccountId: harness.accountId,
-              toAccountId: harness.accountId,
-              amountCents: 1000,
+              toAccountId: savingsId,
+              amountCents: bad,
               transactionDate: DateTime.utc(2026, 5, 14),
-              description: 'self-transfer should fail',
-              enteredBy: harness.userId,
+              description: 'bad amount',
             ),
             throwsA(anything),
             reason:
-                'transferring an account to itself has no semantic meaning '
-                '— the RPC must raise rather than silently insert two rows '
-                'on the same ledger.',
+                'amount must be > 0; signs are derived by the RPC. A '
+                'zero or negative input is a caller bug and must raise.',
           );
-        },
-        skip: reason,
-      );
-
-      test(
-        'rejects non-positive amounts',
-        () async {
-          final savingsId = await insertSavingsAccount();
-          for (final bad in [0, -100]) {
-            await expectLater(
-              repo.createTransfer(
-                householdId: harness.householdId,
-                fromAccountId: harness.accountId,
-                toAccountId: savingsId,
-                amountCents: bad,
-                transactionDate: DateTime.utc(2026, 5, 14),
-                description: 'bad amount',
-                enteredBy: harness.userId,
-              ),
-              throwsA(anything),
-              reason:
-                  'amount must be > 0; signs are derived by the RPC. A '
-                  'zero or negative input is a caller bug and must raise.',
-            );
-          }
-        },
-        skip: reason,
-      );
+        }
+      }, skip: reason);
 
       test(
         'deleteTransfer removes both legs and reports both affected accounts',
         () async {
           final savingsId = await insertSavingsAccount();
           final transferId = await repo.createTransfer(
-            householdId: harness.householdId,
             fromAccountId: harness.accountId,
             toAccountId: savingsId,
             amountCents: 7500,
             transactionDate: DateTime.utc(2026, 5, 14),
             description: 'remove me',
-            enteredBy: harness.userId,
           );
 
           final affected = await repo.deleteTransfer(transferId);
@@ -960,15 +940,160 @@ void main() {
         skip: reason,
       );
 
+      // ── H1: cross-household rejection ─────────────────────────────────
+      test('rejects a destination account from another household', () async {
+        // Bootstrap a second harness, capture its account id, then
+        // sign back in as the original user. From the original
+        // user's RLS scope, the foreign account isn't visible —
+        // the pre-flight SELECT returns no row → the function
+        // raises with a clear error.
+        //
+        // Note: under migration 044 the underlying INSERT policy
+        // would ALSO reject this. The RPC's explicit pre-flight
+        // exists for a cleaner error message and to surface the
+        // failure as the RPC's responsibility (not buried in an
+        // RLS violation on a child INSERT).
+        final other = await Harness.bootstrap(testTag: 'tx-h1-attack');
+        final otherAccountId = other.accountId;
+        await harness.client.auth.signInWithPassword(
+          email: harness.email,
+          password: Harness.testPassword,
+        );
+
+        try {
+          await expectLater(
+            repo.createTransfer(
+              fromAccountId: harness.accountId,
+              toAccountId: otherAccountId,
+              amountCents: 1000,
+              transactionDate: DateTime.utc(2026, 5, 14),
+              description: 'cross-household attempt',
+            ),
+            throwsA(anything),
+            reason:
+                'a destination account the caller can\'t see under RLS '
+                'must cause the RPC to raise, not silently plant a leg '
+                'on the victim household.',
+          );
+        } finally {
+          await harness.client.auth.signInWithPassword(
+            email: other.email,
+            password: Harness.testPassword,
+          );
+          await other.dispose();
+          await harness.client.auth.signInWithPassword(
+            email: harness.email,
+            password: Harness.testPassword,
+          );
+        }
+      }, skip: reason);
+
+      // ── H3: cross-currency rejection ──────────────────────────────────
+      test(
+        'rejects cross-currency: source and destination must share currency',
+        () async {
+          // Seed a second account in the SAME household but with a
+          // different currency (EUR vs the harness's USD checking).
+          // The RPC must raise the cross-currency error rather than
+          // silently tag both legs USD or convert.
+          final eurAccount = await harness.client
+              .from('accounts')
+              .insert({
+                'household_id': harness.householdId,
+                'owner_user_id': harness.userId,
+                'name': 'EUR Savings',
+                'account_type': 'savings',
+                'currency': 'EUR',
+                'starting_balance': 0,
+                'current_balance': 0,
+              })
+              .select('id')
+              .single();
+          final eurId = eurAccount['id'] as String;
+
+          await expectLater(
+            repo.createTransfer(
+              fromAccountId: harness.accountId, // USD
+              toAccountId: eurId, // EUR
+              amountCents: 1000,
+              transactionDate: DateTime.utc(2026, 5, 14),
+              description: 'should reject — different currencies',
+            ),
+            throwsA(anything),
+            reason:
+                'cross-currency transfers are not supported; record as two '
+                'separate transactions in their respective currencies.',
+          );
+        },
+        skip: reason,
+      );
+
+      // ── H3: same-currency transfer uses that currency on both legs ────
+      test('EUR→EUR transfer lands with currency=EUR on both legs '
+          '(not the old hardcoded USD)', () async {
+        // Two EUR accounts in the SAME household. Pre-fix, both
+        // legs landed with currency='USD' regardless of account
+        // setup. The migration 045 fix reads the source account's
+        // currency and uses it on both legs.
+        final eur1 = await harness.client
+            .from('accounts')
+            .insert({
+              'household_id': harness.householdId,
+              'owner_user_id': harness.userId,
+              'name': 'EUR Checking',
+              'account_type': 'checking',
+              'currency': 'EUR',
+              'starting_balance': 0,
+              'current_balance': 0,
+            })
+            .select('id')
+            .single();
+        final eur2 = await harness.client
+            .from('accounts')
+            .insert({
+              'household_id': harness.householdId,
+              'owner_user_id': harness.userId,
+              'name': 'EUR Savings 2',
+              'account_type': 'savings',
+              'currency': 'EUR',
+              'starting_balance': 0,
+              'current_balance': 0,
+            })
+            .select('id')
+            .single();
+
+        final transferId = await repo.createTransfer(
+          fromAccountId: eur1['id'] as String,
+          toAccountId: eur2['id'] as String,
+          amountCents: 5000,
+          transactionDate: DateTime.utc(2026, 5, 14),
+          description: 'EUR transfer',
+        );
+
+        final legs = await harness.client
+            .from('transactions')
+            .select('currency')
+            .eq('transfer_id', transferId);
+        expect(
+          (legs as List).map((r) => r['currency'] as String).toSet(),
+          {'EUR'},
+          reason:
+              'both legs must carry the accounts\' actual currency, not '
+              'the old hardcoded USD.',
+        );
+      }, skip: reason);
+
       test(
         'atomicity: a mid-call failure leaves no orphan leg behind',
         () async {
-          // Engineer a deliberate failure of the SECOND insert: pass a
-          // syntactically valid UUID that doesn't reference any account
-          // row. The FK on transactions.account_id will reject the
-          // INSERT, the function aborts, and the first leg's insert
-          // must be rolled back. If the rollback ever regressed,
-          // we'd end up with an orphan debit on the source account.
+          // Pre-045 we engineered a SECOND-insert FK failure to test
+          // rollback. Migration 045 moved that check earlier: a
+          // non-visible destination account now raises during the
+          // pre-flight SELECT, before the first INSERT runs. The
+          // function still aborts cleanly — and arguably this is
+          // stronger atomicity (no INSERT to roll back at all) —
+          // so the test continues to pin "no leg leaks on failure"
+          // even though the failure mode shifted.
           final beforeRows = await harness.client
               .from('transactions')
               .select('id')
@@ -977,18 +1102,16 @@ void main() {
 
           await expectLater(
             repo.createTransfer(
-              householdId: harness.householdId,
               fromAccountId: harness.accountId,
               toAccountId: '00000000-0000-0000-0000-000000000001',
               amountCents: 1000,
               transactionDate: DateTime.utc(2026, 5, 14),
               description: 'should roll back',
-              enteredBy: harness.userId,
             ),
             throwsA(anything),
             reason:
-                'destination account FK must fail and propagate to the '
-                'caller.',
+                'destination account must be visible to the caller; an '
+                'unknown UUID raises before any INSERT happens.',
           );
 
           final afterRows = await harness.client
@@ -1050,9 +1173,7 @@ void main() {
               'amount': amountCents,
               'currency': 'USD',
               'description': description,
-              'transaction_date': date
-                  .toIso8601String()
-                  .substring(0, 10),
+              'transaction_date': date.toIso8601String().substring(0, 10),
               'pending': false,
               'source': 'recurring',
             })
@@ -1069,8 +1190,11 @@ void main() {
           // emission so the integration test isn't sensitive to
           // wall-clock drift.
           final today = DateTime.now().toUtc();
-          final emissionDate = DateTime.utc(today.year, today.month, today.day)
-              .subtract(const Duration(days: 1));
+          final emissionDate = DateTime.utc(
+            today.year,
+            today.month,
+            today.day,
+          ).subtract(const Duration(days: 1));
           final emissionId = await seedRecurringEmission(
             amountCents: -999,
             date: emissionDate,
@@ -1084,9 +1208,10 @@ void main() {
               {
                 'amount': -999,
                 'description': 'SPOTIFY USA',
-                'transaction_date': emissionDate
-                    .toIso8601String()
-                    .substring(0, 10),
+                'transaction_date': emissionDate.toIso8601String().substring(
+                  0,
+                  10,
+                ),
                 'external_id': 'BANK-TX-RECON-1',
                 'pending': false,
               },
@@ -1105,7 +1230,8 @@ void main() {
           expect(
             (remainingEmission as List),
             isEmpty,
-            reason: 'the matched scheduler-emitted row must be deleted '
+            reason:
+                'the matched scheduler-emitted row must be deleted '
                 'so the ledger doesn\'t carry two rows for the same '
                 'real-world charge.',
           );
@@ -1122,117 +1248,117 @@ void main() {
         skip: reason,
       );
 
-      test(
-        'non-matching import takes the upsert path and leaves any '
-        'unrelated recurring row alone',
-        () async {
-          // Scheduler emission for $9.99; import row for $25 — no
-          // amount match. Nothing should reconcile.
-          final today = DateTime.now().toUtc();
-          final emissionDate = DateTime.utc(today.year, today.month, today.day)
-              .subtract(const Duration(days: 1));
-          final emissionId = await seedRecurringEmission(
-            amountCents: -999,
-            date: emissionDate,
-          );
+      test('non-matching import takes the upsert path and leaves any '
+          'unrelated recurring row alone', () async {
+        // Scheduler emission for $9.99; import row for $25 — no
+        // amount match. Nothing should reconcile.
+        final today = DateTime.now().toUtc();
+        final emissionDate = DateTime.utc(
+          today.year,
+          today.month,
+          today.day,
+        ).subtract(const Duration(days: 1));
+        final emissionId = await seedRecurringEmission(
+          amountCents: -999,
+          date: emissionDate,
+        );
 
-          final result = await repo.bulkImport(
-            householdId: harness.householdId,
-            accountId: harness.accountId,
-            enteredBy: harness.userId,
-            rows: [
-              {
-                'amount': -2500,
-                'description': 'GAS STATION',
-                'transaction_date': emissionDate
-                    .toIso8601String()
-                    .substring(0, 10),
-                'external_id': 'BANK-TX-NORECON-1',
-                'pending': false,
-              },
-            ],
-          );
+        final result = await repo.bulkImport(
+          householdId: harness.householdId,
+          accountId: harness.accountId,
+          enteredBy: harness.userId,
+          rows: [
+            {
+              'amount': -2500,
+              'description': 'GAS STATION',
+              'transaction_date': emissionDate.toIso8601String().substring(
+                0,
+                10,
+              ),
+              'external_id': 'BANK-TX-NORECON-1',
+              'pending': false,
+            },
+          ],
+        );
 
-          expect(result.reconciled, 0);
-          expect(result.inserted, 1);
+        expect(result.reconciled, 0);
+        expect(result.inserted, 1);
 
-          // Scheduler row is still there.
-          final stillThere = await harness.client
-              .from('transactions')
-              .select('id')
-              .eq('id', emissionId);
-          expect(
-            (stillThere as List),
-            hasLength(1),
-            reason: 'a non-matching import must NOT delete unrelated '
-                'recurring rows — only same-amount within-tolerance '
-                'rows are reconcile candidates.',
-          );
-        },
-        skip: reason,
-      );
+        // Scheduler row is still there.
+        final stillThere = await harness.client
+            .from('transactions')
+            .select('id')
+            .eq('id', emissionId);
+        expect(
+          (stillThere as List),
+          hasLength(1),
+          reason:
+              'a non-matching import must NOT delete unrelated '
+              'recurring rows — only same-amount within-tolerance '
+              'rows are reconcile candidates.',
+        );
+      }, skip: reason);
 
-      test(
-        'two import rows competing for one scheduler row: only one '
-        'reconciles, the other lands as a fresh insert',
-        () async {
-          // Two import rows of the same amount and date; one
-          // scheduler emission. The matcher claims exactly one of
-          // them (slice-3 contract). The other goes through the
-          // upsert path, lands fresh with a different external_id.
-          final today = DateTime.now().toUtc();
-          final emissionDate = DateTime.utc(today.year, today.month, today.day)
-              .subtract(const Duration(days: 1));
-          await seedRecurringEmission(
-            amountCents: -999,
-            date: emissionDate,
-          );
+      test('two import rows competing for one scheduler row: only one '
+          'reconciles, the other lands as a fresh insert', () async {
+        // Two import rows of the same amount and date; one
+        // scheduler emission. The matcher claims exactly one of
+        // them (slice-3 contract). The other goes through the
+        // upsert path, lands fresh with a different external_id.
+        final today = DateTime.now().toUtc();
+        final emissionDate = DateTime.utc(
+          today.year,
+          today.month,
+          today.day,
+        ).subtract(const Duration(days: 1));
+        await seedRecurringEmission(amountCents: -999, date: emissionDate);
 
-          final result = await repo.bulkImport(
-            householdId: harness.householdId,
-            accountId: harness.accountId,
-            enteredBy: harness.userId,
-            rows: [
-              {
-                'amount': -999,
-                'description': 'SPOTIFY A',
-                'transaction_date': emissionDate
-                    .toIso8601String()
-                    .substring(0, 10),
-                'external_id': 'BANK-TX-A',
-                'pending': false,
-              },
-              {
-                'amount': -999,
-                'description': 'SPOTIFY B',
-                'transaction_date': emissionDate
-                    .toIso8601String()
-                    .substring(0, 10),
-                'external_id': 'BANK-TX-B',
-                'pending': false,
-              },
-            ],
-          );
+        final result = await repo.bulkImport(
+          householdId: harness.householdId,
+          accountId: harness.accountId,
+          enteredBy: harness.userId,
+          rows: [
+            {
+              'amount': -999,
+              'description': 'SPOTIFY A',
+              'transaction_date': emissionDate.toIso8601String().substring(
+                0,
+                10,
+              ),
+              'external_id': 'BANK-TX-A',
+              'pending': false,
+            },
+            {
+              'amount': -999,
+              'description': 'SPOTIFY B',
+              'transaction_date': emissionDate.toIso8601String().substring(
+                0,
+                10,
+              ),
+              'external_id': 'BANK-TX-B',
+              'pending': false,
+            },
+          ],
+        );
 
-          expect(
-            result.reconciled,
-            1,
-            reason: 'one scheduler row can be claimed at most once per '
-                'import — the second matching import row must take the '
-                'normal insert path.',
-          );
-          expect(result.inserted, 2);
+        expect(
+          result.reconciled,
+          1,
+          reason:
+              'one scheduler row can be claimed at most once per '
+              'import — the second matching import row must take the '
+              'normal insert path.',
+        );
+        expect(result.inserted, 2);
 
-          // Both bank rows are in the ledger.
-          final landed = await harness.client
-              .from('transactions')
-              .select('external_id')
-              .eq('account_id', harness.accountId)
-              .inFilter('external_id', ['BANK-TX-A', 'BANK-TX-B']);
-          expect((landed as List), hasLength(2));
-        },
-        skip: reason,
-      );
+        // Both bank rows are in the ledger.
+        final landed = await harness.client
+            .from('transactions')
+            .select('external_id')
+            .eq('account_id', harness.accountId)
+            .inFilter('external_id', ['BANK-TX-A', 'BANK-TX-B']);
+        expect((landed as List), hasLength(2));
+      }, skip: reason);
     });
 
     // ── Bulk operations (selection-mode actions on the screen) ───────────
@@ -1272,8 +1398,10 @@ void main() {
 
           final rows = await harness.client
               .from('transactions')
-              .select('id, category_id, category_assigned_by, '
-                  'ml_model_confidence')
+              .select(
+                'id, category_id, category_assigned_by, '
+                'ml_model_confidence',
+              )
               .inFilter('id', [...ids, untouchedId]);
           final byId = {
             for (final r in rows as List)
@@ -1285,7 +1413,8 @@ void main() {
             expect(
               byId[id]?['ml_model_confidence'],
               isNull,
-              reason: 'ml confidence must be cleared on user assignment '
+              reason:
+                  'ml confidence must be cleared on user assignment '
                   'so a stale value doesn\'t resurface in the review '
                   'screen after the user has spoken.',
             );
@@ -1299,84 +1428,74 @@ void main() {
         skip: reason,
       );
 
-      test(
-        'deleteMany removes rows and reports affected account ids '
-        '(deduplicated)',
-        () async {
-          // Two rows on the seeded account, one on a fresh second
-          // account in the same household. deleteMany should return
-          // both account ids, each once.
-          final secondAccountRow = await harness.client
-              .from('accounts')
-              .insert({
-                'household_id': harness.householdId,
-                'owner_user_id': harness.userId,
-                'name': 'Bulk Test Second',
-                'account_type': 'savings',
-                'currency': 'USD',
-                'starting_balance': 0,
-                'current_balance': 0,
-              })
-              .select('id')
-              .single();
-          final secondAccountId = secondAccountRow['id'] as String;
+      test('deleteMany removes rows and reports affected account ids '
+          '(deduplicated)', () async {
+        // Two rows on the seeded account, one on a fresh second
+        // account in the same household. deleteMany should return
+        // both account ids, each once.
+        final secondAccountRow = await harness.client
+            .from('accounts')
+            .insert({
+              'household_id': harness.householdId,
+              'owner_user_id': harness.userId,
+              'name': 'Bulk Test Second',
+              'account_type': 'savings',
+              'currency': 'USD',
+              'starting_balance': 0,
+              'current_balance': 0,
+            })
+            .select('id')
+            .single();
+        final secondAccountId = secondAccountRow['id'] as String;
 
-          final tx1 = await harness.insertTransaction(
-            description: 'bulk-del-1',
-          );
-          final tx2 = await harness.insertTransaction(
-            description: 'bulk-del-2',
-          );
-          // Insert directly so we can target the second account; the
-          // harness helper hardcodes the seeded account.
-          final tx3Row = await harness.client
-              .from('transactions')
-              .insert({
-                'household_id': harness.householdId,
-                'account_id': secondAccountId,
-                'entered_by': harness.userId,
-                'amount': -1000,
-                'currency': 'USD',
-                'description': 'bulk-del-3',
-                'transaction_date': DateTime.now()
-                    .toIso8601String()
-                    .substring(0, 10),
-                'pending': false,
-                'source': 'manual',
-              })
-              .select('id')
-              .single();
-          final tx3 = tx3Row['id'] as String;
+        final tx1 = await harness.insertTransaction(description: 'bulk-del-1');
+        final tx2 = await harness.insertTransaction(description: 'bulk-del-2');
+        // Insert directly so we can target the second account; the
+        // harness helper hardcodes the seeded account.
+        final tx3Row = await harness.client
+            .from('transactions')
+            .insert({
+              'household_id': harness.householdId,
+              'account_id': secondAccountId,
+              'entered_by': harness.userId,
+              'amount': -1000,
+              'currency': 'USD',
+              'description': 'bulk-del-3',
+              'transaction_date': DateTime.now().toIso8601String().substring(
+                0,
+                10,
+              ),
+              'pending': false,
+              'source': 'manual',
+            })
+            .select('id')
+            .single();
+        final tx3 = tx3Row['id'] as String;
 
-          final affected = await repo.deleteMany([tx1, tx2, tx3]);
+        final affected = await repo.deleteMany([tx1, tx2, tx3]);
 
-          expect(
-            affected.toSet(),
-            {harness.accountId, secondAccountId},
-            reason: 'each affected account id must appear exactly once '
-                'in the return so the caller doesn\'t recompute the '
-                'same balance twice.',
-          );
-          final remaining = await harness.client
-              .from('transactions')
-              .select('id')
-              .inFilter('id', [tx1, tx2, tx3]);
-          expect((remaining as List), isEmpty);
-        },
-        skip: reason,
-      );
+        expect(
+          affected.toSet(),
+          {harness.accountId, secondAccountId},
+          reason:
+              'each affected account id must appear exactly once '
+              'in the return so the caller doesn\'t recompute the '
+              'same balance twice.',
+        );
+        final remaining = await harness.client
+            .from('transactions')
+            .select('id')
+            .inFilter('id', [tx1, tx2, tx3]);
+        expect((remaining as List), isEmpty);
+      }, skip: reason);
 
-      test(
-        'deleteMany with empty input is a no-op',
-        () async {
-          // Pin: an empty input shouldn't even hit the wire. A round-
-          // trip with an empty `IN ()` list would be a PostgREST error
-          // on some versions and noise on others.
-          final affected = await repo.deleteMany(const []);
-          expect(affected, isEmpty);
-        },
-        skip: reason,
-      );
+      test('deleteMany with empty input is a no-op', () async {
+        // Pin: an empty input shouldn't even hit the wire. A round-
+        // trip with an empty `IN ()` list would be a PostgREST error
+        // on some versions and noise on others.
+        final affected = await repo.deleteMany(const []);
+        expect(affected, isEmpty);
+      }, skip: reason);
 
       test(
         'addTagToMany inserts assignments and skips already-tagged rows',
@@ -1386,8 +1505,12 @@ void main() {
             householdId: harness.householdId,
             name: 'bulk-tag-${DateTime.now().microsecondsSinceEpoch}',
           );
-          final tx1 = await harness.insertTransaction(description: 'bulk-tag-a');
-          final tx2 = await harness.insertTransaction(description: 'bulk-tag-b');
+          final tx1 = await harness.insertTransaction(
+            description: 'bulk-tag-a',
+          );
+          final tx2 = await harness.insertTransaction(
+            description: 'bulk-tag-b',
+          );
 
           // Pre-assign the tag to tx1; bulk-add should leave it alone
           // (no duplicate, no error) and still apply to tx2.
@@ -1406,12 +1529,14 @@ void main() {
               .select('transaction_id')
               .eq('tag_id', tag.id)
               .inFilter('transaction_id', [tx1, tx2]);
-          final ids =
-              {for (final r in rows as List) r['transaction_id'] as String};
+          final ids = {
+            for (final r in rows as List) r['transaction_id'] as String,
+          };
           expect(
             ids,
             {tx1, tx2},
-            reason: 'both rows must end up tagged exactly once; the '
+            reason:
+                'both rows must end up tagged exactly once; the '
                 'duplicate-on-tx1 path is ignoreDuplicates=true, not an '
                 'error.',
           );
@@ -1419,73 +1544,71 @@ void main() {
         skip: reason,
       );
 
-      test(
-        'removeTagFromMany removes only the targeted tag, leaving '
-        'other tags on the same rows intact',
-        () async {
-          final tagsRepo = TransactionTagsRepository();
-          final stamp = DateTime.now().microsecondsSinceEpoch;
-          final tagA = await tagsRepo.createTag(
-            householdId: harness.householdId,
-            name: 'bulk-untag-A-$stamp',
-          );
-          final tagB = await tagsRepo.createTag(
-            householdId: harness.householdId,
-            name: 'bulk-untag-B-$stamp',
-          );
-          final tx1 = await harness.insertTransaction(
-            description: 'bulk-untag-1',
-          );
-          final tx2 = await harness.insertTransaction(
-            description: 'bulk-untag-2',
-          );
-          final tx3 = await harness.insertTransaction(
-            description: 'bulk-untag-3',
-          );
+      test('removeTagFromMany removes only the targeted tag, leaving '
+          'other tags on the same rows intact', () async {
+        final tagsRepo = TransactionTagsRepository();
+        final stamp = DateTime.now().microsecondsSinceEpoch;
+        final tagA = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'bulk-untag-A-$stamp',
+        );
+        final tagB = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'bulk-untag-B-$stamp',
+        );
+        final tx1 = await harness.insertTransaction(
+          description: 'bulk-untag-1',
+        );
+        final tx2 = await harness.insertTransaction(
+          description: 'bulk-untag-2',
+        );
+        final tx3 = await harness.insertTransaction(
+          description: 'bulk-untag-3',
+        );
 
-          // tx1, tx2 carry both tags. tx3 is the control — same
-          // tagA but NOT in the bulk-remove input set, so it must
-          // keep its tag.
-          await tagsRepo.replaceAssignments(
-            transactionId: tx1,
-            tagIds: [tagA.id, tagB.id],
-          );
-          await tagsRepo.replaceAssignments(
-            transactionId: tx2,
-            tagIds: [tagA.id, tagB.id],
-          );
-          await tagsRepo.replaceAssignments(
-            transactionId: tx3,
-            tagIds: [tagA.id],
-          );
+        // tx1, tx2 carry both tags. tx3 is the control — same
+        // tagA but NOT in the bulk-remove input set, so it must
+        // keep its tag.
+        await tagsRepo.replaceAssignments(
+          transactionId: tx1,
+          tagIds: [tagA.id, tagB.id],
+        );
+        await tagsRepo.replaceAssignments(
+          transactionId: tx2,
+          tagIds: [tagA.id, tagB.id],
+        );
+        await tagsRepo.replaceAssignments(
+          transactionId: tx3,
+          tagIds: [tagA.id],
+        );
 
-          await tagsRepo.removeTagFromMany(
-            tagId: tagA.id,
-            transactionIds: [tx1, tx2],
-          );
+        await tagsRepo.removeTagFromMany(
+          tagId: tagA.id,
+          transactionIds: [tx1, tx2],
+        );
 
-          // tx1 and tx2 should now have ONLY tagB.
-          for (final tx in [tx1, tx2]) {
-            final assigned = await tagsRepo.fetchAssignedTagIds(tx);
-            expect(
-              assigned.toSet(),
-              {tagB.id},
-              reason: 'tag A removal must not collateral-damage tag B '
-                  'on the same row.',
-            );
-          }
-
-          // tx3 retained tagA (not in input set).
-          final tx3Tags = await tagsRepo.fetchAssignedTagIds(tx3);
+        // tx1 and tx2 should now have ONLY tagB.
+        for (final tx in [tx1, tx2]) {
+          final assigned = await tagsRepo.fetchAssignedTagIds(tx);
           expect(
-            tx3Tags.toSet(),
-            {tagA.id},
-            reason: 'a row NOT in the bulk-remove input set must not '
-                'lose any tags — the inFilter must scope the delete.',
+            assigned.toSet(),
+            {tagB.id},
+            reason:
+                'tag A removal must not collateral-damage tag B '
+                'on the same row.',
           );
-        },
-        skip: reason,
-      );
+        }
+
+        // tx3 retained tagA (not in input set).
+        final tx3Tags = await tagsRepo.fetchAssignedTagIds(tx3);
+        expect(
+          tx3Tags.toSet(),
+          {tagA.id},
+          reason:
+              'a row NOT in the bulk-remove input set must not '
+              'lose any tags — the inFilter must scope the delete.',
+        );
+      }, skip: reason);
 
       test(
         'removeTagFromMany on rows that don\'t have the tag is a no-op',
@@ -1493,8 +1616,7 @@ void main() {
           final tagsRepo = TransactionTagsRepository();
           final tag = await tagsRepo.createTag(
             householdId: harness.householdId,
-            name:
-                'bulk-untag-noop-${DateTime.now().microsecondsSinceEpoch}',
+            name: 'bulk-untag-noop-${DateTime.now().microsecondsSinceEpoch}',
           );
           final tx = await harness.insertTransaction(
             description: 'bulk-untag-noop-tx',
@@ -1502,10 +1624,7 @@ void main() {
 
           // Tx isn't tagged with this tag — remove should not error
           // and the row should remain untagged.
-          await tagsRepo.removeTagFromMany(
-            tagId: tag.id,
-            transactionIds: [tx],
-          );
+          await tagsRepo.removeTagFromMany(tagId: tag.id, transactionIds: [tx]);
 
           final assigned = await tagsRepo.fetchAssignedTagIds(tx);
           expect(assigned, isEmpty);
@@ -1513,22 +1632,17 @@ void main() {
         skip: reason,
       );
 
-      test(
-        'removeTagFromMany with empty input is a no-op',
-        () async {
-          // Same as deleteMany — an empty `IN ()` would be noisy on
-          // the wire, possibly error on some PostgREST versions.
-          // The repo short-circuits before reaching the DB.
-          final tagsRepo = TransactionTagsRepository();
-          final tag = await tagsRepo.createTag(
-            householdId: harness.householdId,
-            name:
-                'bulk-untag-empty-${DateTime.now().microsecondsSinceEpoch}',
-          );
-          await tagsRepo.removeTagFromMany(tagId: tag.id, transactionIds: []);
-        },
-        skip: reason,
-      );
+      test('removeTagFromMany with empty input is a no-op', () async {
+        // Same as deleteMany — an empty `IN ()` would be noisy on
+        // the wire, possibly error on some PostgREST versions.
+        // The repo short-circuits before reaching the DB.
+        final tagsRepo = TransactionTagsRepository();
+        final tag = await tagsRepo.createTag(
+          householdId: harness.householdId,
+          name: 'bulk-untag-empty-${DateTime.now().microsecondsSinceEpoch}',
+        );
+        await tagsRepo.removeTagFromMany(tagId: tag.id, transactionIds: []);
+      }, skip: reason);
     });
 
     // ── Cross-household account_id constraint (migration 044) ─────────────
@@ -1561,9 +1675,10 @@ void main() {
                 'amount': -1000,
                 'currency': 'USD',
                 'description': 'cross-household attack',
-                'transaction_date': DateTime.now()
-                    .toIso8601String()
-                    .substring(0, 10),
+                'transaction_date': DateTime.now().toIso8601String().substring(
+                  0,
+                  10,
+                ),
                 'pending': false,
                 'source': 'manual',
               }),
@@ -1626,13 +1741,11 @@ void main() {
           // positive leg on the Roth account is the one that would
           // pollute the tally without the filter.
           await repo.createTransfer(
-            householdId: harness.householdId,
             fromAccountId: harness.accountId,
             toAccountId: rothId,
             amountCents: 50000,
             transactionDate: contributionDate,
             description: 'transfer to roth (must NOT count)',
-            enteredBy: harness.userId,
           );
 
           // A real contribution — no transfer_id. This is the only
@@ -1642,9 +1755,10 @@ void main() {
             'account_id': rothId,
             'entered_by': harness.userId,
             'amount': 30000,
-            'transaction_date': contributionDate
-                .toIso8601String()
-                .substring(0, 10),
+            'transaction_date': contributionDate.toIso8601String().substring(
+              0,
+              10,
+            ),
             'description': 'real contribution',
           });
 

@@ -192,36 +192,39 @@ class TransactionsRepository {
   /// leg on [toAccountId], both for [amountCents] (which must be
   /// positive — the SQL function flips the sign per leg).
   ///
-  /// Goes through the `create_transfer` RPC (migration 030) so the
-  /// two inserts share one DB transaction. A mid-call failure rolls
-  /// both legs back rather than leaving a half-recorded transfer that
-  /// would skew account balances.
+  /// Goes through the `create_transfer` RPC (migration 030, reworked
+  /// in 045) so the two inserts share one DB transaction. A mid-call
+  /// failure rolls both legs back rather than leaving a half-recorded
+  /// transfer that would skew account balances.
+  ///
+  /// `household_id` and `entered_by` are derived server-side from the
+  /// source account's row and `auth.uid()` — not passed by the
+  /// caller. Both account ids must belong to the same household and
+  /// share a currency; cross-currency transfers raise (use two
+  /// separate transactions in their respective currencies instead).
   ///
   /// Returns the shared `transfer_id` (UUID). The caller typically
   /// refetches the ledger afterwards rather than holding onto the id
   /// — it's returned mainly so integration tests can join back to
   /// both legs.
   Future<String> createTransfer({
-    required String householdId,
     required String fromAccountId,
     required String toAccountId,
     required int amountCents,
     required DateTime transactionDate,
     required String description,
-    required String enteredBy,
   }) async {
     final result = await supabase.rpc(
       'create_transfer',
       params: {
-        'p_household_id': householdId,
         'p_from_account_id': fromAccountId,
         'p_to_account_id': toAccountId,
         'p_amount_cents': amountCents,
-        'p_transaction_date': transactionDate
-            .toIso8601String()
-            .substring(0, 10),
+        'p_transaction_date': transactionDate.toIso8601String().substring(
+          0,
+          10,
+        ),
         'p_description': description,
-        'p_entered_by': enteredBy,
       },
     );
     return result as String;
@@ -602,9 +605,9 @@ class TransactionsRepository {
     // certainly reflect different real-world charges than today's
     // import. Wider windows risk matching unrelated $9.99 events; this
     // matches the typical bank-posting lag tolerance.
-    final fourteenDaysAgo = DateTime.now()
-        .toUtc()
-        .subtract(const Duration(days: 14));
+    final fourteenDaysAgo = DateTime.now().toUtc().subtract(
+      const Duration(days: 14),
+    );
     final recurringJson = await supabase
         .from('transactions')
         .select('id, transaction_date, amount')
@@ -634,13 +637,9 @@ class TransactionsRepository {
       // upsert that follows lands the bank's canonical entries
       // without ghost duplicates. Order doesn't matter; we're
       // deleting by primary key.
-      await supabase
-          .from('transactions')
-          .delete()
-          .inFilter(
-            'id',
-            [for (final m in matches) m.scheduledTransactionId],
-          );
+      await supabase.from('transactions').delete().inFilter('id', [
+        for (final m in matches) m.scheduledTransactionId,
+      ]);
     }
 
     final enriched = rows.map((r) {
@@ -770,10 +769,12 @@ List<RecurringDuplicateMatch> matchRecurringDuplicates({
     }
     if (bestId != null) {
       claimed.add(bestId);
-      matches.add(RecurringDuplicateMatch(
-        importRowIndex: i,
-        scheduledTransactionId: bestId,
-      ));
+      matches.add(
+        RecurringDuplicateMatch(
+          importRowIndex: i,
+          scheduledTransactionId: bestId,
+        ),
+      );
     }
   }
   return matches;
