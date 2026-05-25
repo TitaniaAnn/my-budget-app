@@ -49,10 +49,17 @@ class BudgetAlert {
 ///
 /// Sort order:
 ///   1. [BudgetAlertState.overBudget] — biggest overage first
-///      (spentCents - amount, descending).
+///      (spentCents - capCents, descending).
 ///   2. [BudgetAlertState.projectedOver] — biggest projected overage
-///      first (projectedCents - amount, descending).
+///      first (projectedCents - capCents, descending).
 ///   3. [BudgetAlertState.approachingLimit] — highest progress first.
+///
+/// All overage math uses [BudgetWithSpending.capCents] (the cap
+/// converted to the household's display currency) rather than the
+/// raw `budget.amount`. In a multi-currency household, a EUR €100
+/// budget and a USD $100 budget have the same `amount` but very
+/// different display-currency caps; comparing on raw amount sorts
+/// them as equal-overage when they are not.
 ///
 /// A single budget appears in exactly one bucket; the state cascade
 /// short-circuits so an already-over budget isn't double-listed as
@@ -77,13 +84,13 @@ List<BudgetAlert> classifyBudgetAlerts(List<BudgetWithSpending> budgets) {
   }
 
   over.sort((a, b) {
-    final aOver = a.budget.spentCents - a.budget.budget.amount;
-    final bOver = b.budget.spentCents - b.budget.budget.amount;
+    final aOver = a.budget.spentCents - a.budget.capCents;
+    final bOver = b.budget.spentCents - b.budget.capCents;
     return bOver.compareTo(aOver);
   });
   projected.sort((a, b) {
-    final aOver = a.budget.projectedCents - a.budget.budget.amount;
-    final bOver = b.budget.projectedCents - b.budget.budget.amount;
+    final aOver = a.budget.projectedCents - a.budget.capCents;
+    final bOver = b.budget.projectedCents - b.budget.capCents;
     return bOver.compareTo(aOver);
   });
   approaching.sort((a, b) => b.budget.progress.compareTo(a.budget.progress));

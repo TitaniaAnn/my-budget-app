@@ -21,6 +21,7 @@ BudgetWithSpending _bws({
   required int spentCents,
   int? projectedCents,
   String categoryName = 'Cat',
+  int? capCents,
 }) {
   final b = Budget(
     id: id,
@@ -41,9 +42,9 @@ BudgetWithSpending _bws({
     categoryColor: null,
     categoryIcon: null,
     // Default cap to the budget amount so single-currency tests
-    // don't have to thread FX through; multi-currency cases (none
-    // here) would override.
-    capCents: budgetCents,
+    // don't have to thread FX through; multi-currency cases
+    // override to exercise capCents/amount divergence.
+    capCents: capCents ?? budgetCents,
   );
 }
 
@@ -153,6 +154,71 @@ void main() {
         ]);
         expect(result, hasLength(1));
         expect(result.single.state, BudgetAlertState.overBudget);
+      },
+    );
+
+    test(
+      'multi-currency: overage sort uses capCents (display), not raw '
+      'budget.amount',
+      () {
+        // Regression for audit M1. Two over-budget rows:
+        //   * Foreign: amount=€100 (raw 10000 in EUR cents), but the
+        //     display-currency cap is $120 (12000 USD cents); spent is
+        //     $130. Real overage is $10.
+        //   * Local:   amount=$25 = cap=$25 (2500 USD cents); spent is
+        //     $45. Real overage is $20.
+        // Raw-amount sort sees Foreign at 13000-10000=3000 vs Local at
+        // 4500-2500=2000 and puts Foreign first — wrong. Cap-aware
+        // sort sees Foreign at 1000 vs Local at 2000 and puts Local
+        // first.
+        final result = classifyBudgetAlerts([
+          _bws(
+            id: 'foreign',
+            budgetCents: 10000, // €100 in EUR cents
+            capCents: 12000, // $120 after EUR→USD
+            spentCents: 13000, // $130
+          ),
+          _bws(
+            id: 'local',
+            budgetCents: 2500, // $25
+            capCents: 2500,
+            spentCents: 4500, // $45
+          ),
+        ]);
+        expect(
+          result.map((a) => a.budget.budget.id),
+          ['local', 'foreign'],
+          reason:
+              'local is over by \$20 in display currency; foreign is over '
+              'by \$10. The bigger real overage sorts first.',
+        );
+      },
+    );
+
+    test(
+      'multi-currency: projected-overage sort uses capCents (display)',
+      () {
+        // Same shape as the over-budget regression but in the
+        // projected-over bucket. Pin: both currencies are within their
+        // caps now but pace puts them over by different amounts in
+        // display currency.
+        final result = classifyBudgetAlerts([
+          _bws(
+            id: 'foreign',
+            budgetCents: 10000, // €100
+            capCents: 12000, // $120 after FX
+            spentCents: 5000,
+            projectedCents: 13000, // projected $130, $10 over
+          ),
+          _bws(
+            id: 'local',
+            budgetCents: 2500, // $25
+            capCents: 2500,
+            spentCents: 1000,
+            projectedCents: 4500, // projected $45, $20 over
+          ),
+        ]);
+        expect(result.map((a) => a.budget.budget.id), ['local', 'foreign']);
       },
     );
 
