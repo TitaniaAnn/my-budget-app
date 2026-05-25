@@ -268,7 +268,7 @@ flutter test \
   test/integration/
 ```
 
-Current coverage: `TransactionsRepository.setUserCategory`, `fetchUncertain` (filtering, ordering, custom bound, limit), and an explicit RLS-isolation test that pins household separation.
+Current coverage: 13 integration files covering ~12 repositories (transactions, transaction_tags, recurring_transactions, holdings, target_allocations, fx_rates, budget, receipts, notification_log, device_push_tokens, plus the OCR Edge Function stub and the send-notification auth gate). Cross-cutting tests verify household isolation, cross-currency rejection on transfers, per-user dedup on notifications, and the migration 044 / 045 / 046 / 047 / 048 / 049 contracts (RLS account_id constraints, auth-derived RPC arguments, per-user dedup, storage-path prefix CHECK, anon-grant revoke, scheduler p_today clamp).
 
 ---
 
