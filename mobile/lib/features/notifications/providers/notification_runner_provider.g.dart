@@ -29,7 +29,7 @@ final notificationDispatcherProvider =
 // ignore: unused_element
 typedef NotificationDispatcherRef =
     AutoDisposeProviderRef<LocalNotificationDispatcher>;
-String _$runNotificationsHash() => r'269b1dea84894f2ae734f53b2e0a457fb31c0473';
+String _$runNotificationsHash() => r'00964f9ca59c13aabe19602367125f1f9f13ca70';
 
 /// See also [runNotifications].
 @ProviderFor(runNotifications)

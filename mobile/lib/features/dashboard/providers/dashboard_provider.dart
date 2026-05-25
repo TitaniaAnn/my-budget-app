@@ -288,31 +288,29 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   final ratesToDisplay = await ref.watch(ratesToDisplayProvider.future);
 
   final now = DateTime.now();
-  // 90-day window covers both the 30-day sparkline/monthly summary
-  // (filtered in Dart) and the SubscriptionDriftRule which needs 3+
-  // months of merchant history to establish a baseline. Wire payload
-  // grows roughly 3x vs the prior 30-day fetch — still small for a
-  // typical household.
-  final ninetyDaysAgo = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  ).subtract(const Duration(days: 89));
+  // 180-day window covers EVERY in-Dart slice the dashboard needs:
+  //   * 90-day list for SubscriptionDriftRule + monthly summary
+  //   * recent-5 (first 5 of the date-sorted result)
+  //   * net-worth trajectory (deltasByDate across 180 days)
+  // The 180 window strictly contains the 90 and the recent-5, so
+  // one wire fetch + in-memory slicing replaces three separate
+  // round-trips (audit P3).
   final today = DateTime(now.year, now.month, now.day);
+  final ninetyDaysAgo = today.subtract(const Duration(days: 89));
+  final hundredEightyDaysAgo = today.subtract(const Duration(days: 179));
   // The Suggestions / Top Categories rollup operates on calendar-month
   // boundaries (matches monthlySpending/monthlyIncome), so the RPC
   // window is "first of this month → today". Using thirtyDaysAgo here
   // would let mid-late-month spend leak from the previous month.
   final monthStart = DateTime(now.year, now.month, 1);
 
-  final (accounts, recent90d, recent5, spendByCat, categories) = await (
+  final (accounts, recent180d, spendByCat, categories) = await (
     accountsRepo.fetchAccounts(householdId),
     txRepo.fetchTransactionsForDashboard(
       householdId: householdId,
-      from: ninetyDaysAgo,
+      from: hundredEightyDaysAgo,
       to: today,
     ),
-    txRepo.fetchTransactions(householdId: householdId, limit: 5),
     budgetRepo.fetchSpendingByCategory(
       householdId: householdId,
       from: monthStart,
@@ -321,6 +319,17 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     ),
     txRepo.fetchCategories(),
   ).wait;
+
+  // Slice the 90-day list and recent-5 from the in-memory result.
+  // fetchTransactionsForDashboard returns transaction_date DESC, so
+  // the first N items are the most recent. Same-day ordering may
+  // differ from the prior `fetchTransactions(limit:5)` which added
+  // a created_at tiebreaker; for a dashboard preview list this
+  // tradeoff is acceptable.
+  final recent90d = recent180d
+      .where((t) => !t.transactionDate.isBefore(ninetyDaysAgo))
+      .toList();
+  final recent5 = recent180d.take(5).toList();
 
   // Roth YTD contributions — sequential because it depends on the
   // accounts list to know which IDs are iraRoth. Cheap on
@@ -345,21 +354,29 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
     ratesToDisplay: ratesToDisplay.isEmpty ? null : ratesToDisplay,
   );
 
-  // Net-worth trajectory series. fetchHistoricalNetWorth walks
-  // backward from today using transaction deltas, so it has to run
-  // after accounts (currentNetWorth = SUM(currentBalance)). 180-day
-  // lookback covers the rule's 6-month rolling window; widening to
-  // a year would let the rule see slower trends but adds another
-  // fetch on every dashboard load.
+  // Net-worth trajectory series. Reconstructed from the SAME
+  // 180-day transaction list we already pulled above — no extra
+  // wire fetch (audit P3). reconstructHistoricalNetWorth walks
+  // backward from today's net worth using per-day deltas.
   final currentNetWorth = accounts.fold<int>(
     0,
     (sum, a) => sum + a.currentBalance,
   );
-  final scenariosRepo = ref.read(scenariosRepositoryProvider);
-  final dailyPoints = await scenariosRepo.fetchHistoricalNetWorth(
-    householdId: householdId,
+  final deltasByDate = <DateTime, int>{};
+  for (final t in recent180d) {
+    // Normalise to date-only (drop any time component) so all
+    // transactions on the same day key together.
+    final date = DateTime(
+      t.transactionDate.year,
+      t.transactionDate.month,
+      t.transactionDate.day,
+    );
+    deltasByDate[date] = (deltasByDate[date] ?? 0) + t.amount;
+  }
+  final dailyPoints = reconstructHistoricalNetWorth(
     currentNetWorth: currentNetWorth,
-    lookbackDays: 180,
+    deltasByDate: deltasByDate,
+    today: now,
   );
   final monthlyNetWorth = aggregateMonthEndNetWorth(
     dailyPoints,
