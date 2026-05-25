@@ -77,7 +77,16 @@ Do (1) immediately. Do (2) when prioritized.
 
 ---
 
-### [ ] C5 — All Supabase errors surface as raw `e.toString()` (M)
+### [x] C5 — All Supabase errors surface as raw `e.toString()` (M)
+
+**CLOSED.** Added `lib/core/error/error_mapper.dart` with `mapError(Object) → MappedError {userMessage, requiresReauth}`. Pattern-matches:
+- `PostgrestException`: PGRST301 (JWT expired, reauth), 42501 (RLS denial), PGRST116 (no/multiple rows = "not found"), 23505 (unique = "already exists"), 23503 (FK = "refresh"), 23502 (not-null = "required missing"), default = generic.
+- `AuthException`: subclasses `AuthSessionMissingException` + `AuthInvalidJwtException` → reauth; code `invalid_jwt` → reauth; otherwise pass `error.message` verbatim (login-time failures like "Invalid login credentials" are already user-facing).
+- `SocketException` / `TimeoutException` → "Couldn't reach the server. Check your connection."
+- `String` → passes through verbatim (several catch sites pre-choose copy).
+- Unknown → generic "Something went wrong."
+
+`showErrorSnackBar` now routes through the mapper (all 33 existing call sites benefit zero-touch). 14 new unit tests cover every branch including the reauth flag. Paired with C6 below.
 
 Grep finds only TWO typed Postgrest/Auth catches in the entire `lib/` tree (both `AuthException` in login/register). Every other call site does `} catch (e) { context.showErrorSnackBar(e.toString()) }` — the user sees `PostgrestException(message: JSON object requested, multiple (or no) rows returned, code: PGRST116, …)`.
 
@@ -96,7 +105,9 @@ Wire every `showErrorSnackBar` site through it.
 
 ---
 
-### [ ] C6 — No session-expiry handler anywhere (M)
+### [x] C6 — No session-expiry handler anywhere (M)
+
+**CLOSED via the C5 path.** When `mapError` returns `requiresReauth: true`, `showErrorSnackBar` fires `unawaited(supabase.auth.signOut())`. The existing router (`app_router.dart`) already watches `authStateProvider` and redirects when `currentSession` becomes null — so the snackbar shows synchronously, the signOut roundtrip resolves shortly after, and the user lands on `/login` automatically with no per-catch-site `context.go('/login')` plumbing. PGRST301, `AuthSessionMissingException`, `AuthInvalidJwtException`, and code `invalid_jwt` all trigger the path. Unit-tested per branch.
 
 Grep for `PGRST301`, `JWT expired`, `onTokenRefreshError`: zero hits. The router only redirects when `currentSession` is null; an EXPIRED-but-not-removed session keeps the user on `/dashboard` looking at apparently-empty data (RLS returns empty arrays on 401).
 
