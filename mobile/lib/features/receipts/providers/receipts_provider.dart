@@ -47,13 +47,35 @@ Future<List<Receipt>> unpairedReceipts(UnpairedReceiptsRef ref) async {
   return repo.fetchUnpaired();
 }
 
-/// Signed URL for displaying a private receipt image.
-/// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+/// Signed URLs for EVERY receipt in the current household, keyed by
+/// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
+/// own per-path provider so a 50-receipt grid fired 50 sign-url
+/// HTTP round-trips on first paint. This pulls them all in one
+/// `createSignedUrls` POST; cards resolve from the map.
+@riverpod
+Future<Map<String, String>> signedReceiptUrls(SignedReceiptUrlsRef ref) async {
+  final receipts = await ref.watch(receiptsProvider.future);
+  if (receipts.isEmpty) return const {};
+  final repo = ref.watch(receiptsRepositoryProvider);
+  final paths = [for (final r in receipts) r.storagePath];
+  return repo.getSignedUrls(paths);
+}
+
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
 @riverpod
 Future<String> receiptImageUrl(
   ReceiptImageUrlRef ref,
   String storagePath,
 ) async {
+  final batched = await ref.watch(signedReceiptUrlsProvider.future);
+  final hit = batched[storagePath];
+  if (hit != null) return hit;
   final repo = ref.watch(receiptsRepositoryProvider);
   return repo.getSignedUrl(storagePath);
 }

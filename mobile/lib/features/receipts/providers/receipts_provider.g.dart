@@ -337,28 +337,73 @@ final unpairedReceiptsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UnpairedReceiptsRef = AutoDisposeFutureProviderRef<List<Receipt>>;
-String _$receiptImageUrlHash() => r'5e0fadcdbd66da7241ab9b87b078a10c028b3341';
+String _$signedReceiptUrlsHash() => r'33e2e8330d9707f44e6587686139c3d744903ffe';
 
-/// Signed URL for displaying a private receipt image.
-/// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+/// Signed URLs for EVERY receipt in the current household, keyed by
+/// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
+/// own per-path provider so a 50-receipt grid fired 50 sign-url
+/// HTTP round-trips on first paint. This pulls them all in one
+/// `createSignedUrls` POST; cards resolve from the map.
+///
+/// Copied from [signedReceiptUrls].
+@ProviderFor(signedReceiptUrls)
+final signedReceiptUrlsProvider =
+    AutoDisposeFutureProvider<Map<String, String>>.internal(
+      signedReceiptUrls,
+      name: r'signedReceiptUrlsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$signedReceiptUrlsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SignedReceiptUrlsRef =
+    AutoDisposeFutureProviderRef<Map<String, String>>;
+String _$receiptImageUrlHash() => r'9637493a7d9bbaa7f8cc9401965b16a2058b90c5';
+
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
 ///
 /// Copied from [receiptImageUrl].
 @ProviderFor(receiptImageUrl)
 const receiptImageUrlProvider = ReceiptImageUrlFamily();
 
-/// Signed URL for displaying a private receipt image.
-/// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
 ///
 /// Copied from [receiptImageUrl].
 class ReceiptImageUrlFamily extends Family<AsyncValue<String>> {
-  /// Signed URL for displaying a private receipt image.
-  /// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+  /// Signed URL for one receipt image, by [storagePath]. Resolves
+  /// from the batched [signedReceiptUrlsProvider] when the path is
+  /// part of the current household receipts list (the common case);
+  /// falls back to a one-off sign for paths outside that list
+  /// (e.g. detail screen opened via deep link before the list has
+  /// been fetched, or for a brand-new receipt that hasn't propagated
+  /// into the cached `receiptsProvider` value yet).
   ///
   /// Copied from [receiptImageUrl].
   const ReceiptImageUrlFamily();
 
-  /// Signed URL for displaying a private receipt image.
-  /// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+  /// Signed URL for one receipt image, by [storagePath]. Resolves
+  /// from the batched [signedReceiptUrlsProvider] when the path is
+  /// part of the current household receipts list (the common case);
+  /// falls back to a one-off sign for paths outside that list
+  /// (e.g. detail screen opened via deep link before the list has
+  /// been fetched, or for a brand-new receipt that hasn't propagated
+  /// into the cached `receiptsProvider` value yet).
   ///
   /// Copied from [receiptImageUrl].
   ReceiptImageUrlProvider call(String storagePath) {
@@ -387,13 +432,23 @@ class ReceiptImageUrlFamily extends Family<AsyncValue<String>> {
   String? get name => r'receiptImageUrlProvider';
 }
 
-/// Signed URL for displaying a private receipt image.
-/// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
 ///
 /// Copied from [receiptImageUrl].
 class ReceiptImageUrlProvider extends AutoDisposeFutureProvider<String> {
-  /// Signed URL for displaying a private receipt image.
-  /// Cached by [storagePath]; expires in 1 hour (Supabase re-signs on cache miss).
+  /// Signed URL for one receipt image, by [storagePath]. Resolves
+  /// from the batched [signedReceiptUrlsProvider] when the path is
+  /// part of the current household receipts list (the common case);
+  /// falls back to a one-off sign for paths outside that list
+  /// (e.g. detail screen opened via deep link before the list has
+  /// been fetched, or for a brand-new receipt that hasn't propagated
+  /// into the cached `receiptsProvider` value yet).
   ///
   /// Copied from [receiptImageUrl].
   ReceiptImageUrlProvider(String storagePath)

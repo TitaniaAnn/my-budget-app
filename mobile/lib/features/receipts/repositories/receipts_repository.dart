@@ -234,6 +234,25 @@ class ReceiptsRepository {
     return response;
   }
 
+  /// Batched signed-URL sign-off: one HTTP round-trip to
+  /// `/storage/v1/object/sign/{bucket}` returns a URL for every
+  /// requested path. Audit P4: the prior per-receipt family
+  /// provider fired one `createSignedUrl` per card, so opening a
+  /// household with 50 receipts cost 50 wire round-trips on first
+  /// paint of the grid. Returns a `path → signed URL` map keyed by
+  /// the same paths the caller passed in; missing paths (storage
+  /// returns an error for them) simply don't appear in the result.
+  Future<Map<String, String>> getSignedUrls(List<String> paths) async {
+    if (paths.isEmpty) return const {};
+    final response = await supabase.storage
+        .from(_bucket)
+        .createSignedUrls(paths, 3600);
+    return {
+      for (final s in response)
+        if (s.signedUrl.isNotEmpty) s.path: s.signedUrl,
+    };
+  }
+
   /// Deletes a receipt's storage object first, then its DB row.
   ///
   /// Audit H2: pre-fix this was a parallel `Future.wait` of the two

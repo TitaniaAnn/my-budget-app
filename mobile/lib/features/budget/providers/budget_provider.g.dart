@@ -6,7 +6,7 @@ part of 'budget_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$budgetDataHash() => r'7c99c71165093c0457be1286873cee435ab43d77';
+String _$budgetDataHash() => r'5b8acec456f1ea3280196f9b54edfb7819efbf64';
 
 /// All budgets for the current household, each paired with correct-period
 /// spending and an end-of-period projection.
