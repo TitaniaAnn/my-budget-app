@@ -273,11 +273,17 @@ class TransactionsRepository {
     Map<String, double>? ratesToDisplay,
   }) async {
     if (accountIds.isEmpty) return 0;
+    // Exclude transfer legs: a checking→Roth transfer's positive
+    // leg looks like a contribution by amount+sign+date but isn't
+    // (it's just cash movement). Without this filter the
+    // RothIraUnderusedRule silences prematurely. Same exclude-not-
+    // count contract as cash-flow rollups elsewhere in the app.
     final rows = await supabase
         .from('transactions')
         .select('amount, currency')
         .inFilter('account_id', accountIds)
         .gt('amount', 0)
+        .isFilter('transfer_id', null)
         .gte('transaction_date', from.toIso8601String().substring(0, 10));
 
     // Multi-currency contract matches the rest of the FX-aware

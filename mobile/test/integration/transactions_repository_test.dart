@@ -1530,6 +1530,83 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── sumPositiveAmountsForAccountsSince ────────────────────────────────
+    //
+    // Roth-contribution tally used by RothIraUnderusedRule. The bug
+    // class pinned here: a checking→Roth transfer's positive leg
+    // looks identical to a real contribution by amount + sign + date,
+    // so without a transfer_id-IS-NULL filter the rule silences
+    // prematurely. Same exclude-not-count contract the rest of the
+    // cash-flow rollups already honour.
+    group('sumPositiveAmountsForAccountsSince', () {
+      Future<String> insertSavingsAccount(String name) async {
+        final row = await harness.client
+            .from('accounts')
+            .insert({
+              'household_id': harness.householdId,
+              'owner_user_id': harness.userId,
+              'name': name,
+              'account_type': 'savings',
+              'currency': 'USD',
+              'starting_balance': 0,
+              'current_balance': 0,
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
+
+      test(
+        'transfer legs are excluded; only direct contributions count',
+        () async {
+          final rothId = await insertSavingsAccount('Roth IRA');
+          final ytdStart = DateTime.utc(2026, 1, 1);
+          final contributionDate = DateTime.utc(2026, 2, 14);
+
+          // Move $500 from checking → Roth via the blessed transfer
+          // path. Both legs land with the same transfer_id; the
+          // positive leg on the Roth account is the one that would
+          // pollute the tally without the filter.
+          await repo.createTransfer(
+            householdId: harness.householdId,
+            fromAccountId: harness.accountId,
+            toAccountId: rothId,
+            amountCents: 50000,
+            transactionDate: contributionDate,
+            description: 'transfer to roth (must NOT count)',
+            enteredBy: harness.userId,
+          );
+
+          // A real contribution — no transfer_id. This is the only
+          // amount the tally should report.
+          await harness.client.from('transactions').insert({
+            'household_id': harness.householdId,
+            'account_id': rothId,
+            'entered_by': harness.userId,
+            'amount': 30000,
+            'transaction_date': contributionDate
+                .toIso8601String()
+                .substring(0, 10),
+            'description': 'real contribution',
+          });
+
+          final total = await repo.sumPositiveAmountsForAccountsSince(
+            accountIds: [rothId],
+            from: ytdStart,
+          );
+
+          expect(
+            total,
+            30000,
+            reason:
+                'transfer leg must be filtered out (transfer_id IS NOT '
+                'NULL). Only the direct \$300 contribution counts.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }
 
