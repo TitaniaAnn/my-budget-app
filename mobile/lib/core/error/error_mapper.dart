@@ -23,6 +23,18 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Thrown when an UPDATE with an `updated_at` precondition matches
+/// zero rows — meaning another device wrote to the same row between
+/// the time the caller read it and the time they tried to write back.
+/// Audit H7: cheap-shape optimistic concurrency check; surfaces as
+/// a "refresh and try again" snackbar rather than silently losing
+/// the user's change.
+class ConcurrentUpdateException implements Exception {
+  const ConcurrentUpdateException();
+  @override
+  String toString() => 'ConcurrentUpdateException';
+}
+
 /// Result of mapping a raw exception to user-facing copy.
 class MappedError {
   const MappedError({
@@ -48,6 +60,14 @@ class MappedError {
 /// message. Callers that want to log it for debugging should do so
 /// at the catch site before calling this mapper.
 MappedError mapError(Object error) {
+  // ── Concurrent update (audit H7) ──────────────────────────────
+  if (error is ConcurrentUpdateException) {
+    return const MappedError(
+      userMessage:
+          'This was edited from another device — refresh and try again.',
+    );
+  }
+
   // ── Postgrest data-layer ──────────────────────────────────────
   if (error is PostgrestException) {
     switch (error.code) {

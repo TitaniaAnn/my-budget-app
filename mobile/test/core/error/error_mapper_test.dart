@@ -18,6 +18,17 @@ import 'package:mybudget/core/error/error_mapper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
+  group('mapError — ConcurrentUpdateException', () {
+    test('maps to refresh-and-retry copy', () {
+      // Audit H7: when the optimistic-lock filter matches zero rows
+      // we throw this — the user must see a clean "refresh" prompt
+      // rather than a raw `ConcurrentUpdateException` stack.
+      final mapped = mapError(const ConcurrentUpdateException());
+      expect(mapped.userMessage, contains('edited from another device'));
+      expect(mapped.requiresReauth, isFalse);
+    });
+  });
+
   group('mapError — PostgrestException', () {
     test('PGRST301 (JWT expired) flips requiresReauth', () {
       final mapped = mapError(

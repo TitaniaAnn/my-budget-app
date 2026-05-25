@@ -13,6 +13,7 @@
 //     test/integration/
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mybudget/core/error/error_mapper.dart';
 import 'package:mybudget/features/transactions/models/category.dart';
 import 'package:mybudget/features/transactions/repositories/transaction_tags_repository.dart';
 import 'package:mybudget/features/transactions/repositories/transactions_repository.dart';
@@ -305,6 +306,98 @@ void main() {
               'value or drifted by $skew. Should be near now() in UTC.',
         );
       }, skip: reason);
+
+      // ── H7: optimistic concurrency ─────────────────────────────────
+      test(
+        'updateTransaction throws ConcurrentUpdateException when '
+        'expectedUpdatedAt is stale',
+        () async {
+          // Insert a row, then immediately mutate it from a "second
+          // device" (a direct UPDATE bypassing the repo) so its
+          // BEFORE-UPDATE trigger refreshes updated_at. The repo
+          // call below uses the original timestamp as its
+          // precondition — must fail loudly.
+          final txId = await harness.insertTransaction(
+            description: 'concurrent-edit target',
+          );
+          final original = await harness.client
+              .from('transactions')
+              .select('updated_at')
+              .eq('id', txId)
+              .single();
+          final originalUpdatedAt = DateTime.parse(
+            original['updated_at'] as String,
+          );
+
+          // Trigger needs a real second of wall-clock drift so the
+          // updated_at delta is observable; sleep a beat.
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await harness.client
+              .from('transactions')
+              .update({'description': 'edited by other device'})
+              .eq('id', txId);
+
+          expect(
+            () => repo.updateTransaction(
+              id: txId,
+              amount: -100,
+              description: 'edited by ME',
+              transactionDate: DateTime.now(),
+              expectedUpdatedAt: originalUpdatedAt,
+            ),
+            throwsA(isA<ConcurrentUpdateException>()),
+            reason:
+                'precondition matched zero rows; the repo must throw '
+                'so the UI can prompt the user to refresh. Silently '
+                'no-op-ing would lose their change.',
+          );
+
+          // Verify the other-device write survives — our failed
+          // attempt mustn't have partially applied.
+          final after = await harness.client
+              .from('transactions')
+              .select('description')
+              .eq('id', txId)
+              .single();
+          expect(after['description'], 'edited by other device');
+        },
+        skip: reason,
+      );
+
+      test(
+        'updateTransaction succeeds when expectedUpdatedAt matches',
+        () async {
+          // Happy-path: no concurrent writer, the precondition
+          // matches, the UPDATE lands normally.
+          final txId = await harness.insertTransaction(
+            description: 'happy-path precondition target',
+          );
+          final current = await harness.client
+              .from('transactions')
+              .select('updated_at')
+              .eq('id', txId)
+              .single();
+          final currentUpdatedAt = DateTime.parse(
+            current['updated_at'] as String,
+          );
+
+          await repo.updateTransaction(
+            id: txId,
+            amount: -250,
+            description: 'happy-path: updated',
+            transactionDate: DateTime.now(),
+            expectedUpdatedAt: currentUpdatedAt,
+          );
+
+          final after = await harness.client
+              .from('transactions')
+              .select('description')
+              .eq('id', txId)
+              .single();
+          expect(after['description'], 'happy-path: updated');
+        },
+        skip: reason,
+      );
     });
 
     // ── bulkRecategorize ─────────────────────────────────────────────────

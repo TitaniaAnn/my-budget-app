@@ -296,6 +296,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),
+          // Audit H7: pass the timestamp we read when the sheet
+          // opened. If another household member edited this row
+          // since then, the BEFORE-UPDATE trigger refreshed
+          // updated_at and the precondition matches zero rows —
+          // the repo throws ConcurrentUpdateException and the
+          // user gets "refresh and try again" instead of silently
+          // losing their change.
+          expectedUpdatedAt: widget.transaction!.updatedAt,
         );
         affectedAccountId = widget.transaction!.accountId;
 

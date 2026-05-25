@@ -2,6 +2,7 @@
 // Transactions are fetched with a join on categories so the UI gets
 // category name/color/icon in a single round-trip.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/error/error_mapper.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction.dart';
 import '../models/category.dart';
@@ -338,6 +339,15 @@ class TransactionsRepository {
   /// changes — so [category_assigned_by] flips to 'user' and the timestamp
   /// is refreshed. Predictions made by the ML model that the user didn't
   /// override stay flagged as 'ml_model'.
+  ///
+  /// Audit H7: when [expectedUpdatedAt] is supplied, the UPDATE adds
+  /// `.eq('updated_at', expectedUpdatedAt)` as an optimistic-lock
+  /// precondition. If another device wrote to the same row in the
+  /// interim the BEFORE-UPDATE trigger refreshed `updated_at` and
+  /// our filter matches zero rows; we surface that as a
+  /// [ConcurrentUpdateException] rather than silently losing the
+  /// caller's change. Pass `null` to opt out (used by paths that
+  /// already serialised their own ordering, e.g. fresh creates).
   Future<void> updateTransaction({
     required String id,
     required int amount,
@@ -347,8 +357,9 @@ class TransactionsRepository {
     String? rateId,
     required DateTime transactionDate,
     String? notes,
+    DateTime? expectedUpdatedAt,
   }) async {
-    await supabase
+    var builder = supabase
         .from('transactions')
         .update({
           'amount': amount,
@@ -366,6 +377,16 @@ class TransactionsRepository {
             'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', id);
+    if (expectedUpdatedAt != null) {
+      builder = builder.eq(
+        'updated_at',
+        expectedUpdatedAt.toUtc().toIso8601String(),
+      );
+    }
+    final affected = await builder.select('id') as List;
+    if (expectedUpdatedAt != null && affected.isEmpty) {
+      throw const ConcurrentUpdateException();
+    }
   }
 
   /// Hard-deletes a transaction row.
@@ -632,16 +653,6 @@ class TransactionsRepository {
       recurringRows: recurringRows,
     );
 
-    if (matches.isNotEmpty) {
-      // Delete the matched scheduler rows in one round-trip so the
-      // upsert that follows lands the bank's canonical entries
-      // without ghost duplicates. Order doesn't matter; we're
-      // deleting by primary key.
-      await supabase.from('transactions').delete().inFilter('id', [
-        for (final m in matches) m.scheduledTransactionId,
-      ]);
-    }
-
     final enriched = rows.map((r) {
       return {
         ...r,
@@ -653,19 +664,26 @@ class TransactionsRepository {
       };
     }).toList();
 
-    // ignoreDuplicates: true makes the upsert behave like INSERT … ON
-    // CONFLICT DO NOTHING. The returned select() then contains only the
-    // rows that were actually written, so we can report a truthful count.
-    final returned = await supabase
-        .from('transactions')
-        .upsert(
-          enriched,
-          onConflict: 'account_id,external_id',
-          ignoreDuplicates: true,
-        )
-        .select('id');
+    // Audit H4: the pre-fix sequence was
+    //   1. DELETE matched scheduler rows  ← commits
+    //   2. UPSERT bank rows               ← could fail
+    // A failure on step 2 left the scheduler rows permanently
+    // deleted with no bank rows to take their place — the recurring
+    // entry silently vanished from the ledger. `bulk_import_transactions`
+    // (migration 052) folds both into one transaction so a failure
+    // rolls both back.
+    final inserted =
+        await supabase.rpc(
+              'bulk_import_transactions',
+              params: {
+                'p_rows': enriched,
+                'p_reconciled_ids': [
+                  for (final m in matches) m.scheduledTransactionId,
+                ],
+              },
+            )
+            as int;
 
-    final inserted = returned.length;
     return BulkImportResult(
       inserted: inserted,
       skipped: enriched.length - inserted,
