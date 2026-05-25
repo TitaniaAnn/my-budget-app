@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../accounts/models/account.dart';
@@ -499,13 +500,7 @@ class _SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -750,13 +745,7 @@ class _TopCategoriesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+    return AppCard(
       child: Column(
         children: categories.map((cat) {
           final fraction = totalSpending > 0
@@ -889,13 +878,9 @@ class _SuggestionCard extends StatelessWidget {
       SuggestionSeverity.info => Icons.info_outline,
     };
 
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.4)),
-      ),
+      accent: accent,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
