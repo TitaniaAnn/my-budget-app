@@ -60,6 +60,16 @@ dependencies:
   # Fires from inside the running app — no FCM/APNS plumbing in v1.
   flutter_local_notifications: ^17.2.4
 
+  # Disk-backed image cache for receipt thumbnails. Without it
+  # `Image.network` re-downloads on every cold start — a 50-receipt
+  # household pays N round-trips per dashboard open (audit P5).
+  cached_network_image: ^3.4.1
+
+  # Client-side JPEG/PNG compression so receipt uploads don't push
+  # 1-2 MB of full-resolution camera output per row (audit P5).
+  # Powers the 256-px thumbnail generation in the capture flow.
+  flutter_image_compress: ^2.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

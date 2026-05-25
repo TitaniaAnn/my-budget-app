@@ -5,6 +5,7 @@
 // "Pair to Transaction" opens [PairReceiptSheet] which calls the
 // `find_receipt_match_candidates` RPC (migration 019) and writes
 // `transactions.receipt_id` on the chosen row.
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -256,11 +257,35 @@ class _ReceiptDetailBody extends ConsumerWidget {
                 ),
               ),
             ),
-            data: (url) => Image.network(
-              url,
+            data: (url) => CachedNetworkImage(
+              imageUrl: url,
               height: 220,
               width: double.infinity,
               fit: BoxFit.cover,
+              // Audit P5: backed by cached_network_image so the full
+              // image isn't re-fetched on every cold start of the
+              // detail screen.
+              placeholder: (context, _) => const SizedBox(
+                height: 220,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, _, _) => SizedBox(
+                height: 220,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.broken_image_outlined,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('Could not load image'),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

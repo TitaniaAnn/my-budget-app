@@ -2,6 +2,7 @@
 // Also owns the Supabase Storage upload/signed-URL logic so the rest
 // of the app never references the bucket name directly.
 import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/supabase/supabase_client.dart';
@@ -60,15 +61,24 @@ class ReceiptsRepository {
     return data.map<ReceiptLineItem>(ReceiptLineItem.fromJson).toList();
   }
 
-  /// Uploads [imageFile] to Storage under "{householdId}/{uuid}.jpg",
-  /// then inserts a receipt row and returns it.
+  /// Uploads [imageFile] (full resolution) AND a 256-px JPEG thumbnail
+  /// alongside it, then inserts a receipt row pointing at both objects.
+  ///
+  /// Audit P5: pre-fix the grid downloaded the full-resolution image
+  /// (500 KB - 1.5 MB per receipt) for a 200-px thumbnail card; the
+  /// `thumbnail_path` column existed (since migration 001) but
+  /// nothing populated it. Now we generate the thumb client-side
+  /// once at upload time and the grid reads from the small object.
+  /// Failure to compress (decoder corner-cases on some camera JPEGs)
+  /// is non-fatal — the receipt still uploads and the grid falls
+  /// back to the full image.
   ///
   /// The receipt starts with [OcrStatus.pending]. An Edge Function (or manual
   /// update) advances the status once OCR is complete.
   ///
-  /// If the row insert fails after the upload, the storage object is
-  /// best-effort removed so the bucket doesn't accumulate orphans the user
-  /// can't see.
+  /// If the row insert fails after the upload, both storage objects
+  /// are best-effort removed so the bucket doesn't accumulate
+  /// orphans the user can't see.
   Future<Receipt> uploadReceipt({
     required String householdId,
     required String uploadedBy,
@@ -77,12 +87,39 @@ class ReceiptsRepository {
     DateTime? receiptDate,
     int? totalAmountCents,
   }) async {
-    // Generate a stable unique filename for the Storage object.
-    final fileName = '${_uuid.v4()}.jpg';
-    final storagePath = '$householdId/$fileName';
+    // Stable unique base name; thumbnail uses the same uuid + suffix
+    // so the pair is recognisable in Storage and easy to clean up.
+    final uuid = _uuid.v4();
+    final storagePath = '$householdId/$uuid.jpg';
+    final thumbnailPath = '$householdId/${uuid}_thumb.jpg';
 
-    // Upload image to the private receipts bucket.
+    // Upload full resolution first — if this fails we never even
+    // generate the thumb, no cleanup needed.
     await supabase.storage.from(_bucket).upload(storagePath, imageFile);
+
+    // Generate + upload the thumbnail. Failures here are NOT fatal:
+    // the receipt still gets stored without a thumbnail; the grid
+    // falls back to the full image (slower, but works). We swallow
+    // the compress error inline rather than failing the whole upload
+    // over a UX-perf optimisation.
+    String? actualThumbnailPath;
+    try {
+      final thumbBytes = await FlutterImageCompress.compressWithFile(
+        imageFile.absolute.path,
+        minWidth: 256,
+        minHeight: 256,
+        quality: 75,
+        format: CompressFormat.jpeg,
+      );
+      if (thumbBytes != null && thumbBytes.isNotEmpty) {
+        await supabase.storage
+            .from(_bucket)
+            .uploadBinary(thumbnailPath, thumbBytes);
+        actualThumbnailPath = thumbnailPath;
+      }
+    } catch (_) {
+      // Compress / upload failed — proceed with thumbnail_path NULL.
+    }
 
     try {
       final data = await supabase
@@ -91,6 +128,7 @@ class ReceiptsRepository {
             'household_id': householdId,
             'uploaded_by': uploadedBy,
             'storage_path': storagePath,
+            'thumbnail_path': actualThumbnailPath,
             'merchant_name': merchantName,
             'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
             'total_amount': totalAmountCents,
@@ -100,10 +138,11 @@ class ReceiptsRepository {
           .single();
       return Receipt.fromJson(data);
     } catch (_) {
-      // Compensate the just-uploaded object. Swallow cleanup failures —
-      // the original error is what the caller needs to see.
+      // Compensate both objects. Swallow cleanup failures — the
+      // original insert error is what the caller needs to see.
+      final pathsToRemove = <String>[storagePath, ?actualThumbnailPath];
       try {
-        await supabase.storage.from(_bucket).remove([storagePath]);
+        await supabase.storage.from(_bucket).remove(pathsToRemove);
       } catch (_) {}
       rethrow;
     }

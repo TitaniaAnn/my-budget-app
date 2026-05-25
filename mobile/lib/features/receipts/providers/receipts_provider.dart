@@ -50,14 +50,20 @@ Future<List<Receipt>> unpairedReceipts(UnpairedReceiptsRef ref) async {
 /// Signed URLs for EVERY receipt in the current household, keyed by
 /// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
 /// own per-path provider so a 50-receipt grid fired 50 sign-url
-/// HTTP round-trips on first paint. This pulls them all in one
-/// `createSignedUrls` POST; cards resolve from the map.
+/// HTTP round-trips on first paint. This pulls them in one
+/// `createSignedUrls` POST that covers both full-resolution paths
+/// AND thumbnail paths — the grid uses thumbnails when present,
+/// the detail screen uses full images, but one wire fetch covers
+/// both. Cards resolve from the map.
 @riverpod
 Future<Map<String, String>> signedReceiptUrls(SignedReceiptUrlsRef ref) async {
   final receipts = await ref.watch(receiptsProvider.future);
   if (receipts.isEmpty) return const {};
   final repo = ref.watch(receiptsRepositoryProvider);
-  final paths = [for (final r in receipts) r.storagePath];
+  final paths = <String>[
+    for (final r in receipts) r.storagePath,
+    for (final r in receipts) ?r.thumbnailPath,
+  ];
   return repo.getSignedUrls(paths);
 }
 

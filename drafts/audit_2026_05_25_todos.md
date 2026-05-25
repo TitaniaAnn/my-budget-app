@@ -254,7 +254,9 @@ DROP INDEX IF EXISTS target_allocations_household_idx;  -- redundant with PK
 
 ---
 
-### [ ] P2 — `budgetData` fires `get_category_spending` once per budget instead of once per period (S)
+### [x] P2 — `budgetData` fires `get_category_spending` once per budget instead of once per period (S)
+
+**CLOSED.** Both engines fixed: Dart `budgetDataProvider` and the `send-notification` Edge Function now group RPC calls by distinct `(from, to)` period. A 10-monthly-budget household drops from 10 identical RPCs to 1; a mixed monthly/weekly/biweekly drops to 3. Pure call-pattern fix — no schema change.
 
 [budget_provider.dart:134-144](../mobile/lib/features/budget/providers/budget_provider.dart):
 ```dart
@@ -270,7 +272,9 @@ Same N+1 in [supabase/functions/send-notification/index.ts:317-322](../supabase/
 
 ---
 
-### [ ] P3 — Dashboard fetches `transactions` three times per refresh (S)
+### [x] P3 — Dashboard fetches `transactions` three times per refresh (S)
+
+**CLOSED.** Collapsed to one 180-day fetch + in-memory slicing for the 90-day list, recent-5, and `deltasByDate` for the historical-net-worth walk. Saves 2 wire round-trips per dashboard load. One acceptable contract drift: same-day ordering of `recentTransactions` may differ from the prior `fetchTransactions(limit:5)` which had a `created_at` tiebreaker; dashboard's preview list doesn't need that precision.
 
 [dashboard_provider.dart](../mobile/lib/features/dashboard/providers/dashboard_provider.dart):
 1. `fetchTransactionsForDashboard(90 days)` — `:307`
@@ -281,7 +285,9 @@ The 180-day window strictly contains 90 days; recent-5 is the first 5 of either.
 
 ---
 
-### [ ] P4 — Receipts grid mints N signed URLs in parallel (S)
+### [x] P4 — Receipts grid mints N signed URLs in parallel (S)
+
+**CLOSED.** Added `ReceiptsRepository.getSignedUrls(paths)` wrapping `storage.createSignedUrls`. New `signedReceiptUrlsProvider` watches `receiptsProvider` and pulls every path in one POST (covers both full + thumbnail paths after P5). Existing per-path `receiptImageUrlProvider` reads from the batched map with a single-sign fallback for paths outside the household list (deep-link detail screen, etc).
 
 [receipts_provider.dart:50-59](../mobile/lib/features/receipts/providers/receipts_provider.dart) — per-receipt family provider; opening a household with 50 receipts fires 50 `createSignedUrl` HTTP round-trips on first paint.
 
@@ -289,7 +295,15 @@ The 180-day window strictly contains 90 days; recent-5 is the first 5 of either.
 
 ---
 
-### [ ] P5 — No image compression, no thumbnails, no disk cache (M)
+### [x] P5 — No image compression, no thumbnails, no disk cache (M)
+
+**CLOSED.** Three pieces:
+- **Thumbnails.** `uploadReceipt` now generates a 256-px JPEG via `flutter_image_compress` and uploads it to `{householdId}/{uuid}_thumb.jpg` alongside the full image. Writes `thumbnail_path` (column existed since migration 001; nothing populated it before). Compression failures are non-fatal — the receipt still saves, the grid falls back to the full image.
+- **Disk cache.** `cached_network_image` replaces `Image.network` on both the grid card and the detail screen. Cold-start re-downloads are gone.
+- **Grid uses thumbnail when present.** `_ReceiptCard` reads `receipt.thumbnailPath ?? receipt.storagePath`. Pre-P5 receipts keep working (NULL thumbnail_path → fall back). `signedReceiptUrlsProvider` extended to fetch both sets of paths in one POST so the batching from P4 still holds.
+- Insert rollback updated to clean up both objects (full + thumb) when the DB insert fails after Storage succeeds.
+
+Two new deps: `cached_network_image: ^3.4.1`, `flutter_image_compress: ^2.4.0`.
 
 [capture_receipt_sheet.dart:33-39](../mobile/lib/features/receipts/widgets/capture_receipt_sheet.dart) uploads at `imageQuality: 85, maxWidth: 2048` — 500KB-1.5MB per receipt. Schema has `thumbnail_path TEXT` (migration 001:107) but nothing populates it. The receipts grid downloads the **full-resolution** image for a 200px thumbnail card.
 

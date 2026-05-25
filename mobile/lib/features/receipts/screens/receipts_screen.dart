@@ -2,6 +2,7 @@
 //
 // Tapping a card navigates to the detail screen. The FAB opens the
 // CaptureReceiptSheet to add a new receipt.
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -74,7 +75,13 @@ class _ReceiptCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imageAsync = ref.watch(receiptImageUrlProvider(receipt.storagePath));
+    // Audit P5: prefer the 256-px thumbnail when the receipt has one
+    // (uploaded after P5 shipped). Pre-P5 receipts have NULL
+    // thumbnail_path and fall back to the full image — slower first
+    // paint, but cached_network_image still caches it to disk so
+    // subsequent renders skip the network.
+    final imagePath = receipt.thumbnailPath ?? receipt.storagePath;
+    final imageAsync = ref.watch(receiptImageUrlProvider(imagePath));
 
     return GestureDetector(
       onTap: () => context.push('/receipts/${receipt.id}'),
@@ -100,11 +107,16 @@ class _ReceiptCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                data: (url) => Image.network(
-                  url,
+                data: (url) => CachedNetworkImage(
+                  imageUrl: url,
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  errorBuilder: (context, err, stack) => Center(
+                  // Same placeholder shape as the loading state so a
+                  // cache miss doesn't pop a flash of nothing.
+                  placeholder: (context, _) => Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                  errorWidget: (context, _, _) => Center(
                     child: Icon(
                       Icons.broken_image_outlined,
                       color: theme.colorScheme.outline,
