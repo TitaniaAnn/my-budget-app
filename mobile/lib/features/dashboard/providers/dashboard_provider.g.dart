@@ -6,7 +6,7 @@ part of 'dashboard_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dashboardDataHash() => r'3062a38d3454eeae708f2a841d32ac972fbfe99f';
+String _$dashboardDataHash() => r'b19c98f189b7c8c4feb9e46c6ba8df10dc4b75a3';
 
 /// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
 /// it refreshes automatically when the household changes.

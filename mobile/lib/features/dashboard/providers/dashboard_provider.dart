@@ -6,6 +6,7 @@
 // Dart to >= the 1st of the current month.
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
+import '../../../core/utils/retry.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
@@ -304,21 +305,32 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // would let mid-late-month spend leak from the previous month.
   final monthStart = DateTime(now.year, now.month, 1);
 
-  final (accounts, recent180d, spendByCat, categories) = await (
-    accountsRepo.fetchAccounts(householdId),
-    txRepo.fetchTransactionsForDashboard(
-      householdId: householdId,
-      from: hundredEightyDaysAgo,
-      to: today,
-    ),
-    budgetRepo.fetchSpendingByCategory(
-      householdId: householdId,
-      from: monthStart,
-      to: today,
-      ratesToDisplay: ratesToDisplay.isEmpty ? null : ratesToDisplay,
-    ),
-    txRepo.fetchCategories(),
-  ).wait;
+  // Audit L3: wrap the dashboard's parallel read in retryTransient
+  // so a single dropped packet doesn't kick the user to the error
+  // view. The whole record-tuple is one retry unit — if any of the
+  // four fetches throws transient, we re-fire all four. That's
+  // slightly more wire than retrying per-fetch, but the tuple is
+  // already what blocks the user (any one missing → error view),
+  // and 200ms/800ms backoff caps the worst-case added latency at
+  // ~1s. Auth, RLS, CHECK violations bubble through immediately —
+  // retrying won't fix them.
+  final (accounts, recent180d, spendByCat, categories) = await retryTransient(
+    () => (
+      accountsRepo.fetchAccounts(householdId),
+      txRepo.fetchTransactionsForDashboard(
+        householdId: householdId,
+        from: hundredEightyDaysAgo,
+        to: today,
+      ),
+      budgetRepo.fetchSpendingByCategory(
+        householdId: householdId,
+        from: monthStart,
+        to: today,
+        ratesToDisplay: ratesToDisplay.isEmpty ? null : ratesToDisplay,
+      ),
+      txRepo.fetchCategories(),
+    ).wait,
+  );
 
   // Slice the 90-day list and recent-5 from the in-memory result.
   // fetchTransactionsForDashboard returns transaction_date DESC, so
