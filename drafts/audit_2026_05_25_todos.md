@@ -444,14 +444,21 @@ Mechanical sed pass.
 
 ## LATER (medium-term, document but defer)
 
-- **No offline behavior at all.** No `connectivity_plus`, no local cache, no SQLite. Empty/error states on every screen when offline. Categorizer works offline (ONNX local); nothing else does.
-- **No `AppLifecycleState` observer.** Background app for 3 days, open Monday → Friday's data, no refresh on resume.
-- **No retry-on-transient-failure anywhere.** One dropped packet during dashboard load → error view. Add at least one transparent retry with backoff for read-only fetches.
-- **Notification deep-links don't exist.** `NotificationService.show` doesn't pass a payload; `initialize` doesn't pass `onDidReceiveNotificationResponse`. Tapping a notification opens the app to wherever it was.
-- **Biweekly/weekly date math uses `Duration(days:)` not calendar math.** DST forward → end-of-period is slightly less than 14 days. Cosmetic in practice (date-only comparisons elsewhere), wrong in principle.
-- **`fetchTransactions` LIMIT 1000 with no "load more"** — power user at year 3 silently loses transactions off the end.
-- **Per-token FCM POST is sequential** in send-notification — switch to legacy FCM's `registration_ids: [...]` multicast (up to 1000 per call).
-- **DST/leap-year recurring math** is mostly correct (DATE columns are zone-free), but annual-on-Feb-29 becomes Feb 28 permanently. Document.
+7 of 8 closed this pass. L1 (offline) deferred — too large for an
+audit-cleanup commit (covers connectivity_plus, local SQLite cache,
+sync-on-reconnect, per-screen offline states). The architecture
+needed to support it (single-direction Riverpod data flow + repository
+layer) is already in place; the implementation is a separate feature
+project.
+
+- **[L1 — deferred] No offline behavior at all.** No `connectivity_plus`, no local cache, no SQLite. Empty/error states on every screen when offline. Categorizer works offline (ONNX local); nothing else does.
+- **[x] L2 — `AppLifecycleState` observer.** `MyBudgetApp` now extends `WidgetsBindingObserver`; tracks `_pausedAt` on background, invalidates the ledger providers on resume when away ≥ 1 minute.
+- **[x] L3 — Retry-on-transient-failure.** Added `lib/core/utils/retry.dart` → `retryTransient(body)` with 200ms→800ms exponential backoff. Recognises `SocketException` / `TimeoutException` / `ClientException` / `PostgrestException` codes in the PGRST5xx range; auth/RLS/CHECK violations bubble through immediately. Wired into the dashboard's parallel-fetch tuple. 7 new tests.
+- **[x] L4 — Notification deep-links.** `NotificationService.show` now passes the dedup tag as the payload; `ensureInitialized` wires `onDidReceiveNotificationResponse` to forward it to a top-level `notificationTapCallback`. `main.dart` sets the callback to a namespace-router map (`budget_over:*` → /budget, `large_tx:*` → /transactions).
+- **[x] L5 — Biweekly/weekly date math.** Replaced every `Duration(days: N)` in `BudgetPeriod.currentRange` and `_isoWeekNumber` with `DateTime(y, m, d + N)` so DST-forward boundaries no longer drift the window end by an hour.
+- **[x] L6 — `fetchTransactions` pagination.** Family provider gets `limit` as a key; transactions screen tracks `_pageSize` (starts 1000, +1000 per "Load more" tap, resets on filter change); `_TransactionList` renders a Load-More tile when results fill the page.
+- **[x] L7 — FCM multicast batching.** Switched per-token POST loop to multicast via `registration_ids: [...userTokens]`. A 3-device, 5-notification user dropped from 15 sequential POSTs to 5. Per-token invalid-token detection moved inline via the `results[]` array.
+- **[x] L8 — Feb-29 annual recurring quirk.** Documented in `RecurrenceCadence`'s class doc. Postgres `+ INTERVAL '1 year'` clamps Feb 29 → Feb 28 in non-leap years and the rule sticks there permanently. NOT fixed because alternative behaviors (round forward to Mar 1, re-snap to Feb 29 in leap years) also silently change the date — neither is clearly better. Users can edit `next_occurrence_date` directly if Feb 29 specifically matters.
 
 ---
 
