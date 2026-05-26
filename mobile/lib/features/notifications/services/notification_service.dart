@@ -27,6 +27,17 @@ abstract class LocalNotificationDispatcher {
   });
 }
 
+/// Audit L4: route a tapped notification to the right screen. The
+/// payload comes from [NotificationService.show]'s `tag` and is
+/// the same dedup key the engine uses (`budget_over:<id>:<period>`
+/// or `large_tx:<tx_id>`). Callers — typically the app's root
+/// widget — set this once at bootstrap; it's a top-level callback
+/// rather than something baked into the service so the navigation
+/// logic stays where the router is in scope. Null = no-op (the
+/// default before bootstrap wires it).
+typedef NotificationTapCallback = void Function(String payload);
+NotificationTapCallback? notificationTapCallback;
+
 class NotificationService implements LocalNotificationDispatcher {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -61,7 +72,17 @@ class NotificationService implements LocalNotificationDispatcher {
         requestSoundPermission: false,
       ),
     );
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      // Audit L4: route the tap to the bootstrap-supplied callback.
+      // `response.payload` carries the engine's dedup key (set on
+      // every `show()` below); the callback maps that to a route.
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null) return;
+        notificationTapCallback?.call(payload);
+      },
+    );
 
     // Android needs the channel created up front (idempotent).
     final android = _plugin
@@ -135,6 +156,10 @@ class NotificationService implements LocalNotificationDispatcher {
         ),
         iOS: DarwinNotificationDetails(),
       ),
+      // Payload IS the dedup tag — the tap handler in
+      // `ensureInitialized` reads this and forwards it to
+      // [notificationTapCallback] for routing.
+      payload: tag,
     );
   }
 }

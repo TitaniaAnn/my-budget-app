@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/providers/ledger_invalidation.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/notifications/services/notification_service.dart';
 
 // These constants are injected at build time via --dart-define-from-file=.env.json.
 // They compile to empty strings if the flag is omitted, which the assert below catches.
@@ -107,13 +109,84 @@ class _InitErrorApp extends StatelessWidget {
 
 /// Root widget. Watches [appRouterProvider] so the router is rebuilt
 /// whenever auth state changes (login/logout triggers a redirect).
-class MyBudgetApp extends ConsumerWidget {
+///
+/// Audit L2: extends [WidgetsBindingObserver] so a resumed-from-
+/// background lifecycle event invalidates the ledger providers.
+/// Without this, an app backgrounded on Monday and reopened Friday
+/// shows Monday's data until the user pulls-to-refresh.
+class MyBudgetApp extends ConsumerStatefulWidget {
   const MyBudgetApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyBudgetApp> createState() => _MyBudgetAppState();
+}
+
+class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
+    with WidgetsBindingObserver {
+  /// Wall-clock moment of the last pause. Resume-refresh only fires
+  /// when we've been away long enough that re-fetching is worth the
+  /// network hit — a 5-second app-swipe-away doesn't trigger it.
+  DateTime? _pausedAt;
+
+  /// Minimum away-time before resume triggers a ledger invalidate.
+  /// Tuned to bridge the gap between "user briefly checked another
+  /// app" (no value to re-fetching) and "user came back the next
+  /// morning" (data is stale).
+  static const _staleAfter = Duration(minutes: 1);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        _pausedAt = DateTime.now();
+      case AppLifecycleState.resumed:
+        final paused = _pausedAt;
+        if (paused == null) return;
+        if (DateTime.now().difference(paused) >= _staleAfter) {
+          invalidateLedger(ref);
+        }
+        _pausedAt = null;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        // No-op: inactive is a brief transitional state (an
+        // incoming call's UI overlay, etc.) and detached only
+        // fires during teardown.
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeNotifierProvider);
+
+    // Audit L4: hook the notification-tap callback into the router
+    // so tapping a budget-over / large-tx notification lands on the
+    // matching screen instead of wherever the app happened to be.
+    // The payload is the engine's dedup tag (set by
+    // `NotificationService.show`); namespaces map to routes.
+    notificationTapCallback = (payload) {
+      if (payload.startsWith('budget_over:')) {
+        router.go('/budget');
+      } else if (payload.startsWith('large_tx:')) {
+        router.go('/transactions');
+      }
+      // Unknown namespace → no-op. New triggers should be added
+      // here AND get their dedup key namespaced in the engine.
+    };
 
     return MaterialApp.router(
       title: 'MyBudget',
