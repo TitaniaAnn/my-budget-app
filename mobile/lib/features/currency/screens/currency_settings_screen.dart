@@ -200,6 +200,7 @@ class _RateTile extends StatelessWidget {
       ),
       trailing: IconButton(
         icon: Icon(Icons.delete_outline, color: colors.expense),
+        tooltip: 'Delete rate',
         onPressed: onDelete,
       ),
     );

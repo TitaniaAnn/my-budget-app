@@ -358,7 +358,15 @@ Add `CHECK (rate < 100000)` as a sanity guardrail.
 
 ## ACCESSIBILITY
 
-### [ ] A1 — Zero `Semantics` wrappers in the entire codebase (M)
+### [x] A1 — Zero `Semantics` wrappers in the entire codebase (M)
+
+**CLOSED.** Wrapped every `fl_chart` site in `Semantics(label:, value:)`:
+- Dashboard spending sparkline: label "Spending sparkline, last 30 days"; value reports 30-day total + today's spend.
+- Dashboard asset allocation pie: label "Asset allocation"; value reports total + asset-class count.
+- Scenario detail line chart: "Net worth over time, scenario projection".
+- Debt-payoff summary chart: "Debt payoff trajectory"; value reports starting balance + month count.
+- Debt-payoff per-debt chart: "Per-debt payoff trajectory"; value reports debt count + month count.
+TalkBack / VoiceOver now reads the chart's headline data instead of "graph".
 
 Grep for `Semantics(` across `lib/`: zero hits. All charts (dashboard sparkline, asset allocation pie, budget bars, debt-payoff line) render as `fl_chart` widgets with no semantic label. TalkBack/VoiceOver users hear "graph" with no values.
 
@@ -366,14 +374,27 @@ Grep for `Semantics(` across `lib/`: zero hits. All charts (dashboard sparkline,
 
 ---
 
-### [ ] A2 — Color-only state signaling on OCR status, budget alerts (S)
+### [x] A2 — Color-only state signaling on OCR status, budget alerts (S)
+
+**ALREADY ADDRESSED.** Verification pass found both call-out sites already pair icons with color:
+- `_OcrStatusChip` has `_icon` getter (hourglass / autorenew / check_circle_outline / error_outline) rendered alongside the colored text.
+- Dashboard `_BudgetAlertTile` uses `warning_rounded` (over-budget) vs `info_outline_rounded` (approaching).
+- Budget screen tiles use bold text + a `trending_up` / `trending_flat` icon for projected-over state.
+No code change required — the audit may have been written against a pre-icon revision.
 
 - [receipt_detail_screen.dart:391-399](../mobile/lib/features/receipts/screens/receipt_detail_screen.dart) — OCR status uses only color (green/red/secondary). Red-green deficient users can't distinguish processing from failed. Add `✓ / ⚠ / ⏳` icons.
 - Budget alert bars on dashboard / budget screen use color alone for over/under.
 
 ---
 
-### [ ] A3 — IconButtons without tooltips (S)
+### [x] A3 — IconButtons without tooltips (S)
+
+**CLOSED.** Added `tooltip:` to every audit-listed bare IconButton:
+- `accounts_screen` refresh → "Refresh"
+- `dashboard_screen` refresh → "Refresh"
+- `currency_settings_screen` per-rate delete → "Delete rate"
+- `login_screen` + `register_screen` password-visibility toggles → "Show password" / "Hide password" (label flips with state)
+- `sheet_scaffold` close → "Close" (covers every sheet that uses AppSheetScaffold).
 
 - [accounts_screen.dart:28](../mobile/lib/features/accounts/screens/accounts_screen.dart), [dashboard_screen.dart:41](../mobile/lib/features/dashboard/screens/dashboard_screen.dart) — refresh buttons.
 - [currency_settings_screen.dart:201](../mobile/lib/features/currency/screens/currency_settings_screen.dart) — delete-rate button.
@@ -384,7 +405,12 @@ Grep for `Semantics(` across `lib/`: zero hits. All charts (dashboard sparkline,
 
 ## SMELLS / theme drift
 
-### [ ] T1 — Hardcoded `Colors.green` / `Colors.grey` where `AppColors` token exists (S)
+### [x] T1 — Hardcoded `Colors.green` / `Colors.grey` where `AppColors` token exists (S)
+
+**CLOSED.** Mechanical sweep across all 15 sites:
+- `Colors.green` → `context.appColors.success` (OCR-complete status) or `context.appColors.income` (positive deltas, discounts, net gains)
+- `Colors.grey` → `context.appColors.textSubtle` (subdued labels, placeholder swatches)
+Files touched: `receipt_detail_screen`, `review_ocr_lines_screen`, `monthly_report_screen`, `scenarios_screen`, `scenario_detail_screen`, `transactions_screen`. Audit's mention of `scenario_debt_payoff_view.dart:604` was stale — no `Colors.green` there in current code.
 
 `context.appColors.income` and `context.appColors.textSubtle` exist but are bypassed at:
 - [receipt_detail_screen.dart:396, 477](../mobile/lib/features/receipts/screens/receipt_detail_screen.dart) — `Colors.green`
@@ -398,7 +424,9 @@ Mechanical sed pass.
 
 ---
 
-### [ ] T2 — `NotificationSettings` is hand-rolled without `==`/`hashCode` (XS)
+### [x] T2 — `NotificationSettings` is hand-rolled without `==`/`hashCode` (XS)
+
+**CLOSED.** Converted to `@freezed` per project convention. Hand-rolled `copyWith` removed (freezed generates it); `@Default(...)` annotations preserve every prior default. `==` / `hashCode` now come for free, so a future `.select(...)` on the provider won't misfire on every prefs save.
 
 [notification_settings.dart:11](../mobile/lib/features/notifications/models/notification_settings.dart) — hand-rolled value class with `copyWith` but no equality. `state = state.copyWith(enabled: true)` produces fresh identity even when value didn't change. No observable bug today (nobody uses `.select`), but the moment someone does, the selector misfires on every prefs save.
 
@@ -406,7 +434,9 @@ Mechanical sed pass.
 
 ---
 
-### [ ] T3 — `add_recurring_sheet` allows `skipped_until < next_occurrence` (XS)
+### [x] T3 — `add_recurring_sheet` allows `skipped_until < next_occurrence` (XS)
+
+**CLOSED.** Clamped the skipped-until picker's `firstDate` to `_nextOccurrence` so dates before the next emission visually can't be selected. Also moves `initialDate` forward to `_nextOccurrence` when the stored value is stale. The scheduler honours `skipped_until` only when it cuts off a future emission, so pre-fix a user could pick a past date and silently get no-op behaviour.
 
 [add_recurring_sheet.dart](../mobile/lib/features/recurring/widgets/add_recurring_sheet.dart) — user can set skip-until BEFORE next-occurrence, which silently does nothing. Either reject in `_submit` or clamp the picker's `firstDate`.
 

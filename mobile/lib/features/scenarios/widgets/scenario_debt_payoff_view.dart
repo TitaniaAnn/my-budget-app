@@ -393,67 +393,76 @@ class _DebtSummaryChart extends StatelessWidget {
     final maxY = (startTotal / 100) * 1.05;
     final fmt = NumberFormat.compactCurrency(symbol: '\$');
 
-    return SizedBox(
-      height: 220,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: spots.last.x,
-          minY: 0,
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => FlLine(
-              color: cs.outlineVariant.withValues(alpha: 0.4),
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 56,
-                getTitlesWidget: (v, _) => Text(
-                  fmt.format(v),
-                  style: TextStyle(fontSize: 10, color: cs.outline),
-                ),
+    // Audit A1: fl_chart line reads as bare "graph" to screen
+    // readers; surface the headline (total debt + month count) on
+    // the wrapper.
+    return Semantics(
+      label: 'Debt payoff trajectory',
+      value:
+          '${fmt.format(startTotal / 100)} starting balance, '
+          '${spots.length - 1} month projection',
+      child: SizedBox(
+        height: 220,
+        child: LineChart(
+          LineChartData(
+            minX: 0,
+            maxX: spots.last.x,
+            minY: 0,
+            maxY: maxY,
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (_) => FlLine(
+                color: cs.outlineVariant.withValues(alpha: 0.4),
+                strokeWidth: 1,
               ),
             ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: (spots.last.x / 4).clamp(1, double.infinity),
-                getTitlesWidget: (v, _) => Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '${v.toInt()}mo',
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 56,
+                  getTitlesWidget: (v, _) => Text(
+                    fmt.format(v),
                     style: TextStyle(fontSize: 10, color: cs.outline),
                   ),
                 ),
               ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: accent,
-              barWidth: 2.5,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                color: accent.withValues(alpha: 0.1),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: (spots.last.x / 4).clamp(1, double.infinity),
+                  getTitlesWidget: (v, _) => Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '${v.toInt()}mo',
+                      style: TextStyle(fontSize: 10, color: cs.outline),
+                    ),
+                  ),
+                ),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
               ),
             ),
-          ],
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: accent,
+                barWidth: 2.5,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: accent.withValues(alpha: 0.1),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -536,77 +545,84 @@ class _PerDebtChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 220,
-          child: LineChart(
-            LineChartData(
-              minX: 0,
-              maxX: maxX,
-              minY: 0,
-              maxY: maxY,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                getDrawingHorizontalLine: (_) => FlLine(
-                  color: cs.outlineVariant.withValues(alpha: 0.4),
-                  strokeWidth: 1,
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 56,
-                    getTitlesWidget: (v, _) => Text(
-                      fmt.format(v),
-                      style: TextStyle(fontSize: 10, color: cs.outline),
-                    ),
+        Semantics(
+          label: 'Per-debt payoff trajectory',
+          value:
+              '${lines.length} '
+              '${lines.length == 1 ? "debt" : "debts"} over '
+              '${maxX.toInt()} months',
+          child: SizedBox(
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: maxX,
+                minY: 0,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                    strokeWidth: 1,
                   ),
                 ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    interval: (maxX / 4).clamp(1, double.infinity),
-                    getTitlesWidget: (v, _) => Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '${v.toInt()}mo',
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 56,
+                      getTitlesWidget: (v, _) => Text(
+                        fmt.format(v),
                         style: TextStyle(fontSize: 10, color: cs.outline),
                       ),
                     ),
                   ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              lineBarsData: [
-                for (final line in lines)
-                  LineChartBarData(
-                    spots: line.spots,
-                    isCurved: false,
-                    color: line.color,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
-                    final line = lines[s.barIndex];
-                    return LineTooltipItem(
-                      '${line.name}\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: (maxX / 4).clamp(1, double.infinity),
+                      getTitlesWidget: (v, _) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '${v.toInt()}mo',
+                          style: TextStyle(fontSize: 10, color: cs.outline),
+                        ),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                lineBarsData: [
+                  for (final line in lines)
+                    LineChartBarData(
+                      spots: line.spots,
+                      isCurved: false,
+                      color: line.color,
+                      barWidth: 2,
+                      dotData: const FlDotData(show: false),
+                    ),
+                ],
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
+                      final line = lines[s.barIndex];
+                      return LineTooltipItem(
+                        '${line.name}\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),

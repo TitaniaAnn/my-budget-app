@@ -27,6 +27,7 @@ class AccountsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
+            tooltip: 'Refresh',
             onPressed: () => ref.invalidate(accountsProvider),
           ),
         ],

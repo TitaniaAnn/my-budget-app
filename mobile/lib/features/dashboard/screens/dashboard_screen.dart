@@ -40,6 +40,7 @@ class DashboardScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
+            tooltip: 'Refresh',
             onPressed: () => ref.invalidate(dashboardDataProvider),
           ),
         ],
@@ -165,12 +166,14 @@ class _DashboardBody extends ConsumerWidget {
                   onAction: (ctx) => ctx.go('/budget'),
                 ),
                 const SizedBox(height: 10),
-                ...alerts.take(3).map(
-                  (a) => _BudgetAlertTile(
-                    alert: a,
-                    currency: data.displayCurrency,
-                  ),
-                ),
+                ...alerts
+                    .take(3)
+                    .map(
+                      (a) => _BudgetAlertTile(
+                        alert: a,
+                        currency: data.displayCurrency,
+                      ),
+                    ),
                 const SizedBox(height: 24),
               ],
             );
@@ -567,97 +570,111 @@ class _SpendingSparkline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxVal = spendingByDay.fold<int>(0, (m, v) => v > m ? v : m);
+    final total = spendingByDay.fold<int>(0, (s, v) => s + v);
+    final today = spendingByDay.isNotEmpty ? spendingByDay.last : 0;
 
-    return Container(
-      height: 120,
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: maxVal == 0
-          ? Center(
-              child: Text(
-                'No spending in the last 30 days',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontSize: 13,
+    // Audit A1: TalkBack / VoiceOver users hear "graph" with no
+    // values from fl_chart. Wrap the chart in a Semantics node that
+    // summarises the 30-day total and today's spend so the user
+    // gets the same headline a sighted user gets from the visual.
+    return Semantics(
+      label: 'Spending sparkline, last 30 days',
+      value: total == 0
+          ? 'No spending in the last 30 days'
+          : '${formatCurrency(total, currency: currency)} total. '
+                'Today: ${formatCurrency(today, currency: currency)}.',
+      child: Container(
+        height: 120,
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: maxVal == 0
+            ? Center(
+                child: Text(
+                  'No spending in the last 30 days',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-            )
-          : BarChart(
-              BarChartData(
-                maxY: maxVal * 1.2,
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, _) {
-                        final idx = value.toInt();
-                        final muted = context.appColors.textSubtle;
-                        // Show label every 7 days + today
-                        if (idx == 29) {
-                          return Text(
-                            'Today',
-                            style: TextStyle(fontSize: 9, color: muted),
-                          );
-                        }
-                        if ((29 - idx) % 7 == 0 && idx != 29) {
-                          return Text(
-                            '${29 - idx}d',
-                            style: TextStyle(fontSize: 9, color: muted),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                      reservedSize: 18,
+              )
+            : BarChart(
+                BarChartData(
+                  maxY: maxVal * 1.2,
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, _) {
+                          final idx = value.toInt();
+                          final muted = context.appColors.textSubtle;
+                          // Show label every 7 days + today
+                          if (idx == 29) {
+                            return Text(
+                              'Today',
+                              style: TextStyle(fontSize: 9, color: muted),
+                            );
+                          }
+                          if ((29 - idx) % 7 == 0 && idx != 29) {
+                            return Text(
+                              '${29 - idx}d',
+                              style: TextStyle(fontSize: 9, color: muted),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                        reservedSize: 18,
+                      ),
                     ),
                   ),
-                ),
-                barGroups: List.generate(30, (i) {
-                  final isToday = i == 29;
-                  return BarChartGroupData(
-                    x: i,
-                    barRods: [
-                      BarChartRodData(
-                        toY: spendingByDay[i].toDouble(),
-                        color: isToday
-                            ? BrandColors.primary
-                            : BrandColors.primary.withValues(alpha: 0.4),
-                        width: 6,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(3),
+                  barGroups: List.generate(30, (i) {
+                    final isToday = i == 29;
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: spendingByDay[i].toDouble(),
+                          color: isToday
+                              ? BrandColors.primary
+                              : BrandColors.primary.withValues(alpha: 0.4),
+                          width: 6,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(3),
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                }),
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
-                      formatCurrency(rod.toY.round(), currency: currency),
-                      const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      ],
+                    );
+                  }),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, _, rod, rodIndex) =>
+                          BarTooltipItem(
+                            formatCurrency(rod.toY.round(), currency: currency),
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                     ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -1035,31 +1052,44 @@ class _AssetAllocationCard extends StatelessWidget {
           // below. fl_chart fires the callback for every gesture
           // phase (down / move / up / cancel); filter to the
           // tap-up event (FlTapUpEvent) so we only push once per tap.
-          SizedBox(
-            width: 92,
-            height: 92,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 24,
-                startDegreeOffset: -90,
-                pieTouchData: PieTouchData(
-                  touchCallback: (event, response) {
-                    if (event is! FlTapUpEvent) return;
-                    final idx = response?.touchedSection?.touchedSectionIndex;
-                    if (idx == null || idx < 0 || idx >= slices.length) return;
-                    _drillInto(context, slices[idx].assetClass);
-                  },
+          // Audit A1: pie chart reads as "graph" to screen readers
+          // without a Semantics label. The legend below already
+          // surfaces every slice's name + amount, so the chart's
+          // own semantic is just the headline.
+          Semantics(
+            label: 'Asset allocation',
+            value:
+                '${formatCurrency(totalCents, currency: currency)} '
+                'across ${slices.length} asset '
+                '${slices.length == 1 ? "class" : "classes"}',
+            child: SizedBox(
+              width: 92,
+              height: 92,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 24,
+                  startDegreeOffset: -90,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (event, response) {
+                      if (event is! FlTapUpEvent) return;
+                      final idx = response?.touchedSection?.touchedSectionIndex;
+                      if (idx == null || idx < 0 || idx >= slices.length) {
+                        return;
+                      }
+                      _drillInto(context, slices[idx].assetClass);
+                    },
+                  ),
+                  sections: [
+                    for (final s in slices)
+                      PieChartSectionData(
+                        value: s.totalCents.toDouble(),
+                        color: s.assetClass.sliceColor,
+                        title: '',
+                        radius: 18,
+                      ),
+                  ],
                 ),
-                sections: [
-                  for (final s in slices)
-                    PieChartSectionData(
-                      value: s.totalCents.toDouble(),
-                      color: s.assetClass.sliceColor,
-                      title: '',
-                      radius: 18,
-                    ),
-                ],
               ),
             ),
           ),
