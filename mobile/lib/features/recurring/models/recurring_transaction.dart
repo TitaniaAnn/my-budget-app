@@ -21,6 +21,20 @@ part 'recurring_transaction.g.dart';
 /// (H1/H2) which essentially never describe a real subscription,
 /// and recurring rules cover `quarterly` (insurance premiums,
 /// quarterly taxes) which budgets don't.
+///
+/// Audit L8 (known leap-year quirk): the scheduler's
+/// `advance_recurrence_date` SQL helper uses Postgres
+/// `+ INTERVAL '1 year'`, which clamps Feb 29 → Feb 28 in
+/// non-leap years. Once a Feb-29 annual rule emits on Feb-28 in a
+/// non-leap year, every subsequent `+ INTERVAL '1 year'` lands on
+/// Feb-28 again (Feb-28 + 1 year = Feb-28, even in a leap year).
+/// Net effect: a "Feb 29" annual rule permanently shifts to Feb 28
+/// after its first non-leap-year emission. Documented rather than
+/// fixed because (a) it affects only the leap-day case, (b) the
+/// alternative (round forward to Mar 1 OR re-snap to Feb 29 in
+/// leap years) silently changes the spend's date — neither is
+/// clearly better — and (c) the user can edit `next_occurrence_date`
+/// directly if Feb 29 specifically matters to them.
 enum RecurrenceCadence {
   @JsonValue('weekly')
   weekly,

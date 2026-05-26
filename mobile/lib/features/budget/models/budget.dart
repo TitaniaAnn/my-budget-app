@@ -49,22 +49,31 @@ enum BudgetPeriod {
       return DateTime(n.year, n.month, n.day);
     }();
 
+    // Audit L5: use calendar-math (DateTime constructor with day
+    // arithmetic) instead of `Duration(days: N)` for the weekly /
+    // biweekly cycles. `today.add(Duration(days: 7))` adds
+    // 7 * 86400 seconds, so a DST-forward boundary inside the
+    // window lands the result one hour shy of the next calendar
+    // day. Date-only comparisons elsewhere usually mask this, but
+    // the right shape for "shift by N days" is calendar math
+    // (`DateTime(y, m, d + N)`), which Dart normalises correctly.
+    DateTime addDays(DateTime d, int days) =>
+        DateTime(d.year, d.month, d.day + days);
+
     switch (this) {
       case BudgetPeriod.weekly:
-        final monday = today.subtract(Duration(days: today.weekday - 1));
-        final sunday = monday.add(const Duration(days: 6));
+        final monday = addDays(today, -(today.weekday - 1));
+        final sunday = addDays(monday, 6);
         return (monday, sunday);
 
       case BudgetPeriod.biweekly:
         // Anchor biweekly blocks to the first Monday of the year.
         // Even ISO week numbers → block start is the Monday of that week.
         // Odd ISO week numbers → block start is the Monday of the previous week.
-        final monday = today.subtract(Duration(days: today.weekday - 1));
+        final monday = addDays(today, -(today.weekday - 1));
         final weekOfYear = _isoWeekNumber(monday);
-        final blockStart = weekOfYear.isOdd
-            ? monday.subtract(const Duration(days: 7))
-            : monday;
-        final blockEnd = blockStart.add(const Duration(days: 13));
+        final blockStart = weekOfYear.isOdd ? addDays(monday, -7) : monday;
+        final blockEnd = addDays(blockStart, 13);
         return (blockStart, blockEnd);
 
       case BudgetPeriod.monthly:
@@ -90,8 +99,10 @@ enum BudgetPeriod {
 /// Returns the ISO 8601 week number (1–53) for [date].
 int _isoWeekNumber(DateTime date) {
   // ISO week starts Monday; Jan 4 is always in week 1.
+  // Calendar math (DateTime constructor) keeps the start-of-week
+  // anchor on a wall-clock midnight regardless of DST boundaries.
   final jan4 = DateTime(date.year, 1, 4);
-  final startOfWeek1 = jan4.subtract(Duration(days: jan4.weekday - 1));
+  final startOfWeek1 = DateTime(jan4.year, jan4.month, jan4.day - (jan4.weekday - 1));
   final diff = date.difference(startOfWeek1).inDays;
   if (diff < 0) {
     // Date falls in the last week of the previous year.
