@@ -29,6 +29,18 @@ void main() {
     });
   });
 
+  group('mapError — CategoryHasBudgetsException', () {
+    test('maps to "remove the budget first" copy', () {
+      // Audit D1: budgets.category_id is NOT NULL and migration 053
+      // couldn't SET NULL it — the repo guards explicitly and the
+      // mapper surfaces the friendly message instead of a raw 23503.
+      final mapped = mapError(const CategoryHasBudgetsException());
+      expect(mapped.userMessage, contains('budget'));
+      expect(mapped.userMessage, contains('Remove'));
+      expect(mapped.requiresReauth, isFalse);
+    });
+  });
+
   group('mapError — PostgrestException', () {
     test('PGRST301 (JWT expired) flips requiresReauth', () {
       final mapped = mapError(

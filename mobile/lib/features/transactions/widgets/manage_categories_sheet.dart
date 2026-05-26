@@ -121,9 +121,18 @@ class ManageCategoriesSheet extends ConsumerWidget {
           '"${category.name}" will be removed. Transactions assigned to it '
           'will become uncategorized.',
     );
-    if (!confirmed) return;
-    await ref.read(transactionsRepositoryProvider).deleteCategory(category.id);
-    ref.invalidate(categoriesProvider);
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ref
+          .read(transactionsRepositoryProvider)
+          .deleteCategory(category.id);
+      ref.invalidate(categoriesProvider);
+    } catch (e) {
+      // Audit D1: surface CategoryHasBudgetsException via the
+      // mapper so the user sees "remove the budget first" instead
+      // of a raw Postgrest 23503.
+      if (context.mounted) context.showErrorSnackBar(e);
+    }
   }
 }
 

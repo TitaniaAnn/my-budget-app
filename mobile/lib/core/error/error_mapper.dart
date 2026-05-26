@@ -35,6 +35,17 @@ class ConcurrentUpdateException implements Exception {
   String toString() => 'ConcurrentUpdateException';
 }
 
+/// Thrown when the user tries to delete a category that still has at
+/// least one budget pointing at it. Audit D1: `budgets.category_id`
+/// is NOT NULL and migration 053 couldn't SET NULL it, so the repo
+/// guards explicitly and the mapper translates this to a friendly
+/// "remove the budget first" message.
+class CategoryHasBudgetsException implements Exception {
+  const CategoryHasBudgetsException();
+  @override
+  String toString() => 'CategoryHasBudgetsException';
+}
+
 /// Result of mapping a raw exception to user-facing copy.
 class MappedError {
   const MappedError({
@@ -65,6 +76,15 @@ MappedError mapError(Object error) {
     return const MappedError(
       userMessage:
           'This was edited from another device — refresh and try again.',
+    );
+  }
+
+  // ── Category still referenced by a budget (audit D1) ──────────
+  if (error is CategoryHasBudgetsException) {
+    return const MappedError(
+      userMessage:
+          "Can't delete — at least one budget still uses this "
+          'category. Remove the budget first.',
     );
   }
 

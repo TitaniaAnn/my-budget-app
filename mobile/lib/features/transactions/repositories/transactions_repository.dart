@@ -121,7 +121,22 @@ class TransactionsRepository {
 
   /// Deletes a household category. System categories (householdId=null) are
   /// protected by RLS and will reject this call server-side.
+  ///
+  /// Audit D1: migration 053 set `transactions.category_id ON DELETE
+  /// SET NULL`, so referencing transactions survive as uncategorised
+  /// without a FK violation. The one FK that's still NOT NULL — and
+  /// would crash the delete — is `budgets.category_id`. Guard for it
+  /// here so the user sees "remove the budget first" instead of a
+  /// raw Postgrest 23503.
   Future<void> deleteCategory(String categoryId) async {
+    final budgetRows = await supabase
+        .from('budgets')
+        .select('id')
+        .eq('category_id', categoryId)
+        .limit(1);
+    if ((budgetRows as List).isNotEmpty) {
+      throw const CategoryHasBudgetsException();
+    }
     await supabase.from('categories').delete().eq('id', categoryId);
   }
 

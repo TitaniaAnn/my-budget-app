@@ -1871,6 +1871,133 @@ void main() {
         skip: reason,
       );
     });
+
+    // ── D1 + D2: constraint-gap closure (migration 053) ──────────
+    group('migration 053 constraint gaps', () {
+      test(
+        'deleting a category nulls out referencing transactions instead '
+        'of failing (D1 FK SET NULL)',
+        () async {
+          final newCat = await harness.client
+              .from('categories')
+              .insert({
+                'household_id': harness.householdId,
+                'name': 'D1-FK-SET-NULL-CAT',
+              })
+              .select('id')
+              .single();
+          final categoryId = newCat['id'] as String;
+
+          final txId = await harness.insertTransaction(
+            description: 'tx that points at the doomed category',
+            categoryId: categoryId,
+          );
+
+          // Pre-053 this raised a FK violation (NO ACTION default).
+          // Post-053 the FK is SET NULL and the delete succeeds; the
+          // transaction survives with category_id = NULL.
+          await repo.deleteCategory(categoryId);
+
+          final after = await harness.client
+              .from('transactions')
+              .select('category_id')
+              .eq('id', txId)
+              .single();
+          expect(
+            after['category_id'],
+            isNull,
+            reason:
+                'transactions.category_id should null out when the '
+                'referenced category is deleted (ON DELETE SET NULL).',
+          );
+        },
+        skip: reason,
+      );
+
+      test(
+        'deleteCategory throws CategoryHasBudgetsException when a '
+        'budget still references the category',
+        () async {
+          final cat = await harness.client
+              .from('categories')
+              .insert({
+                'household_id': harness.householdId,
+                'name': 'D1-budget-guard-cat',
+              })
+              .select('id')
+              .single();
+          final categoryId = cat['id'] as String;
+
+          // Seed a budget pointing at the category.
+          await harness.client.from('budgets').insert({
+            'household_id': harness.householdId,
+            'category_id': categoryId,
+            'amount': 5000,
+            'period': 'monthly',
+            'start_date': DateTime.now().toIso8601String().substring(0, 10),
+            'created_by': harness.userId,
+          });
+
+          await expectLater(
+            () => repo.deleteCategory(categoryId),
+            throwsA(isA<CategoryHasBudgetsException>()),
+            reason:
+                'budgets.category_id is NOT NULL; the repo must guard '
+                'so the user sees "remove the budget first" instead of '
+                'a raw Postgrest 23503.',
+          );
+
+          // Clean up so the category survives the test and a re-run
+          // doesn't accumulate orphan budgets.
+          await harness.client
+              .from('budgets')
+              .delete()
+              .eq('category_id', categoryId);
+          await harness.client
+              .from('categories')
+              .delete()
+              .eq('id', categoryId);
+        },
+        skip: reason,
+      );
+
+      test('holdings.quantity rejects negative values (D2 CHECK)', () async {
+        await expectLater(
+          harness.client.from('holdings').insert({
+            'household_id': harness.householdId,
+            'account_id': harness.accountId,
+            'symbol': 'BAD',
+            'asset_class': 'us_equity',
+            'quantity': -5,
+            'cost_basis_per_unit': 100,
+          }),
+          throwsA(anything),
+          reason:
+              'negative-quantity holdings are nonsense; the new CHECK '
+              'should reject the INSERT.',
+        );
+      }, skip: reason);
+
+      test(
+        'fx_rates.rate rejects values >= 100000 (D2 upper-bound CHECK)',
+        () async {
+          await expectLater(
+            harness.client.from('fx_rates').insert({
+              'household_id': harness.householdId,
+              'from_currency': 'EUR',
+              'to_currency': 'USD',
+              'as_of_date': '2026-01-01',
+              'rate': 100000,
+            }),
+            throwsA(anything),
+            reason:
+                'rate >= 100000 is implausible for any real FX pair; '
+                'the new CHECK is a typo-protection guardrail.',
+          );
+        },
+        skip: reason,
+      );
+    });
   });
 }
 

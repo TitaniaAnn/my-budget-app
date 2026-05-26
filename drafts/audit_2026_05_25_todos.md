@@ -315,7 +315,20 @@ Two new deps: `cached_network_image: ^3.4.1`, `flutter_image_compress: ^2.4.0`.
 
 ## DB CONSTRAINT GAPS (silent breakage today, audit-grade discipline tomorrow)
 
-### [ ] D1 — Missing `ON DELETE` clauses on FKs (S, one migration)
+### [x] D1 — Missing `ON DELETE` clauses on FKs (S, one migration)
+
+**CLOSED.** Migration 053 changes five FKs from default NO ACTION to ON DELETE SET NULL:
+- `transactions.receipt_id` — deleteReceipt no longer needs to unpair first; paired transactions survive with NULL.
+- `transactions.category_id` — deleteCategory no longer crashes; the existing "transactions become uncategorized" UI message becomes truthful.
+- `import_batches.account_id` — account delete no longer blocks on stale batch history.
+- `categories.parent_id` — parent category delete cleanly nulls out children's parent.
+- `receipt_line_items.category_id` — same shape for consistency.
+
+For `budgets.category_id` (NOT NULL, can't SET NULL), the Dart-side repo guards via a new `CategoryHasBudgetsException` — the mapper translates it to "Can't delete — at least one budget still uses this category. Remove the budget first." Manage-Categories sheet wraps deleteCategory in try/catch + showErrorSnackBar.
+
+Deferred: `accounts.owner_user_id` — the right shape is SET NULL but that requires dropping NOT NULL + changing Dart's required `ownerUserId` field. Out of scope for a constraint-only migration; noted inline in migration 053's preamble.
+
+4 new integration tests pin the FK SET NULL and the budget-guard behavior.
 
 - `transactions.receipt_id` ([001:131](../supabase/migrations/001_initial_schema.sql)) — default `NO ACTION` → `deleteReceipt` crashes if any tx references the receipt. `deleteReceipt` ([receipts_repository.dart:246](../mobile/lib/features/receipts/repositories/receipts_repository.dart)) doesn't unpair first. Fix: `ON DELETE SET NULL`.
 - `transactions.category_id` ([001:125](../supabase/migrations/001_initial_schema.sql)) — same. `deleteCategory` ([transactions_repository.dart:124](../mobile/lib/features/transactions/repositories/transactions_repository.dart)) crashes the moment any row references it. Fix: `ON DELETE SET NULL`.
@@ -328,7 +341,13 @@ Two new deps: `cached_network_image: ^3.4.1`, `flutter_image_compress: ^2.4.0`.
 
 ---
 
-### [ ] D2 — `holdings` quantity unconstrained; `fx_rates.rate` upper-bound missing (XS)
+### [x] D2 — `holdings` quantity unconstrained; `fx_rates.rate` upper-bound missing (XS)
+
+**CLOSED.** Migration 053 adds:
+- `holdings_quantity_nonneg_check`: `CHECK (quantity >= 0)` — negative-quantity holdings are nonsense; a typo (-100 instead of 100) silently inverted the position's net-worth contribution.
+- `fx_rates_rate_max_check`: `CHECK (rate < 100000)` — sits alongside the existing `rate > 0` check. Sanity guardrail against a typo (1000 entered instead of 1.0) inflating net worth 1000×. 100000 isn't market-realistic; it's the loudest plausible typo upper-bound.
+
+Both CHECKs wrapped in `DO $$ IF NOT EXISTS` blocks so a re-run is idempotent. Integration tests verify both rejections.
 
 - [027_holdings.sql](../supabase/migrations/027_holdings.sql) — no `CHECK (quantity >= 0)`. Negative-quantity holdings are meaningless.
 - [036_multi_currency_foundation.sql](../supabase/migrations/036_multi_currency_foundation.sql) — has `CHECK (rate > 0)` but no upper bound. A typo (1000 when 1.0 intended) silently inflates net worth 1000x.
