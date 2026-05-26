@@ -6,7 +6,7 @@ part of 'transactions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transactionsHash() => r'd892c78801c737f49050ac9c27c6f3d219e57623';
+String _$transactionsHash() => r'a59d338ed0b672692df6ab6b5afdff5b9059963f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -34,6 +34,14 @@ class _SystemHash {
 /// All params form the family key — each unique combination gets its own
 /// cached AsyncValue so filter changes don't clear unrelated caches.
 ///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
+///
 /// Copied from [transactions].
 @ProviderFor(transactions)
 const transactionsProvider = TransactionsFamily();
@@ -43,12 +51,28 @@ const transactionsProvider = TransactionsFamily();
 /// All params form the family key — each unique combination gets its own
 /// cached AsyncValue so filter changes don't clear unrelated caches.
 ///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
+///
 /// Copied from [transactions].
 class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
   /// Fetches transactions for the current household with optional filters.
   ///
   /// All params form the family key — each unique combination gets its own
   /// cached AsyncValue so filter changes don't clear unrelated caches.
+  ///
+  /// Audit L6: [limit] is part of the family key so the
+  /// transactions screen's "Load more" affordance can bump it
+  /// without colliding with the dashboard / scenarios callers that
+  /// always want the default. Underlying [fetchTransactions]
+  /// defaults to 1000; pre-fix a year-3 power user silently lost
+  /// transactions off the end of that page. Now the UI can grow the
+  /// page by re-keying the family.
   ///
   /// Copied from [transactions].
   const TransactionsFamily();
@@ -58,6 +82,14 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
   /// All params form the family key — each unique combination gets its own
   /// cached AsyncValue so filter changes don't clear unrelated caches.
   ///
+  /// Audit L6: [limit] is part of the family key so the
+  /// transactions screen's "Load more" affordance can bump it
+  /// without colliding with the dashboard / scenarios callers that
+  /// always want the default. Underlying [fetchTransactions]
+  /// defaults to 1000; pre-fix a year-3 power user silently lost
+  /// transactions off the end of that page. Now the UI can grow the
+  /// page by re-keying the family.
+  ///
   /// Copied from [transactions].
   TransactionsProvider call({
     String? accountId,
@@ -66,6 +98,7 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
     String? search,
     DateTime? dateFrom,
     DateTime? dateTo,
+    int limit = 1000,
   }) {
     return TransactionsProvider(
       accountId: accountId,
@@ -74,6 +107,7 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
       search: search,
       dateFrom: dateFrom,
       dateTo: dateTo,
+      limit: limit,
     );
   }
 
@@ -88,6 +122,7 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
       search: provider.search,
       dateFrom: provider.dateFrom,
       dateTo: provider.dateTo,
+      limit: provider.limit,
     );
   }
 
@@ -111,6 +146,14 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
 /// All params form the family key — each unique combination gets its own
 /// cached AsyncValue so filter changes don't clear unrelated caches.
 ///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
+///
 /// Copied from [transactions].
 class TransactionsProvider
     extends AutoDisposeFutureProvider<List<Transaction>> {
@@ -118,6 +161,14 @@ class TransactionsProvider
   ///
   /// All params form the family key — each unique combination gets its own
   /// cached AsyncValue so filter changes don't clear unrelated caches.
+  ///
+  /// Audit L6: [limit] is part of the family key so the
+  /// transactions screen's "Load more" affordance can bump it
+  /// without colliding with the dashboard / scenarios callers that
+  /// always want the default. Underlying [fetchTransactions]
+  /// defaults to 1000; pre-fix a year-3 power user silently lost
+  /// transactions off the end of that page. Now the UI can grow the
+  /// page by re-keying the family.
   ///
   /// Copied from [transactions].
   TransactionsProvider({
@@ -127,6 +178,7 @@ class TransactionsProvider
     String? search,
     DateTime? dateFrom,
     DateTime? dateTo,
+    int limit = 1000,
   }) : this._internal(
          (ref) => transactions(
            ref as TransactionsRef,
@@ -136,6 +188,7 @@ class TransactionsProvider
            search: search,
            dateFrom: dateFrom,
            dateTo: dateTo,
+           limit: limit,
          ),
          from: transactionsProvider,
          name: r'transactionsProvider',
@@ -151,6 +204,7 @@ class TransactionsProvider
          search: search,
          dateFrom: dateFrom,
          dateTo: dateTo,
+         limit: limit,
        );
 
   TransactionsProvider._internal(
@@ -166,6 +220,7 @@ class TransactionsProvider
     required this.search,
     required this.dateFrom,
     required this.dateTo,
+    required this.limit,
   }) : super.internal();
 
   final String? accountId;
@@ -174,6 +229,7 @@ class TransactionsProvider
   final String? search;
   final DateTime? dateFrom;
   final DateTime? dateTo;
+  final int limit;
 
   @override
   Override overrideWith(
@@ -194,6 +250,7 @@ class TransactionsProvider
         search: search,
         dateFrom: dateFrom,
         dateTo: dateTo,
+        limit: limit,
       ),
     );
   }
@@ -211,7 +268,8 @@ class TransactionsProvider
         other.tagId == tagId &&
         other.search == search &&
         other.dateFrom == dateFrom &&
-        other.dateTo == dateTo;
+        other.dateTo == dateTo &&
+        other.limit == limit;
   }
 
   @override
@@ -223,6 +281,7 @@ class TransactionsProvider
     hash = _SystemHash.combine(hash, search.hashCode);
     hash = _SystemHash.combine(hash, dateFrom.hashCode);
     hash = _SystemHash.combine(hash, dateTo.hashCode);
+    hash = _SystemHash.combine(hash, limit.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -248,6 +307,9 @@ mixin TransactionsRef on AutoDisposeFutureProviderRef<List<Transaction>> {
 
   /// The parameter `dateTo` of this provider.
   DateTime? get dateTo;
+
+  /// The parameter `limit` of this provider.
+  int get limit;
 }
 
 class _TransactionsProviderElement
@@ -267,6 +329,8 @@ class _TransactionsProviderElement
   DateTime? get dateFrom => (origin as TransactionsProvider).dateFrom;
   @override
   DateTime? get dateTo => (origin as TransactionsProvider).dateTo;
+  @override
+  int get limit => (origin as TransactionsProvider).limit;
 }
 
 String _$categoriesHash() => r'495a36b56b3907af2518121c5ae4d7d87f29c30f';

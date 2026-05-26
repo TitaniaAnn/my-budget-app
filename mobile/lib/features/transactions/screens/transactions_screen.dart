@@ -91,6 +91,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final Set<String> _selection = <String>{};
   bool get _selectionMode => _selection.isNotEmpty;
 
+  /// Audit L6: pre-fix the family provider's default 1000-row
+  /// LIMIT silently capped the list, so a power user with year-3+
+  /// of history saw a truncated view with no indication. Track
+  /// the current page size; the "Load more" footer at the bottom
+  /// of the list bumps this in 1000-row chunks. Resets to 1000 on
+  /// every filter change (different family key, fresh fetch).
+  static const int _initialPageSize = 1000;
+  int _pageSize = _initialPageSize;
+
+  /// Resets the page size when filters change so a freshly-narrowed
+  /// search doesn't carry the prior "Load more" expansion forward
+  /// (and incur a wasteful big fetch the user no longer needs).
+  void _resetPagination() {
+    if (_pageSize != _initialPageSize) _pageSize = _initialPageSize;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -144,7 +160,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
-                onChanged: (v) => setState(() => _search = v),
+                onChanged: (v) => setState(() {
+                  _search = v;
+                  _resetPagination();
+                }),
               )
             : const Text('Transactions'),
         actions: [
@@ -210,6 +229,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         search: _search.isEmpty ? null : _search,
         dateFrom: from,
         dateTo: to,
+        limit: _pageSize,
       ),
     );
     final tagsAsync = ref.watch(transactionTagsProvider);
@@ -225,13 +245,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             data: (accounts) => AccountFilterBar(
               accounts: accounts,
               selectedId: _selectedAccountId,
-              onSelected: (id) => setState(() => _selectedAccountId = id),
+              onSelected: (id) => setState(() {
+                _selectedAccountId = id;
+                _resetPagination();
+              }),
             ),
           ),
         // Date filter chips
         DateFilterBar(
           selected: _dateFilter,
-          onSelected: (f) => setState(() => _dateFilter = f),
+          onSelected: (f) => setState(() {
+            _dateFilter = f;
+            _resetPagination();
+          }),
         ),
         // Category filter chips
         ref
@@ -241,7 +267,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     categories: cats.where((c) => c.parentId == null).toList(),
                     selectedId: _selectedCategoryId,
                     onSelected: (id) =>
-                        setState(() => _selectedCategoryId = id),
+                        setState(() {
+                          _selectedCategoryId = id;
+                          _resetPagination();
+                        }),
                   ),
                 ) ??
             const SizedBox.shrink(),
@@ -254,7 +283,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   : TagFilterBar(
                       tags: tags,
                       selectedId: _selectedTagId,
-                      onSelected: (id) => setState(() => _selectedTagId = id),
+                      onSelected: (id) => setState(() {
+                        _selectedTagId = id;
+                        _resetPagination();
+                      }),
                     ),
             ) ??
             const SizedBox.shrink(),
@@ -284,10 +316,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       if (tagsByName[tagId] != null) tagsByName[tagId]!,
                   ],
               };
+              // Audit L6: when the result fills the page, the
+              // underlying query may have more rows — offer a "Load
+              // more" footer that bumps the page size by 1000 and
+              // refetches. The new page size becomes the family
+              // key, so the next watch is a fresh fetch (not an
+              // append) — wire cost grows linearly but the user
+              // never silently loses transactions off the end.
+              final hitsCap = transactions.length >= _pageSize;
               return _TransactionList(
                 transactions: transactions,
                 tagsByTransactionId: perTxTags,
                 startingBalance: widget.startingBalance,
+                onLoadMore: hitsCap
+                    ? () => setState(() => _pageSize += 1000)
+                    : null,
                 // Tap = either edit OR toggle, decided by mode.
                 onEdit: (tx) {
                   if (_selectionMode) {
@@ -779,6 +822,12 @@ class _TransactionList extends StatelessWidget {
   /// swipe-to-delete is active.
   final Set<String> selectedIds;
 
+  /// Audit L6: when non-null, the list renders a "Load more" tile
+  /// at the bottom. Tap = page-size bump in the parent state,
+  /// which re-keys the family provider and pulls the next chunk.
+  /// Null means we already have everything (or no rows at all).
+  final VoidCallback? onLoadMore;
+
   const _TransactionList({
     required this.transactions,
     this.tagsByTransactionId = const {},
@@ -787,6 +836,7 @@ class _TransactionList extends StatelessWidget {
     required this.onDelete,
     this.onLongPress,
     this.selectedIds = const {},
+    this.onLoadMore,
   });
 
   bool get _selectionMode => selectedIds.isNotEmpty;
@@ -826,10 +876,24 @@ class _TransactionList extends StatelessWidget {
       }
     }
 
+    // Audit L6: add a "Load more" tile when the parent told us
+    // the page filled to its cap. Sits below the last day group.
+    final hasLoadMore = onLoadMore != null;
+    final itemCount = sortedDays.length + (hasLoadMore ? 1 : 0);
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 100),
-      itemCount: sortedDays.length,
+      itemCount: itemCount,
       itemBuilder: (context, i) {
+        if (i == sortedDays.length) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: OutlinedButton.icon(
+              onPressed: onLoadMore,
+              icon: const Icon(Icons.arrow_downward),
+              label: const Text('Load more'),
+            ),
+          );
+        }
         final day = sortedDays[i];
         final dayTxs = groups[day]!;
         final dayTotal = dayTxs.fold<int>(0, (s, t) => s + t.amount);

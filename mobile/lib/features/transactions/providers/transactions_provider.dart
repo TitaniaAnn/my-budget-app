@@ -11,6 +11,14 @@ part 'transactions_provider.g.dart';
 ///
 /// All params form the family key — each unique combination gets its own
 /// cached AsyncValue so filter changes don't clear unrelated caches.
+///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
 @riverpod
 Future<List<Transaction>> transactions(
   TransactionsRef ref, {
@@ -20,6 +28,7 @@ Future<List<Transaction>> transactions(
   String? search,
   DateTime? dateFrom,
   DateTime? dateTo,
+  int limit = 1000,
 }) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
@@ -33,6 +42,7 @@ Future<List<Transaction>> transactions(
     search: search,
     from: dateFrom,
     to: dateTo,
+    limit: limit,
   );
 }
 
