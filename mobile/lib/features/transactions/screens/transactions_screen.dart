@@ -1013,7 +1013,7 @@ class _CategoryPickerSheet extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: c.color != null ? colorFromHex(c.color) : Colors.grey,
+                  color: c.color != null ? colorFromHex(c.color) : context.appColors.textSubtle,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1055,7 +1055,7 @@ class _TagPickerSheet extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: t.color != null ? colorFromHex(t.color) : Colors.grey,
+                  color: t.color != null ? colorFromHex(t.color) : context.appColors.textSubtle,
                   shape: BoxShape.circle,
                 ),
               ),

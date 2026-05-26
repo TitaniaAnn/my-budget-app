@@ -8,44 +8,35 @@
 // requests OS permission the first time the master toggle is
 // flipped on.
 
-class NotificationSettings {
-  const NotificationSettings({
-    this.enabled = false,
-    this.budgetOverEnabled = true,
-    this.largeTxEnabled = true,
-    this.largeTxThresholdCents = 20000,
-  });
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  /// Master switch. When false, the engine returns no notifications
-  /// regardless of the per-trigger toggles. Lets the user silence
-  /// everything in one tap without losing their other preferences.
-  final bool enabled;
+part 'notification_settings.freezed.dart';
 
-  /// Fire when a category budget's actual spend exceeds the cap.
-  final bool budgetOverEnabled;
+/// Audit T2: was a hand-rolled value class with `copyWith` but no
+/// `==` / `hashCode`. `state = state.copyWith(enabled: true)`
+/// produced fresh identity even when the value didn't change. No
+/// observable bug today (nobody uses `.select`), but the moment
+/// someone does, the selector would misfire on every prefs save.
+/// Converted to `@freezed` per project convention.
+@freezed
+class NotificationSettings with _$NotificationSettings {
+  const factory NotificationSettings({
+    /// Master switch. When false, the engine returns no notifications
+    /// regardless of the per-trigger toggles. Lets the user silence
+    /// everything in one tap without losing their other preferences.
+    @Default(false) bool enabled,
 
-  /// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
-  final bool largeTxEnabled;
+    /// Fire when a category budget's actual spend exceeds the cap.
+    @Default(true) bool budgetOverEnabled,
 
-  /// Magnitude in cents at or above which a transaction triggers a
-  /// large-transaction notification. Default $200; the settings
-  /// screen lets the user adjust.
-  final int largeTxThresholdCents;
+    /// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
+    @Default(true) bool largeTxEnabled,
 
-  NotificationSettings copyWith({
-    bool? enabled,
-    bool? budgetOverEnabled,
-    bool? largeTxEnabled,
-    int? largeTxThresholdCents,
-  }) {
-    return NotificationSettings(
-      enabled: enabled ?? this.enabled,
-      budgetOverEnabled: budgetOverEnabled ?? this.budgetOverEnabled,
-      largeTxEnabled: largeTxEnabled ?? this.largeTxEnabled,
-      largeTxThresholdCents:
-          largeTxThresholdCents ?? this.largeTxThresholdCents,
-    );
-  }
+    /// Magnitude in cents at or above which a transaction triggers a
+    /// large-transaction notification. Default $200; the settings
+    /// screen lets the user adjust.
+    @Default(20000) int largeTxThresholdCents,
+  }) = _NotificationSettings;
 }
 
 /// Output of the evaluation pass — a notification the engine wants

@@ -87,10 +87,17 @@ class _AddRecurringSheetState extends ConsumerState<AddRecurringSheet> {
   }
 
   Future<void> _pickSkippedUntil() async {
+    // Audit T3: pre-fix the user could pick a date BEFORE next
+    // occurrence, which silently did nothing — the scheduler
+    // honours skipped_until only when it cuts off some FUTURE
+    // emission. Clamp firstDate to next_occurrence so the picker
+    // visually rejects nonsense dates instead of silently
+    // accepting them.
+    final initial = _skippedUntil ?? _nextOccurrence;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _skippedUntil ?? DateTime.now(),
-      firstDate: DateTime(2000),
+      initialDate: initial.isBefore(_nextOccurrence) ? _nextOccurrence : initial,
+      firstDate: _nextOccurrence,
       lastDate: DateTime(2100),
       helpText: 'Skip emissions on or before',
     );

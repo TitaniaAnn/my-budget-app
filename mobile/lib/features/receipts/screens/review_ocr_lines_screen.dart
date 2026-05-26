@@ -255,7 +255,7 @@ class _ReviewLineSheetState extends ConsumerState<_ReviewLineSheet> {
                         decoration: BoxDecoration(
                           color: c.color != null
                               ? colorFromHex(c.color)
-                              : Colors.grey,
+                              : context.appColors.textSubtle,
                           shape: BoxShape.circle,
                         ),
                       ),

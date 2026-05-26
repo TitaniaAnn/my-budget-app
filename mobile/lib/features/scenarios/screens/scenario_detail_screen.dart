@@ -121,7 +121,9 @@ class _DetailBody extends ConsumerWidget {
                 label: detail.netChange >= 0 ? 'Gain' : 'Loss',
                 value:
                     '${detail.netChange >= 0 ? '+' : ''}${fmt.format(detail.netChange / 100)}',
-                color: detail.netChange >= 0 ? Colors.green : cs.error,
+                color: detail.netChange >= 0
+                    ? context.appColors.income
+                    : cs.error,
               ),
             ],
           ),
@@ -251,7 +253,7 @@ class _GoalProgress extends StatelessWidget {
                     strokeWidth: 7,
                     backgroundColor: cs.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation(
-                      progress >= 1 ? Colors.green : accent,
+                      progress >= 1 ? context.appColors.income : accent,
                     ),
                   ),
                   Center(
@@ -446,147 +448,155 @@ class _ProjectionChartState extends State<_ProjectionChart> {
           },
         ),
         const SizedBox(height: 8),
-        SizedBox(
-          height: 240,
-          child: LineChart(
-            LineChartData(
-              minX: minX,
-              maxX: maxX,
-              minY: minY,
-              maxY: maxY,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: true,
-                getDrawingHorizontalLine: (_) => FlLine(
-                  color: cs.outlineVariant.withValues(alpha: 0.4),
-                  strokeWidth: 1,
+        // Audit A1: fl_chart reads as a bare "graph" to TalkBack /
+        // VoiceOver. The summary tiles above the chart already
+        // expose the start/end/net-change values; the chart itself
+        // just gets the headline so screen-reader users know what
+        // they're skipping past.
+        Semantics(
+          label: 'Net worth over time, scenario projection',
+          child: SizedBox(
+            height: 240,
+            child: LineChart(
+              LineChartData(
+                minX: minX,
+                maxX: maxX,
+                minY: minY,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                    strokeWidth: 1,
+                  ),
+                  // Vertical line at x=0 (today divider)
+                  getDrawingVerticalLine: (v) => FlLine(
+                    color: v == 0
+                        ? cs.outline.withValues(alpha: 0.6)
+                        : cs.outlineVariant.withValues(alpha: 0.2),
+                    strokeWidth: v == 0 ? 1.5 : 0.5,
+                    dashArray: v == 0 ? [4, 4] : null,
+                  ),
+                  verticalInterval: (maxX - minX) / 4,
                 ),
-                // Vertical line at x=0 (today divider)
-                getDrawingVerticalLine: (v) => FlLine(
-                  color: v == 0
-                      ? cs.outline.withValues(alpha: 0.6)
-                      : cs.outlineVariant.withValues(alpha: 0.2),
-                  strokeWidth: v == 0 ? 1.5 : 0.5,
-                  dashArray: v == 0 ? [4, 4] : null,
-                ),
-                verticalInterval: (maxX - minX) / 4,
-              ),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 60,
-                    getTitlesWidget: (v, _) => Text(
-                      fmt.format(v),
-                      style: TextStyle(fontSize: 10, color: cs.outline),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 60,
+                      getTitlesWidget: (v, _) => Text(
+                        fmt.format(v),
+                        style: TextStyle(fontSize: 10, color: cs.outline),
+                      ),
                     ),
                   ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (v, _) {
+                        // Find the closest sample date.
+                        final date = labelDates.cast<DateTime?>().firstWhere(
+                          (d) =>
+                              (d!.difference(todayKey).inDays.toDouble() - v)
+                                  .abs() <
+                              1,
+                          orElse: () => null,
+                        );
+                        if (date == null) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '${date.month}/${date.year.toString().substring(2)}',
+                            style: TextStyle(fontSize: 10, color: cs.outline),
+                          ),
+                        );
+                      },
+                      interval: (maxX - minX) / 4,
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (v, _) {
-                      // Find the closest sample date.
-                      final date = labelDates.cast<DateTime?>().firstWhere(
-                        (d) =>
-                            (d!.difference(todayKey).inDays.toDouble() - v)
-                                .abs() <
-                            1,
-                        orElse: () => null,
-                      );
-                      if (date == null) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '${date.month}/${date.year.toString().substring(2)}',
-                          style: TextStyle(fontSize: 10, color: cs.outline),
+                extraLinesData: ExtraLinesData(
+                  // "Today" vertical marker label
+                  verticalLines: [
+                    VerticalLine(
+                      x: 0,
+                      color: cs.outline.withValues(alpha: 0.6),
+                      strokeWidth: 1.5,
+                      dashArray: [4, 4],
+                      label: VerticalLineLabel(
+                        show: true,
+                        alignment: Alignment.topRight,
+                        labelResolver: (_) => 'Today',
+                        style: TextStyle(fontSize: 10, color: cs.outline),
+                      ),
+                    ),
+                  ],
+                ),
+                lineBarsData: [
+                  // ── Actual history — grey solid line ──────────────────────
+                  if (histSpots.isNotEmpty)
+                    LineChartBarData(
+                      spots: histSpots,
+                      isCurved: true,
+                      color: cs.outline.withValues(alpha: 0.7),
+                      barWidth: 2,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: cs.outline.withValues(alpha: 0.05),
+                      ),
+                    ),
+                  // ── Scenario projection — accent color ────────────────────
+                  if (projSpots.isNotEmpty)
+                    LineChartBarData(
+                      spots: projSpots,
+                      isCurved: true,
+                      color: accent,
+                      barWidth: 2.5,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: accent.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  // ── Goal target — dashed green line ───────────────────────
+                  if (targetY != null)
+                    LineChartBarData(
+                      spots: [FlSpot(minX, targetY), FlSpot(maxX, targetY)],
+                      isCurved: false,
+                      color: context.appColors.income,
+                      barWidth: 1.5,
+                      dashArray: [6, 4],
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(show: false),
+                    ),
+                ],
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
+                      final label = s.barIndex == 0
+                          ? 'Actual'
+                          : s.barIndex == 1
+                          ? 'Projected'
+                          : 'Target';
+                      return LineTooltipItem(
+                        '$label\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       );
-                    },
-                    interval: (maxX - minX) / 4,
+                    }).toList(),
                   ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              extraLinesData: ExtraLinesData(
-                // "Today" vertical marker label
-                verticalLines: [
-                  VerticalLine(
-                    x: 0,
-                    color: cs.outline.withValues(alpha: 0.6),
-                    strokeWidth: 1.5,
-                    dashArray: [4, 4],
-                    label: VerticalLineLabel(
-                      show: true,
-                      alignment: Alignment.topRight,
-                      labelResolver: (_) => 'Today',
-                      style: TextStyle(fontSize: 10, color: cs.outline),
-                    ),
-                  ),
-                ],
-              ),
-              lineBarsData: [
-                // ── Actual history — grey solid line ──────────────────────
-                if (histSpots.isNotEmpty)
-                  LineChartBarData(
-                    spots: histSpots,
-                    isCurved: true,
-                    color: cs.outline.withValues(alpha: 0.7),
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: cs.outline.withValues(alpha: 0.05),
-                    ),
-                  ),
-                // ── Scenario projection — accent color ────────────────────
-                if (projSpots.isNotEmpty)
-                  LineChartBarData(
-                    spots: projSpots,
-                    isCurved: true,
-                    color: accent,
-                    barWidth: 2.5,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: accent.withValues(alpha: 0.08),
-                    ),
-                  ),
-                // ── Goal target — dashed green line ───────────────────────
-                if (targetY != null)
-                  LineChartBarData(
-                    spots: [FlSpot(minX, targetY), FlSpot(maxX, targetY)],
-                    isCurved: false,
-                    color: Colors.green,
-                    barWidth: 1.5,
-                    dashArray: [6, 4],
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: false),
-                  ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
-                    final label = s.barIndex == 0
-                        ? 'Actual'
-                        : s.barIndex == 1
-                        ? 'Projected'
-                        : 'Target';
-                    return LineTooltipItem(
-                      '$label\n${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(s.y)}',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    );
-                  }).toList(),
                 ),
               ),
             ),
@@ -713,12 +723,12 @@ class _EventTile extends ConsumerWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isPositive
-              ? Colors.green.withValues(alpha: 0.15)
+              ? context.appColors.income.withValues(alpha: 0.15)
               : cs.errorContainer,
           child: Text(
             isPositive ? '↑' : '↓',
             style: TextStyle(
-              color: isPositive ? Colors.green : cs.error,
+              color: isPositive ? context.appColors.income : cs.error,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -742,7 +752,7 @@ class _EventTile extends ConsumerWidget {
               '${isPositive ? '+' : '-'}${fmt.format(event.amount / 100)}',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: isPositive ? Colors.green : cs.error,
+                color: isPositive ? context.appColors.income : cs.error,
               ),
             ),
             PopupMenuButton<String>(

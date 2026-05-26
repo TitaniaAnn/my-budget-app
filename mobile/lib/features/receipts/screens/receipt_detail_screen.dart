@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -441,7 +442,7 @@ class _OcrStatusChip extends StatelessWidget {
     return switch (status) {
       OcrStatus.pending => cs.secondary,
       OcrStatus.processing => cs.tertiary,
-      OcrStatus.complete => Colors.green,
+      OcrStatus.complete => context.appColors.success,
       OcrStatus.failed => cs.error,
     };
   }
@@ -596,7 +597,7 @@ class _LineItemsList extends ConsumerWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: item.isDiscount
-                        ? Colors.green
+                        ? context.appColors.income
                         : theme.colorScheme.onSurface,
                   ),
                 ),

@@ -244,7 +244,7 @@ class _ScenarioCard extends ConsumerWidget {
                           value:
                               '${detail.netChange >= 0 ? '+' : ''}${fmt.format(detail.netChange / 100)}',
                           color: detail.netChange >= 0
-                              ? Colors.green
+                              ? context.appColors.income
                               : cs.error,
                         ),
                         if (scenario.isGoal &&

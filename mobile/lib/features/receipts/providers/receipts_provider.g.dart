@@ -337,13 +337,16 @@ final unpairedReceiptsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UnpairedReceiptsRef = AutoDisposeFutureProviderRef<List<Receipt>>;
-String _$signedReceiptUrlsHash() => r'33e2e8330d9707f44e6587686139c3d744903ffe';
+String _$signedReceiptUrlsHash() => r'cd563671ba3a2f7e7d0cf047153049b47202b380';
 
 /// Signed URLs for EVERY receipt in the current household, keyed by
 /// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
 /// own per-path provider so a 50-receipt grid fired 50 sign-url
-/// HTTP round-trips on first paint. This pulls them all in one
-/// `createSignedUrls` POST; cards resolve from the map.
+/// HTTP round-trips on first paint. This pulls them in one
+/// `createSignedUrls` POST that covers both full-resolution paths
+/// AND thumbnail paths — the grid uses thumbnails when present,
+/// the detail screen uses full images, but one wire fetch covers
+/// both. Cards resolve from the map.
 ///
 /// Copied from [signedReceiptUrls].
 @ProviderFor(signedReceiptUrls)

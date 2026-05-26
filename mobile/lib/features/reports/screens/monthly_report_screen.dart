@@ -293,11 +293,11 @@ class _Preview extends StatelessWidget {
           ),
         ),
         if (data.byCategory.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Text(
               'No spending this month.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: context.appColors.textSubtle),
             ),
           )
         else
@@ -309,7 +309,8 @@ class _Preview extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: _parseColor(row.colorHex) ?? Colors.grey,
+                  color:
+                      _parseColor(row.colorHex) ?? context.appColors.textSubtle,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -413,7 +414,10 @@ class _SummaryCell extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
+          style: TextStyle(
+            fontSize: 11,
+            color: context.appColors.textSubtle,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
