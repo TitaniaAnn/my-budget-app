@@ -533,38 +533,61 @@ async function dispatchPerUser(
       continue;
     }
 
-    for (const token of userTokens) {
-      if (invalidTokens.has(token)) continue;
-      for (const n of claimed) {
-        // Legacy FCM HTTP API — Firebase has a v1 OAuth-scoped API
-        // we'd ideally use, but the legacy server-key form is the
-        // simplest credential to handle from an Edge Function. A
-        // follow-up can swap when we're ready to take the OAuth dep.
-        const res = await fetch("https://fcm.googleapis.com/fcm/send", {
-          method: "POST",
-          headers: {
-            "Authorization": `key=${serverKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: token,
-            notification: { title: n.title, body: n.body },
-            // tag matches the local-engine's hashCode-keyed update-
-            // in-place so two devices in the same household don't
-            // stack the same alert.
-            data: { tag: n.key },
-          }),
-        });
-        if (!res.ok) continue;
-        // FCM returns 200 even for known-bad tokens; the real verdict
-        // is in the body's `results[].error`. Pull it out and decide.
-        const body = await res.json().catch(() => null);
-        if (isFcmTokenInvalid(body)) {
-          invalidTokens.add(token);
-          // Don't waste the remaining notifications on this token.
-          break;
+    // Audit L7: multicast via `registration_ids: [...]` instead of
+    // per-token `to: token` POSTs. A user with 3 devices and 5
+    // notifications dropped from 15 sequential POSTs to 5 (one per
+    // notification, all tokens batched). Legacy FCM accepts up to
+    // 1000 tokens per call — we never approach that within one
+    // household, so no chunking needed.
+    const validUserTokens = userTokens.filter((t) => !invalidTokens.has(t));
+    if (validUserTokens.length === 0) continue;
+    for (const n of claimed) {
+      // Legacy FCM HTTP API — Firebase has a v1 OAuth-scoped API
+      // we'd ideally use, but the legacy server-key form is the
+      // simplest credential to handle from an Edge Function. A
+      // follow-up can swap when we're ready to take the OAuth dep.
+      const res = await fetch("https://fcm.googleapis.com/fcm/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `key=${serverKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          registration_ids: validUserTokens,
+          notification: { title: n.title, body: n.body },
+          // tag matches the local-engine's hashCode-keyed update-
+          // in-place so two devices in the same household don't
+          // stack the same alert.
+          data: { tag: n.key },
+        }),
+      });
+      if (!res.ok) continue;
+      // FCM multicast returns 200 with a per-token `results[]`
+      // array aligned to the input `registration_ids` order. A
+      // result with `error: "NotRegistered" | "InvalidRegistration"`
+      // means that token is dead and should be pruned from
+      // device_push_tokens.
+      const body = await res.json().catch(() => null);
+      const results = (body as { results?: Array<{ error?: string }> } | null)
+        ?.results;
+      if (results) {
+        for (let i = 0; i < results.length; i++) {
+          const err = results[i]?.error;
+          if (
+            err === "NotRegistered" ||
+            err === "InvalidRegistration" ||
+            err === "MismatchSenderId"
+          ) {
+            invalidTokens.add(validUserTokens[i]);
+          } else if (!err) {
+            sent += 1;
+          }
         }
-        sent += 1;
+      } else {
+        // Body didn't parse — count as best-effort sent for every
+        // valid token; pruning still keys off whatever
+        // invalidTokens has gathered elsewhere.
+        sent += validUserTokens.length;
       }
     }
   }
@@ -594,22 +617,6 @@ async function dispatchPerUser(
     // would just repeat what was actually pushed.
     preview: serverKey ? undefined : previewBuf,
   };
-}
-
-/// True when the FCM response body indicates the token is dead.
-/// Legacy FCM HTTP returns 200 with one of these error codes:
-///   * NotRegistered — token was unregistered (user uninstalled,
-///     cleared data, etc.)
-///   * InvalidRegistration — token is malformed
-///
-/// Both mean the row should leave device_push_tokens. Other errors
-/// (RateLimit, InternalServerError, MismatchSenderId, ...) are
-/// transient or our problem, not the token's; leave the row alone.
-function isFcmTokenInvalid(body: unknown): boolean {
-  if (!body || typeof body !== "object") return false;
-  const results = (body as { results?: Array<{ error?: string }> }).results;
-  const err = results?.[0]?.error;
-  return err === "NotRegistered" || err === "InvalidRegistration";
 }
 
 function jsonError(status: number, message: string): Response {
