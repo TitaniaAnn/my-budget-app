@@ -69,6 +69,7 @@ dependencies:
   # 1-2 MB of full-resolution camera output per row (audit P5).
   # Powers the 256-px thumbnail generation in the capture flow.
   flutter_image_compress: ^2.4.0
+  plaid_flutter: ^5.1.1
 
 dev_dependencies:
   flutter_test:
