@@ -12,6 +12,7 @@ import '../../accounts/repositories/accounts_repository.dart';
 import '../../budget/repositories/budget_repository.dart';
 import '../../currency/providers/rates_to_display_provider.dart';
 import '../../notifications/providers/notification_runner_provider.dart';
+import '../../plaid/providers/plaid_providers.dart';
 import '../../recurring/providers/recurring_scheduler_provider.dart';
 import '../../scenarios/repositories/scenarios_repository.dart';
 import '../../settings/providers/settings_provider.dart';
@@ -273,6 +274,14 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // process even though we don't await.
   // ignore: unused_result
   ref.read(runNotificationsProvider.future);
+
+  // Trigger Plaid sync. Fire-and-forget, same shape as the
+  // scheduler + notifications above. The keepAlive provider
+  // ensures we don't re-fire on every dashboard refresh within
+  // one app session; pull-to-refresh invalidates the trigger
+  // provider directly to force a re-sync.
+  // ignore: unused_result
+  ref.read(plaidSyncTriggerProvider.future);
 
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);

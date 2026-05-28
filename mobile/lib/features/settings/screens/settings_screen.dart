@@ -176,6 +176,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           ListTile(
+            leading: const Icon(Icons.account_balance_outlined),
+            title: const Text('Linked Banks'),
+            subtitle: const Text(
+              'Plaid-connected accounts and their sync status',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/plaid'),
+          ),
+          ListTile(
             leading: const Icon(Icons.pie_chart_outline),
             title: const Text('Target Allocation'),
             subtitle: const Text(

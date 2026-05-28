@@ -19,6 +19,7 @@ import '../../features/receipts/screens/receipt_detail_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/scenarios/screens/scenarios_screen.dart';
 import '../../features/scenarios/screens/scenario_detail_screen.dart';
+import '../../features/plaid/ui/plaid_items_list.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../shared/widgets/main_scaffold.dart';
 
@@ -110,6 +111,10 @@ GoRouter appRouter(AppRouterRef ref) {
             ],
           ),
           GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+          GoRoute(
+            path: '/plaid',
+            builder: (_, _) => const PlaidItemsScreen(),
+          ),
         ],
       ),
     ],

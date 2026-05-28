@@ -21,6 +21,7 @@ import '../../holdings/providers/holdings_provider.dart';
 import '../../holdings/providers/rebalance_provider.dart';
 import '../../holdings/screens/holdings_by_class_screen.dart';
 import '../../holdings/services/rebalance.dart';
+import '../../plaid/ui/reauth_prompt.dart';
 import '../../transactions/widgets/add_transaction_sheet.dart';
 import '../../transactions/widgets/transaction_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -75,6 +76,12 @@ class _DashboardBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
+        // ── Plaid re-auth banner ───────────────────────────────────────────
+        // Renders only when at least one linked Item returned
+        // requires_reauth on the most recent sync. Hidden in the
+        // happy path (no Plaid linked OR all healthy).
+        const PlaidReauthBanner(),
+
         // ── Net Worth ──────────────────────────────────────────────────────
         // Card consumes the multi-currency-aware provider directly so
         // a USD-only household sees no extra cost and a multi-currency
