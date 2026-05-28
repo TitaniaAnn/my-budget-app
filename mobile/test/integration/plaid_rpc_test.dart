@@ -298,6 +298,206 @@ void main() {
       );
     }, skip: reason);
 
+    // ── Dedup: Plaid added rows vs manual / import entries ─────────
+    // Migration 057 added the dedup pre-pass. A Plaid added row
+    // claims an existing manual / CSV-import row instead of
+    // creating a duplicate, when (account, amount, ±3 days) match
+    // AND the existing row isn't already linked to a transfer /
+    // receipt / external_id.
+
+    test(
+      'dedup: a manual entry with matching account/amount/date is '
+      'merged (claimed) by the Plaid added row',
+      () async {
+        // Seed a manual entry for $19.99 on 2026-05-10.
+        await harness.insertTransaction(
+          amountCents: -1999,
+          description: 'Coffee shop (entered by hand)',
+          transactionDate: DateTime.utc(2026, 5, 10),
+        );
+
+        // Plaid sync delivers the same charge 1 day later (posting
+        // lag), with Plaid's own external_id.
+        final result = await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-merge-1',
+              'amount_cents': -1999,
+              'description': 'COFFEE SHOP INC',
+              'merchant': 'Coffee Shop Inc',
+              'date': '2026-05-11', // +1 day, inside ±3
+              'pending': false,
+            },
+          ],
+        );
+        // The Plaid row claimed the existing manual row → 0 added.
+        expect(result['added'], 0);
+        expect(result['merged'], 1);
+
+        final rows = await harness.client
+            .from('transactions')
+            .select('id, amount, source, external_id, description')
+            .eq('account_id', harness.accountId);
+        expect(
+          (rows as List).length,
+          1,
+          reason:
+              'after merge the ledger should hold ONE row for the '
+              'real-world charge, not two.',
+        );
+        final row = rows.single;
+        expect(row['external_id'], 'plaid-tx-merge-1');
+        expect(
+          row['source'],
+          'plaid',
+          reason:
+              'after merge the row is Plaid-tracked — future syncs '
+              'will modify it via the external_id key.',
+        );
+        // The user's original description was preserved (description
+        // is not in the merge UPDATE's column list; only external_id
+        // and source change). A subsequent Plaid modified pass would
+        // overwrite it.
+        expect(
+          row['description'],
+          'Coffee shop (entered by hand)',
+          reason:
+              'merge UPDATE only stamps external_id + source. '
+              'description / merchant / category survive until a '
+              'subsequent Plaid modified pass updates them.',
+        );
+      },
+      skip: reason,
+    );
+
+    test(
+      'dedup: a candidate outside the ±3 day window is NOT merged',
+      () async {
+        await harness.insertTransaction(
+          amountCents: -5000,
+          description: 'Manual entry from a week ago',
+          transactionDate: DateTime.utc(2026, 5, 1),
+        );
+
+        final result = await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-far-1',
+              'amount_cents': -5000,
+              'description': 'Plaid charge from much later',
+              'date': '2026-05-10', // +9 days, outside ±3
+              'pending': false,
+            },
+          ],
+        );
+        expect(result['merged'], 0);
+        expect(result['added'], 1);
+
+        final rows = await harness.client
+            .from('transactions')
+            .select('id, external_id, source')
+            .eq('account_id', harness.accountId);
+        expect((rows as List).length, 2);
+      },
+      skip: reason,
+    );
+
+    test(
+      'dedup: claim-once — two Plaid rows for the same manual entry '
+      'pick exactly one to merge, the other lands as a fresh INSERT',
+      () async {
+        // One manual entry on 2026-05-10. Two Plaid rows both
+        // matching it (+/- 1 day). Only one can claim it; the
+        // other inserts as new.
+        await harness.insertTransaction(
+          amountCents: -1500,
+          description: 'Manual entry',
+          transactionDate: DateTime.utc(2026, 5, 10),
+        );
+
+        final result = await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-claim-A',
+              'amount_cents': -1500,
+              'description': 'Plaid A',
+              'date': '2026-05-11', // distance 1
+            },
+            {
+              'plaid_transaction_id': 'plaid-tx-claim-B',
+              'amount_cents': -1500,
+              'description': 'Plaid B',
+              'date': '2026-05-10', // distance 0 — should win
+            },
+          ],
+        );
+        expect(result['merged'], 1);
+        expect(result['added'], 1);
+
+        // The closest-date Plaid row wins the claim.
+        final merged = await harness.client
+            .from('transactions')
+            .select('description, external_id')
+            .eq('account_id', harness.accountId)
+            .eq('external_id', 'plaid-tx-claim-B')
+            .single();
+        expect(merged['description'], 'Manual entry');
+
+        // The loser lands as a new row.
+        final fresh = await harness.client
+            .from('transactions')
+            .select('description, source')
+            .eq('account_id', harness.accountId)
+            .eq('external_id', 'plaid-tx-claim-A')
+            .single();
+        expect(fresh['description'], 'Plaid A');
+        expect(fresh['source'], 'plaid');
+      },
+      skip: reason,
+    );
+
+    test(
+      'dedup: existing transfer-leg / receipt-paired rows are NEVER '
+      'merged even when amount+date match',
+      () async {
+        // Seed a manual entry that's transfer-leg-paired (we just
+        // stamp transfer_id directly — no need to create a real
+        // pair for the test).
+        await harness.client.from('transactions').insert({
+          'household_id': harness.householdId,
+          'account_id': harness.accountId,
+          'entered_by': harness.userId,
+          'amount': -2500,
+          'currency': 'USD',
+          'description': 'transfer leg, hands off',
+          'transaction_date': '2026-05-10',
+          'pending': false,
+          'source': 'manual',
+          'transfer_id': '00000000-0000-0000-0000-000000000099',
+        });
+
+        final result = await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-no-merge-transfer',
+              'amount_cents': -2500,
+              'description': 'Plaid sees this charge too',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+        expect(
+          result['merged'],
+          0,
+          reason:
+              'transfer-paired rows are excluded from the dedup '
+              'candidate set so create_transfer pairing stays intact.',
+        );
+        expect(result['added'], 1);
+      },
+      skip: reason,
+    );
+
     // ── Auth-check / cross-household rejection ─────────────────────
     test(
       'rejects cross-household account_id with 42501 (RLS-derived auth)',
