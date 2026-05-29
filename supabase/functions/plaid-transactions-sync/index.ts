@@ -114,13 +114,18 @@ serve(async (req) => {
   );
 
   // Load the item row + verify caller's household membership.
+  // Pulls last_sync_error too so the success-path UPDATE can
+  // guard against the sync-vs-webhook race (review fix #9): if
+  // a webhook arrives mid-sync and writes a fresh error, our
+  // success-clear shouldn't clobber it.
   const { data: itemRow, error: itemErr } = await serviceClient
     .from("plaid_items")
-    .select("id, household_id, access_token, sync_cursor")
+    .select("id, household_id, access_token, sync_cursor, last_sync_error")
     .eq("id", body.plaid_item_id)
     .maybeSingle();
   if (itemErr) return jsonError(500, String(itemErr));
   if (!itemRow) return jsonError(404, "plaid_item not found");
+  const lastSyncErrorAtStart = itemRow.last_sync_error as string | null;
 
   // User-scoped client for household-membership lookup. RLS on
   // household_members returns rows only where user_id = auth.uid(),
@@ -201,13 +206,21 @@ serve(async (req) => {
         errorType: err.errorType,
         requestId: err.requestId,
       });
-      await serviceClient
+      // Same race-guard as the success path (review fix #9).
+      // A webhook that landed during this sync may have set a
+      // more authoritative error; only overwrite if no one
+      // else changed last_sync_error in the meantime.
+      let plaidErrUpdate = serviceClient
         .from("plaid_items")
         .update({
           last_sync_error: errorCode,
           last_sync_at: new Date().toISOString(),
         })
         .eq("id", itemRow.id);
+      plaidErrUpdate = lastSyncErrorAtStart === null
+        ? plaidErrUpdate.is("last_sync_error", null)
+        : plaidErrUpdate.eq("last_sync_error", lastSyncErrorAtStart);
+      await plaidErrUpdate;
       requiresReauth = REAUTH_ERROR_CODES.has(errorCode);
       return Response.json({
         added: 0,
@@ -280,7 +293,13 @@ serve(async (req) => {
   for (const t of allModified) {
     const b = ensureBucket(t.account_id);
     if (!b) continue;
-    if (t.unofficial_currency_code && !t.iso_currency_code) continue;
+    // Same exclude-not-lie contract as the added path above.
+    if (t.unofficial_currency_code && !t.iso_currency_code) {
+      console.warn(
+        `[plaid-transactions-sync] dropping unofficial_currency_code modified row ${t.transaction_id}`,
+      );
+      continue;
+    }
     b.modified.push({
       plaid_transaction_id: t.transaction_id,
       amount_cents: plaidAmountToCents(t.amount),
@@ -360,17 +379,35 @@ serve(async (req) => {
   //
   // last_sync_at updates either way so "we tried" is observable.
   const allSucceeded = failedAccountIds.length === 0;
-  await serviceClient
+
+  // Review fix #9: sync-vs-webhook race. If a webhook arrived
+  // mid-sync (typically ITEM_LOGIN_REQUIRED) it stamped
+  // `last_sync_error` to a value MORE authoritative than
+  // anything we know — the webhook signal means the user has
+  // to re-auth before any further syncs work, so our success-
+  // clear or PARTIAL_FAILURE-stamp would lie about the state.
+  //
+  // Gate the UPDATE on `last_sync_error IS NOT DISTINCT FROM
+  // <what we saw at start>`. If anyone else (webhook, parallel
+  // sync) wrote a different value in the meantime, the filter
+  // matches zero rows and our UPDATE no-ops. The next sync
+  // attempt re-reads the (now webhook-set) state and acts on
+  // it.
+  let updateQuery = serviceClient
     .from("plaid_items")
     .update({
-      // Only advance the cursor on full success. On partial
-      // failure, keep the existing value (read from itemRow at
-      // the top of the function) so the next sync re-pulls.
       sync_cursor: allSucceeded ? cursor : itemRow.sync_cursor,
       last_sync_at: new Date().toISOString(),
       last_sync_error: allSucceeded ? null : "PARTIAL_FAILURE",
     })
     .eq("id", itemRow.id);
+  // PostgREST: .eq(col, null) becomes "col IS NULL" which
+  // matches the IS-NOT-DISTINCT semantics for null-vs-null.
+  // For non-null captured values, regular .eq works.
+  updateQuery = lastSyncErrorAtStart === null
+    ? updateQuery.is("last_sync_error", null)
+    : updateQuery.eq("last_sync_error", lastSyncErrorAtStart);
+  await updateQuery;
 
   return Response.json({
     added: totalAdded,
