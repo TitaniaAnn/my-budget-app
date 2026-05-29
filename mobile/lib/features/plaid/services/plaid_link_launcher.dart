@@ -44,7 +44,10 @@ class PlaidLinkExitOutcome extends PlaidLinkOutcome {
 }
 
 class PlaidLinkLauncher {
-  PlaidLinkLauncher({required this.repository, this.timeout = _kDefaultTimeout});
+  PlaidLinkLauncher({
+    required this.repository,
+    this.timeout = _kDefaultTimeout,
+  });
 
   final PlaidRepository repository;
 
@@ -59,6 +62,21 @@ class PlaidLinkLauncher {
 
   static const _kDefaultTimeout = Duration(minutes: 5);
 
+  /// Tracks an in-flight launch so a second concurrent call can't
+  /// double-subscribe to PlaidLink.onSuccess / onExit (review #6).
+  /// The plaid_flutter SDK exposes those as static broadcast streams
+  /// that any subscriber receives — two launches in flight would
+  /// see each other's events, completing both completers with the
+  /// same outcome and (worse) the second launch's onSuccess could
+  /// arrive paired with the first launch's link token.
+  ///
+  /// On a second call while one is pending we return the same
+  /// future rather than throwing. Both callers get the original
+  /// launch's outcome; their `_busy` flags release together. The
+  /// alternative — rejecting the second call — would surface a
+  /// confusing error from what is almost always a double-tap.
+  Future<PlaidLinkOutcome>? _pending;
+
   /// Mints a token via the Edge Function, hands it to the
   /// platform Link UI, and resolves with the first
   /// success/exit event. Subscription is cancelled before the
@@ -69,7 +87,24 @@ class PlaidLinkLauncher {
   /// the ReauthBanner. No public_token exchange is needed on
   /// success in this mode; the caller should re-trigger sync
   /// instead.
-  Future<PlaidLinkOutcome> launch({String? updateModeForItemId}) async {
+  Future<PlaidLinkOutcome> launch({String? updateModeForItemId}) {
+    final pending = _pending;
+    if (pending != null) return pending;
+    final future = _runLaunch(updateModeForItemId: updateModeForItemId);
+    _pending = future;
+    // Clear the guard on completion regardless of outcome so the
+    // next launch starts fresh. whenComplete() runs after the
+    // future resolves but the value/error propagates unchanged
+    // to the caller.
+    future.whenComplete(() {
+      if (identical(_pending, future)) _pending = null;
+    });
+    return future;
+  }
+
+  Future<PlaidLinkOutcome> _runLaunch({
+    required String? updateModeForItemId,
+  }) async {
     final linkToken = updateModeForItemId == null
         ? await repository.createLinkToken()
         : await repository.createUpdateLinkToken(updateModeForItemId);
