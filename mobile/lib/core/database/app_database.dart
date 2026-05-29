@@ -365,6 +365,64 @@ class ReceiptLineItemTagAssignmentsCache extends Table {
   Set<Column> get primaryKey => {lineItemId, tagId};
 }
 
+/// Offline mutation queue. Each row represents one Supabase
+/// write that was attempted while offline (or failed mid-flight
+/// with a transient error). Replayed in created_at order on
+/// reconnect.
+///
+/// Stored OUT-of-band from the table-cache mirrors above:
+///   * Cache tables answer "what does the user see?"
+///   * pending_writes answers "what does the user still owe the
+///     server?"
+///
+/// On a successful replay the row is DELETE'd; the cache row
+/// (which already has the optimistic write) is overwritten by
+/// the next fetch with the server-canonical version including
+/// any server-generated timestamps.
+@DataClassName('PendingWritesRow')
+class PendingWrites extends Table {
+  /// Client-generated UUID — keeps the queue self-contained
+  /// without depending on the network.
+  TextColumn get id => text()();
+
+  /// One of 'insert', 'update', 'delete', 'rpc'. The dispatcher
+  /// in PendingWritesQueue.drain branches on this.
+  TextColumn get opType => text()();
+
+  /// For table-level ops ('insert', 'update', 'delete'): the
+  /// Supabase table name. Null when opType == 'rpc'. Named
+  /// `targetTable` (not `tableName`) so it doesn't clash with
+  /// drift's `Table.tableName` getter.
+  TextColumn get targetTable => text().nullable()();
+
+  /// For 'rpc' ops only. The Postgres function name to invoke.
+  TextColumn get rpcName => text().nullable()();
+
+  /// The affected row's primary key. Required for 'update' and
+  /// 'delete'; optional for 'insert' (some inserts let the
+  /// server pick the id) and unused for 'rpc'.
+  TextColumn get rowId => text().nullable()();
+
+  /// JSON-encoded payload. For insert/update: the column map.
+  /// For delete: usually empty `{}`. For rpc: the params map.
+  TextColumn get payloadJson => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  /// Increments each time drain attempts to execute this row.
+  /// Lets future telemetry distinguish "tried once and works"
+  /// from "tried many times, keeps failing".
+  IntColumn get attemptCount => integer().withDefault(const Constant(0))();
+
+  /// Stringified error message from the last failed attempt.
+  /// Null when the row hasn't been tried yet OR the last attempt
+  /// succeeded (in which case the row would be deleted).
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     AccountsCache,
@@ -379,6 +437,7 @@ class ReceiptLineItemTagAssignmentsCache extends Table {
     TransactionTagsCache,
     TransactionTagAssignmentsCache,
     ReceiptLineItemTagAssignmentsCache,
+    PendingWrites,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -407,7 +466,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -455,6 +514,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(transactionTagsCache);
         await m.createTable(transactionTagAssignmentsCache);
         await m.createTable(receiptLineItemTagAssignmentsCache);
+      }
+      // v6 → v7: Phase 3a. The offline write queue.
+      if (from < 7) {
+        await m.createTable(pendingWrites);
       }
     },
   );
@@ -1113,6 +1176,54 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.lineItemId.equals(lineItemId)))
         .get();
     return rows.map((r) => r.tagId).toList();
+  }
+
+  // ── Pending writes surface ──────────────────────────────────
+
+  /// Insert a pending write. Always `InsertMode.insert` (not
+  /// replace) — every enqueue creates a fresh row with a unique
+  /// id even when the user repeats the same logical op, because
+  /// each repeat is its own attempt to replay.
+  Future<void> enqueuePendingWrite(PendingWritesCompanion row) {
+    return into(pendingWrites).insert(row);
+  }
+
+  /// Read pending writes in FIFO order. The drain loop reads
+  /// this once, attempts each row, and records success/failure
+  /// per-row.
+  Future<List<PendingWritesRow>> loadPendingWrites() {
+    return (select(pendingWrites)
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+  }
+
+  Future<void> deletePendingWrite(String id) {
+    return (delete(pendingWrites)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Record a failed replay attempt: bump attemptCount, store
+  /// the error string. The row stays in the queue for the next
+  /// drain pass. Raw SQL because drift's typed-update doesn't
+  /// support self-referencing `col + 1` cleanly.
+  Future<void> markPendingWriteFailed({
+    required String id,
+    required String error,
+  }) async {
+    await customUpdate(
+      'UPDATE pending_writes '
+      'SET attempt_count = attempt_count + 1, last_error = ? '
+      'WHERE id = ?',
+      variables: [Variable.withString(error), Variable.withString(id)],
+      updates: {pendingWrites},
+    );
+  }
+
+  /// Count of pending writes — surfaces in the Settings sync
+  /// status indicator. Cheap (no row body read).
+  Future<int> pendingWritesCount() {
+    return (selectOnly(pendingWrites)..addColumns([pendingWrites.id.count()]))
+        .map((row) => row.read<int>(pendingWrites.id.count()) ?? 0)
+        .getSingle();
   }
 }
 

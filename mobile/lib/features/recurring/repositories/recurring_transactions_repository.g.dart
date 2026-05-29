@@ -7,7 +7,7 @@ part of 'recurring_transactions_repository.dart';
 // **************************************************************************
 
 String _$recurringTransactionsRepositoryHash() =>
-    r'110aa32ccec918f6d802aa74ea237ceb58fe5f25';
+    r'dfb31c33c8c59fe13552a1994466085883a9fd34';
 
 /// See also [recurringTransactionsRepository].
 @ProviderFor(recurringTransactionsRepository)

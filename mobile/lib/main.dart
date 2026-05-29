@@ -9,6 +9,7 @@ import 'core/connectivity/connectivity_provider.dart';
 import 'core/providers/ledger_invalidation.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
+import 'core/sync/pending_writes_queue.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notifications/services/notification_service.dart';
 
@@ -191,6 +192,14 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
         invalidateLedger(ref);
       }
     });
+
+    // Audit L1 Phase 3a: instantiate the auto-drain notifier
+    // exactly once. The notifier itself listens to
+    // isOnlineProvider and replays the pending_writes queue on
+    // every false→true edge — separate from the ledger
+    // invalidation above because draining a queued mutation
+    // happens BEFORE the re-fetch that reads its result.
+    ref.watch(pendingWritesAutoDrainProvider);
 
     // Audit L4: hook the notification-tap callback into the router
     // so tapping a budget-over / large-tx notification lands on the

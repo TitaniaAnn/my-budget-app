@@ -7,7 +7,7 @@ part of 'holdings_repository.dart';
 // **************************************************************************
 
 String _$holdingsRepositoryHash() =>
-    r'725887c5814168717dbf44f234198a1be9d3d1e1';
+    r'0c2f6afbf179daa7b5f487febdb70fd72982b8eb';
 
 /// See also [holdingsRepository].
 @ProviderFor(holdingsRepository)

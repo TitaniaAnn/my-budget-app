@@ -8313,6 +8313,607 @@ class ReceiptLineItemTagAssignmentsCacheCompanion
   }
 }
 
+class $PendingWritesTable extends PendingWrites
+    with TableInfo<$PendingWritesTable, PendingWritesRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingWritesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _opTypeMeta = const VerificationMeta('opType');
+  @override
+  late final GeneratedColumn<String> opType = GeneratedColumn<String>(
+    'op_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetTableMeta = const VerificationMeta(
+    'targetTable',
+  );
+  @override
+  late final GeneratedColumn<String> targetTable = GeneratedColumn<String>(
+    'target_table',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rpcNameMeta = const VerificationMeta(
+    'rpcName',
+  );
+  @override
+  late final GeneratedColumn<String> rpcName = GeneratedColumn<String>(
+    'rpc_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rowIdMeta = const VerificationMeta('rowId');
+  @override
+  late final GeneratedColumn<String> rowId = GeneratedColumn<String>(
+    'row_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _payloadJsonMeta = const VerificationMeta(
+    'payloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+    'payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    opType,
+    targetTable,
+    rpcName,
+    rowId,
+    payloadJson,
+    createdAt,
+    attemptCount,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_writes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingWritesRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('op_type')) {
+      context.handle(
+        _opTypeMeta,
+        opType.isAcceptableOrUnknown(data['op_type']!, _opTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_opTypeMeta);
+    }
+    if (data.containsKey('target_table')) {
+      context.handle(
+        _targetTableMeta,
+        targetTable.isAcceptableOrUnknown(
+          data['target_table']!,
+          _targetTableMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rpc_name')) {
+      context.handle(
+        _rpcNameMeta,
+        rpcName.isAcceptableOrUnknown(data['rpc_name']!, _rpcNameMeta),
+      );
+    }
+    if (data.containsKey('row_id')) {
+      context.handle(
+        _rowIdMeta,
+        rowId.isAcceptableOrUnknown(data['row_id']!, _rowIdMeta),
+      );
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+        _payloadJsonMeta,
+        payloadJson.isAcceptableOrUnknown(
+          data['payload_json']!,
+          _payloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingWritesRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingWritesRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      opType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}op_type'],
+      )!,
+      targetTable: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_table'],
+      ),
+      rpcName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rpc_name'],
+      ),
+      rowId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}row_id'],
+      ),
+      payloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $PendingWritesTable createAlias(String alias) {
+    return $PendingWritesTable(attachedDatabase, alias);
+  }
+}
+
+class PendingWritesRow extends DataClass
+    implements Insertable<PendingWritesRow> {
+  /// Client-generated UUID — keeps the queue self-contained
+  /// without depending on the network.
+  final String id;
+
+  /// One of 'insert', 'update', 'delete', 'rpc'. The dispatcher
+  /// in PendingWritesQueue.drain branches on this.
+  final String opType;
+
+  /// For table-level ops ('insert', 'update', 'delete'): the
+  /// Supabase table name. Null when opType == 'rpc'. Named
+  /// `targetTable` (not `tableName`) so it doesn't clash with
+  /// drift's `Table.tableName` getter.
+  final String? targetTable;
+
+  /// For 'rpc' ops only. The Postgres function name to invoke.
+  final String? rpcName;
+
+  /// The affected row's primary key. Required for 'update' and
+  /// 'delete'; optional for 'insert' (some inserts let the
+  /// server pick the id) and unused for 'rpc'.
+  final String? rowId;
+
+  /// JSON-encoded payload. For insert/update: the column map.
+  /// For delete: usually empty `{}`. For rpc: the params map.
+  final String payloadJson;
+  final DateTime createdAt;
+
+  /// Increments each time drain attempts to execute this row.
+  /// Lets future telemetry distinguish "tried once and works"
+  /// from "tried many times, keeps failing".
+  final int attemptCount;
+
+  /// Stringified error message from the last failed attempt.
+  /// Null when the row hasn't been tried yet OR the last attempt
+  /// succeeded (in which case the row would be deleted).
+  final String? lastError;
+  const PendingWritesRow({
+    required this.id,
+    required this.opType,
+    this.targetTable,
+    this.rpcName,
+    this.rowId,
+    required this.payloadJson,
+    required this.createdAt,
+    required this.attemptCount,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['op_type'] = Variable<String>(opType);
+    if (!nullToAbsent || targetTable != null) {
+      map['target_table'] = Variable<String>(targetTable);
+    }
+    if (!nullToAbsent || rpcName != null) {
+      map['rpc_name'] = Variable<String>(rpcName);
+    }
+    if (!nullToAbsent || rowId != null) {
+      map['row_id'] = Variable<String>(rowId);
+    }
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  PendingWritesCompanion toCompanion(bool nullToAbsent) {
+    return PendingWritesCompanion(
+      id: Value(id),
+      opType: Value(opType),
+      targetTable: targetTable == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetTable),
+      rpcName: rpcName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rpcName),
+      rowId: rowId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rowId),
+      payloadJson: Value(payloadJson),
+      createdAt: Value(createdAt),
+      attemptCount: Value(attemptCount),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory PendingWritesRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingWritesRow(
+      id: serializer.fromJson<String>(json['id']),
+      opType: serializer.fromJson<String>(json['opType']),
+      targetTable: serializer.fromJson<String?>(json['targetTable']),
+      rpcName: serializer.fromJson<String?>(json['rpcName']),
+      rowId: serializer.fromJson<String?>(json['rowId']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'opType': serializer.toJson<String>(opType),
+      'targetTable': serializer.toJson<String?>(targetTable),
+      'rpcName': serializer.toJson<String?>(rpcName),
+      'rowId': serializer.toJson<String?>(rowId),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  PendingWritesRow copyWith({
+    String? id,
+    String? opType,
+    Value<String?> targetTable = const Value.absent(),
+    Value<String?> rpcName = const Value.absent(),
+    Value<String?> rowId = const Value.absent(),
+    String? payloadJson,
+    DateTime? createdAt,
+    int? attemptCount,
+    Value<String?> lastError = const Value.absent(),
+  }) => PendingWritesRow(
+    id: id ?? this.id,
+    opType: opType ?? this.opType,
+    targetTable: targetTable.present ? targetTable.value : this.targetTable,
+    rpcName: rpcName.present ? rpcName.value : this.rpcName,
+    rowId: rowId.present ? rowId.value : this.rowId,
+    payloadJson: payloadJson ?? this.payloadJson,
+    createdAt: createdAt ?? this.createdAt,
+    attemptCount: attemptCount ?? this.attemptCount,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  PendingWritesRow copyWithCompanion(PendingWritesCompanion data) {
+    return PendingWritesRow(
+      id: data.id.present ? data.id.value : this.id,
+      opType: data.opType.present ? data.opType.value : this.opType,
+      targetTable: data.targetTable.present
+          ? data.targetTable.value
+          : this.targetTable,
+      rpcName: data.rpcName.present ? data.rpcName.value : this.rpcName,
+      rowId: data.rowId.present ? data.rowId.value : this.rowId,
+      payloadJson: data.payloadJson.present
+          ? data.payloadJson.value
+          : this.payloadJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingWritesRow(')
+          ..write('id: $id, ')
+          ..write('opType: $opType, ')
+          ..write('targetTable: $targetTable, ')
+          ..write('rpcName: $rpcName, ')
+          ..write('rowId: $rowId, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    opType,
+    targetTable,
+    rpcName,
+    rowId,
+    payloadJson,
+    createdAt,
+    attemptCount,
+    lastError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingWritesRow &&
+          other.id == this.id &&
+          other.opType == this.opType &&
+          other.targetTable == this.targetTable &&
+          other.rpcName == this.rpcName &&
+          other.rowId == this.rowId &&
+          other.payloadJson == this.payloadJson &&
+          other.createdAt == this.createdAt &&
+          other.attemptCount == this.attemptCount &&
+          other.lastError == this.lastError);
+}
+
+class PendingWritesCompanion extends UpdateCompanion<PendingWritesRow> {
+  final Value<String> id;
+  final Value<String> opType;
+  final Value<String?> targetTable;
+  final Value<String?> rpcName;
+  final Value<String?> rowId;
+  final Value<String> payloadJson;
+  final Value<DateTime> createdAt;
+  final Value<int> attemptCount;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const PendingWritesCompanion({
+    this.id = const Value.absent(),
+    this.opType = const Value.absent(),
+    this.targetTable = const Value.absent(),
+    this.rpcName = const Value.absent(),
+    this.rowId = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingWritesCompanion.insert({
+    required String id,
+    required String opType,
+    this.targetTable = const Value.absent(),
+    this.rpcName = const Value.absent(),
+    this.rowId = const Value.absent(),
+    required String payloadJson,
+    required DateTime createdAt,
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       opType = Value(opType),
+       payloadJson = Value(payloadJson),
+       createdAt = Value(createdAt);
+  static Insertable<PendingWritesRow> custom({
+    Expression<String>? id,
+    Expression<String>? opType,
+    Expression<String>? targetTable,
+    Expression<String>? rpcName,
+    Expression<String>? rowId,
+    Expression<String>? payloadJson,
+    Expression<DateTime>? createdAt,
+    Expression<int>? attemptCount,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (opType != null) 'op_type': opType,
+      if (targetTable != null) 'target_table': targetTable,
+      if (rpcName != null) 'rpc_name': rpcName,
+      if (rowId != null) 'row_id': rowId,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingWritesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? opType,
+    Value<String?>? targetTable,
+    Value<String?>? rpcName,
+    Value<String?>? rowId,
+    Value<String>? payloadJson,
+    Value<DateTime>? createdAt,
+    Value<int>? attemptCount,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return PendingWritesCompanion(
+      id: id ?? this.id,
+      opType: opType ?? this.opType,
+      targetTable: targetTable ?? this.targetTable,
+      rpcName: rpcName ?? this.rpcName,
+      rowId: rowId ?? this.rowId,
+      payloadJson: payloadJson ?? this.payloadJson,
+      createdAt: createdAt ?? this.createdAt,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (opType.present) {
+      map['op_type'] = Variable<String>(opType.value);
+    }
+    if (targetTable.present) {
+      map['target_table'] = Variable<String>(targetTable.value);
+    }
+    if (rpcName.present) {
+      map['rpc_name'] = Variable<String>(rpcName.value);
+    }
+    if (rowId.present) {
+      map['row_id'] = Variable<String>(rowId.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingWritesCompanion(')
+          ..write('id: $id, ')
+          ..write('opType: $opType, ')
+          ..write('targetTable: $targetTable, ')
+          ..write('rpcName: $rpcName, ')
+          ..write('rowId: $rowId, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8338,6 +8939,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   receiptLineItemTagAssignmentsCache = $ReceiptLineItemTagAssignmentsCacheTable(
     this,
   );
+  late final $PendingWritesTable pendingWrites = $PendingWritesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8355,6 +8957,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionTagsCache,
     transactionTagAssignmentsCache,
     receiptLineItemTagAssignmentsCache,
+    pendingWrites,
   ];
 }
 
@@ -12391,6 +12994,292 @@ typedef $$ReceiptLineItemTagAssignmentsCacheTableProcessedTableManager =
       ReceiptLineItemTagAssignmentsCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$PendingWritesTableCreateCompanionBuilder =
+    PendingWritesCompanion Function({
+      required String id,
+      required String opType,
+      Value<String?> targetTable,
+      Value<String?> rpcName,
+      Value<String?> rowId,
+      required String payloadJson,
+      required DateTime createdAt,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+typedef $$PendingWritesTableUpdateCompanionBuilder =
+    PendingWritesCompanion Function({
+      Value<String> id,
+      Value<String> opType,
+      Value<String?> targetTable,
+      Value<String?> rpcName,
+      Value<String?> rowId,
+      Value<String> payloadJson,
+      Value<DateTime> createdAt,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+
+class $$PendingWritesTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingWritesTable> {
+  $$PendingWritesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get opType => $composableBuilder(
+    column: $table.opType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rpcName => $composableBuilder(
+    column: $table.rpcName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rowId => $composableBuilder(
+    column: $table.rowId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingWritesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingWritesTable> {
+  $$PendingWritesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get opType => $composableBuilder(
+    column: $table.opType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rpcName => $composableBuilder(
+    column: $table.rpcName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rowId => $composableBuilder(
+    column: $table.rowId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingWritesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingWritesTable> {
+  $$PendingWritesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get opType =>
+      $composableBuilder(column: $table.opType, builder: (column) => column);
+
+  GeneratedColumn<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rpcName =>
+      $composableBuilder(column: $table.rpcName, builder: (column) => column);
+
+  GeneratedColumn<String> get rowId =>
+      $composableBuilder(column: $table.rowId, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+}
+
+class $$PendingWritesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingWritesTable,
+          PendingWritesRow,
+          $$PendingWritesTableFilterComposer,
+          $$PendingWritesTableOrderingComposer,
+          $$PendingWritesTableAnnotationComposer,
+          $$PendingWritesTableCreateCompanionBuilder,
+          $$PendingWritesTableUpdateCompanionBuilder,
+          (
+            PendingWritesRow,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingWritesTable,
+              PendingWritesRow
+            >,
+          ),
+          PendingWritesRow,
+          PrefetchHooks Function()
+        > {
+  $$PendingWritesTableTableManager(_$AppDatabase db, $PendingWritesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingWritesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingWritesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingWritesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> opType = const Value.absent(),
+                Value<String?> targetTable = const Value.absent(),
+                Value<String?> rpcName = const Value.absent(),
+                Value<String?> rowId = const Value.absent(),
+                Value<String> payloadJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingWritesCompanion(
+                id: id,
+                opType: opType,
+                targetTable: targetTable,
+                rpcName: rpcName,
+                rowId: rowId,
+                payloadJson: payloadJson,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String opType,
+                Value<String?> targetTable = const Value.absent(),
+                Value<String?> rpcName = const Value.absent(),
+                Value<String?> rowId = const Value.absent(),
+                required String payloadJson,
+                required DateTime createdAt,
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingWritesCompanion.insert(
+                id: id,
+                opType: opType,
+                targetTable: targetTable,
+                rpcName: rpcName,
+                rowId: rowId,
+                payloadJson: payloadJson,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingWritesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingWritesTable,
+      PendingWritesRow,
+      $$PendingWritesTableFilterComposer,
+      $$PendingWritesTableOrderingComposer,
+      $$PendingWritesTableAnnotationComposer,
+      $$PendingWritesTableCreateCompanionBuilder,
+      $$PendingWritesTableUpdateCompanionBuilder,
+      (
+        PendingWritesRow,
+        BaseReferences<_$AppDatabase, $PendingWritesTable, PendingWritesRow>,
+      ),
+      PendingWritesRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12431,4 +13320,6 @@ class $AppDatabaseManager {
         _db,
         _db.receiptLineItemTagAssignmentsCache,
       );
+  $$PendingWritesTableTableManager get pendingWrites =>
+      $$PendingWritesTableTableManager(_db, _db.pendingWrites);
 }
