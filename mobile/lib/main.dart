@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/connectivity/connectivity_provider.dart';
 import 'core/providers/ledger_invalidation.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
@@ -172,6 +173,24 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeNotifierProvider);
+
+    // Audit L1 Phase 1: when the device transitions from offline
+    // back to online, immediately re-fetch the ledger so the
+    // cached-stale UI catches up to the server. The lifecycle
+    // observer's resume hook (L2 above) covers app-backgrounded
+    // → app-foregrounded; this listener covers same-foreground
+    // reconnect events (train → station, airplane mode toggle,
+    // captive-portal sign-in).
+    //
+    // The initial provider state is optimistic-true; the first
+    // platform check may flip it to false. We only fire on the
+    // false→true edge, which never happens spuriously on cold
+    // start.
+    ref.listen<bool>(isOnlineProvider, (prev, next) {
+      if (prev == false && next == true) {
+        invalidateLedger(ref);
+      }
+    });
 
     // Audit L4: hook the notification-tap callback into the router
     // so tapping a budget-over / large-tx notification lands on the

@@ -41,7 +41,7 @@ final plaidSyncOrchestratorProvider = Provider<PlaidSyncOrchestrator>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PlaidSyncOrchestratorRef = ProviderRef<PlaidSyncOrchestrator>;
-String _$plaidSyncTriggerHash() => r'fd83dc562e2985d83bb099353c915fcaee89ce4b';
+String _$plaidSyncTriggerHash() => r'b1af6faa237ea8a0d434d151b9746bef1a376800';
 
 /// Fires syncAll() once per app process. Same pattern as
 /// runRecurringSchedulerProvider — keepAlive so a subsequent
@@ -51,6 +51,15 @@ String _$plaidSyncTriggerHash() => r'fd83dc562e2985d83bb099353c915fcaee89ce4b';
 /// Returns the [PlaidSyncSummary] so callers can show a
 /// post-sync toast or banner; null when there are no items
 /// (don't bother dispatching).
+///
+/// When the summary reports unhealthy items (re-auth needed,
+/// hard failure, or partial-failure on the cursor-gated path
+/// — review fix #2), this provider self-invalidates after a
+/// short delay so the NEXT dashboard load re-attempts the sync.
+/// Without this, a transient partial-failure (RLS hiccup, pool
+/// exhaustion) would stay cached for the rest of the app
+/// session and the cursor-held deltas would only retry on a
+/// full app restart.
 ///
 /// Copied from [plaidSyncTrigger].
 @ProviderFor(plaidSyncTrigger)

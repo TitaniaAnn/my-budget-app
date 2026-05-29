@@ -1,14 +1,16 @@
 // Persistent shell around all authenticated screens.
 // Provides the bottom NavigationBar and maps tab taps to go_router routes.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/connectivity/connectivity_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Wraps an authenticated screen in the app's bottom navigation bar.
 /// Used as the [ShellRoute] builder in app_router.dart so the nav bar
 /// persists across tab switches without rebuilding.
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerWidget {
   final Widget child;
   const MainScaffold({super.key, required this.child});
 
@@ -56,11 +58,20 @@ class MainScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final selected = _selectedIndex(context);
+    final isOnline = ref.watch(isOnlineProvider);
 
     return Scaffold(
-      body: child,
+      // Column wraps the offline banner above the routed child so the
+      // banner sits inside the safe area and above the bottom nav bar
+      // without overlapping either. Audit L1 Phase 1.
+      body: Column(
+        children: [
+          if (!isOnline) const _OfflineBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: context.appColors.surfaceDeep,
         // Subtle highlight behind the selected tab icon
@@ -77,6 +88,45 @@ class MainScaffold extends StatelessWidget {
               ),
             )
             .toList(),
+      ),
+    );
+  }
+}
+
+/// Thin status strip rendered at the top of [MainScaffold] when the
+/// platform reports no connectivity. Audit L1 Phase 1.
+///
+/// Visually subdued (warning tone, single-line, ~32px tall) — the
+/// goal is "user notices something is up" not "the offline state
+/// dominates the screen." Cache-through repositories still serve
+/// whatever data they have, so most screens stay usable; the
+/// banner just explains why a fresh fetch might fail.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return SafeArea(
+      bottom: false,
+      child: Material(
+        color: BrandColors.warning.withValues(alpha: 0.15),
+        child: SizedBox(
+          height: 32,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off_outlined, size: 16, color: colors.textMuted),
+              const SizedBox(width: 8),
+              Text(
+                "You're offline — showing the last data we cached",
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
