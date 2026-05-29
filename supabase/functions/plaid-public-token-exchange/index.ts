@@ -62,6 +62,11 @@ interface RequestBody {
     subtype: string;
     currency?: string | null;
   }>;
+  // Review fix #4: when the caller is a member of multiple
+  // households, they MUST pass which one this Item belongs to.
+  // Single-household callers (the common case) can omit it; the
+  // function resolves automatically.
+  householdId?: string;
 }
 
 interface PlaidExchangeResponse {
@@ -119,23 +124,48 @@ serve(async (req) => {
 
   // Resolve the caller's household via household_members. Use
   // the user JWT explicitly so RLS guarantees this returns only
-  // households the caller actually belongs to. Owners typically
-  // have one household; the first row is what we use.
+  // households the caller actually belongs to.
+  //
+  // Review fix #4: previously this took `.limit(1).maybeSingle()`
+  // and silently picked whichever household Postgres returned
+  // first. A user belonging to multiple households would land
+  // their Plaid Item in an arbitrary one. Fix: enumerate all
+  // memberships; if exactly one, use it; if more, require an
+  // explicit `householdId` in the request body and verify the
+  // caller is a member of it.
   const userClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: `Bearer ${auth.auth.token}` } } },
   );
-  const { data: memberRow, error: memberErr } = await userClient
+  const { data: memberRows, error: memberErr } = await userClient
     .from("household_members")
     .select("household_id")
-    .eq("user_id", auth.auth.userId)
-    .limit(1)
-    .maybeSingle();
-  if (memberErr || !memberRow) {
+    .eq("user_id", auth.auth.userId);
+  if (memberErr) return jsonError(500, String(memberErr));
+  if (!memberRows || memberRows.length === 0) {
     return jsonError(403, "caller has no household");
   }
-  const householdId = memberRow.household_id as string;
+  const memberHouseholdIds = (memberRows as Array<{ household_id: string }>)
+    .map((r) => r.household_id);
+  let householdId: string;
+  if (body.householdId) {
+    if (!memberHouseholdIds.includes(body.householdId)) {
+      return jsonError(
+        403,
+        "caller is not a member of the requested householdId",
+      );
+    }
+    householdId = body.householdId;
+  } else if (memberHouseholdIds.length === 1) {
+    householdId = memberHouseholdIds[0];
+  } else {
+    return jsonError(
+      409,
+      `caller belongs to ${memberHouseholdIds.length} households; ` +
+        "pass householdId in the request body to disambiguate",
+    );
+  }
 
   // Exchange the public_token for the long-lived access_token.
   // This is the only round-trip to Plaid in this function.
@@ -192,6 +222,44 @@ serve(async (req) => {
   }
   const plaidItemRowId = itemRow.id as string;
 
+  // Review fix #8: thread the per-account currency from Plaid's
+  // /accounts/get instead of defaulting everything to USD. The
+  // plaid_flutter SDK's LinkAccount metadata doesn't surface
+  // iso_currency_code; the server side is the only place that
+  // can resolve it correctly. Build a lookup of
+  // {plaid_account_id -> currency} from /accounts/get and the
+  // per-account loop below reads from it.
+  //
+  // Failure here is non-fatal — if Plaid's /accounts/get errors
+  // we still create the accounts (defaulted to USD); the user
+  // can fix the currency in account settings later. Better than
+  // failing the entire link over a currency lookup.
+  const currencyByPlaidAccountId = new Map<string, string>();
+  try {
+    const accountsResp = await plaidPost<{
+      accounts: Array<{
+        account_id: string;
+        balances?: {
+          iso_currency_code?: string | null;
+          unofficial_currency_code?: string | null;
+        };
+      }>;
+    }>("/accounts/get", { access_token: exchange.access_token });
+    for (const a of accountsResp.accounts) {
+      const iso = a.balances?.iso_currency_code;
+      if (iso) currencyByPlaidAccountId.set(a.account_id, iso.toUpperCase());
+      // unofficial_currency_code (crypto, etc.) is deliberately
+      // ignored — the existing sync path drops those rows
+      // entirely; the account itself defaults to USD here.
+    }
+  } catch (err) {
+    console.warn(
+      "[plaid-public-token-exchange] /accounts/get failed; " +
+        "all accounts will default to USD currency",
+      err instanceof PlaidApiError ? err.errorCode : err,
+    );
+  }
+
   // For each account in the payload, INSERT (or UPSERT on the
   // partial unique index from migration 055) into accounts.
   // Unmapped account_type values are skipped and reported.
@@ -213,6 +281,14 @@ serve(async (req) => {
     // Upsert by (plaid_item_id, plaid_account_id) — the partial
     // unique index from migration 055 makes a re-link of the
     // same account refresh in place rather than duplicate.
+    //
+    // Currency precedence: explicit body.accounts[i].currency >
+    // Plaid's /accounts/get iso_currency_code > USD. The mobile
+    // SDK doesn't surface currency, so in practice this resolves
+    // to (a.currency ?? Plaid lookup ?? 'USD').
+    const resolvedCurrency = (a.currency ??
+      currencyByPlaidAccountId.get(a.id) ??
+      "USD").toUpperCase();
     const { data: accountRow, error: accountErr } = await supabase
       .from("accounts")
       .upsert(
@@ -222,7 +298,7 @@ serve(async (req) => {
           name: a.name,
           account_type: mappedType,
           last_four: a.mask ?? null,
-          currency: (a.currency ?? "USD").toUpperCase(),
+          currency: resolvedCurrency,
           is_active: true,
           plaid_item_id: plaidItemRowId,
           plaid_account_id: a.id,
