@@ -21,8 +21,12 @@ void main() {
     test('parses a representative `plaid_items` row (snake_case keys)', () {
       // Shape mirrors what `supabase.from('plaid_items').select()`
       // returns to a client query — column names verbatim from
-      // migration 054 (minus access_token, which is hidden by
-      // the column-level REVOKE).
+      // migration 054. Two columns are NOT in the response:
+      //   * access_token — column-level REVOKE (migration 054)
+      //   * sync_cursor  — column-level REVOKE (migration 059)
+      // Both still exist in the model as nullable String?, so a
+      // null comes through cleanly when the client SELECT skips
+      // them.
       final row = {
         'id': '11111111-1111-1111-1111-111111111111',
         'household_id': '22222222-2222-2222-2222-222222222222',
@@ -31,7 +35,6 @@ void main() {
         'plaid_institution_id': 'ins_109508',
         'institution_name': 'First Platypus Bank',
         'environment': 'sandbox',
-        'sync_cursor': 'cursor-xyz',
         'last_sync_at': '2026-05-25T12:34:56.789Z',
         'last_sync_error': null,
         'consent_expires_at': null,
@@ -47,7 +50,13 @@ void main() {
       expect(item.plaidInstitutionId, 'ins_109508');
       expect(item.institutionName, 'First Platypus Bank');
       expect(item.environment, PlaidEnvironment.sandbox);
-      expect(item.syncCursor, 'cursor-xyz');
+      expect(
+        item.syncCursor,
+        isNull,
+        reason:
+            'sync_cursor is REVOKED from client SELECT (migration 059) — '
+            'client gets null even when the column has a value.',
+      );
       expect(item.lastSyncAt, DateTime.utc(2026, 5, 25, 12, 34, 56, 789));
       expect(item.lastSyncError, isNull);
       expect(item.consentExpiresAt, isNull);
@@ -182,7 +191,9 @@ Map<String, dynamic> _baseItemRow() => {
       'plaid_institution_id': 'ins_109508',
       'institution_name': 'First Platypus Bank',
       'environment': 'sandbox',
-      'sync_cursor': null,
+      // sync_cursor + access_token are REVOKED from client
+      // SELECT (migrations 054 + 059); they don't appear in
+      // production payloads at all.
       'last_sync_at': null,
       'last_sync_error': null,
       'consent_expires_at': null,
