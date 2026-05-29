@@ -53,19 +53,31 @@ sealed class QueuedOp {
 }
 
 class QueuedInsert extends QueuedOp {
-  const QueuedInsert({
+  /// Audit 2026-05-26 C6: rowId is REQUIRED. A queued INSERT
+  /// without a client-generated id can't be replayed
+  /// idempotently — if the first attempt succeeded server-side
+  /// but the response packet dropped, the retry would mint a
+  /// second row. Every caller MUST pre-generate a UUID and
+  /// embed it in the payload as 'id'; we cross-check at runtime
+  /// that the payload contains that id.
+  QueuedInsert({
     required this.table,
     required this.payload,
-    this.rowId,
-  });
+    required this.rowId,
+  }) : assert(
+         payload['id'] == rowId,
+         'QueuedInsert: payload[\'id\'] must equal rowId so the '
+         'replay UPSERT can conflict-resolve on the id column. '
+         'Got payload[\'id\']=${payload['id']}, rowId=$rowId.',
+       );
   final String table;
   final Map<String, dynamic> payload;
 
-  /// Client-generated UUID for the row, if the caller pre-
-  /// assigned one. Null when the server is expected to mint the
-  /// id (replay still works but the cache row may have a
-  /// different id than the server eventually picks).
-  final String? rowId;
+  /// Client-generated UUID for the row. Postgres' DEFAULT
+  /// uuid_generate_v4() only fires when the column is omitted;
+  /// passing an explicit id is accepted and is what makes the
+  /// replay UPSERT idempotent across retries.
+  final String rowId;
 }
 
 class QueuedUpdate extends QueuedOp {
@@ -92,7 +104,12 @@ class QueuedRpc extends QueuedOp {
 }
 
 /// Outcome of a single replay attempt.
-enum _ReplayOutcome { success, transientFailure, permanentFailure }
+///
+/// `authExpired` is distinct from the failure pair because it
+/// signals "stop draining — the rest of the queue would all hit
+/// the same wall." The drain loop short-circuits on this and
+/// the sign-out listener handles the downstream cleanup.
+enum _ReplayOutcome { success, transientFailure, permanentFailure, authExpired }
 
 /// Aggregate result of a drain pass.
 class DrainResult {
@@ -166,10 +183,26 @@ class PendingWritesQueue {
     return id;
   }
 
+  /// Audit 2026-05-26 H2: cap how many times drain attempts a
+  /// row before it's parked. Without a cap, every connectivity
+  /// flip retries every stuck row forever (RLS denial,
+  /// permanent CHECK failure, etc.) with `attemptCount` growing
+  /// unbounded. 10 is the magic number — small enough that a
+  /// permanently-stuck row stops thrashing within ~10 reconnect
+  /// cycles, large enough that genuine flaky-network sequences
+  /// still drain on a later attempt.
+  static const int _maxAttempts = 10;
+
   /// Replay every pending write in FIFO order. Concurrency-
   /// guarded: a second concurrent call returns immediately with
   /// `attempted=0`. Continues past per-row failures so one
   /// stuck write doesn't block independent ones.
+  ///
+  /// Rows whose attemptCount has hit [_maxAttempts] are SKIPPED
+  /// — they stay in pending_writes for visibility (Settings
+  /// → Sync shows the count) but no longer thrash the network.
+  /// A future iteration moves them to a dead_letter table; for
+  /// now the skip keeps the queue honest.
   Future<DrainResult> drain() async {
     if (_draining) {
       return const DrainResult(attempted: 0, succeeded: 0, failed: 0);
@@ -179,7 +212,14 @@ class PendingWritesQueue {
       final rows = await db.loadPendingWrites();
       var succeeded = 0;
       var failed = 0;
+      var attempted = 0;
       for (final row in rows) {
+        // H2: skip rows past the max-attempts cap.
+        if (row.attemptCount >= _maxAttempts) {
+          failed++;
+          continue;
+        }
+        attempted++;
         final outcome = await _replayOne(row);
         switch (outcome) {
           case _ReplayOutcome.success:
@@ -190,15 +230,27 @@ class PendingWritesQueue {
             // already bumped + error recorded.
             failed++;
           case _ReplayOutcome.permanentFailure:
-            // For now treat the same as transient — the row
-            // stays in the queue and surfaces in the Settings
-            // sync status. A future iteration could move
-            // permanent failures into a dead-letter table.
+            // Same as transient for now — row stays + counts
+            // up. Hitting _maxAttempts parks it. Audit's call
+            // for a dead-letter table + jittered backoff is a
+            // separate follow-up.
             failed++;
+          case _ReplayOutcome.authExpired:
+            // Audit H3: stop draining immediately. The session
+            // is gone; subsequent replays in this loop would
+            // all hit the same wall AND the sign-out listener
+            // will wipe the cache + queue. Return what we have
+            // so the caller sees the partial result; the next
+            // drain (after re-auth) starts fresh.
+            return DrainResult(
+              attempted: attempted,
+              succeeded: succeeded,
+              failed: failed + (rows.length - attempted),
+            );
         }
       }
       return DrainResult(
-        attempted: rows.length,
+        attempted: attempted,
         succeeded: succeeded,
         failed: failed,
       );
@@ -215,11 +267,13 @@ class PendingWritesQueue {
               .from(row.targetTable!)
               .upsert(
                 jsonDecode(row.payloadJson) as Map<String, dynamic>,
-                // If the row has a primary key column in the
-                // payload (e.g. our client-generated UUID), upsert
-                // makes the replay idempotent: a retry after a
-                // half-failed first attempt either becomes a no-op
-                // (row already exists) or fills in what's missing.
+                // Audit C6: explicit onConflict pinned to the id
+                // column. QueuedInsert.assert guarantees the
+                // payload carries `id`, so a half-completed first
+                // attempt (server INSERTed, response dropped)
+                // becomes a no-op on retry instead of minting a
+                // duplicate row with a fresh server-generated id.
+                onConflict: 'id',
                 ignoreDuplicates: false,
               );
         case 'update':
@@ -250,6 +304,7 @@ class PendingWritesQueue {
       return _ReplayOutcome.success;
     } catch (e) {
       await db.markPendingWriteFailed(id: row.id, error: e.toString());
+      if (_isAuthExpired(e)) return _ReplayOutcome.authExpired;
       return _isTransient(e)
           ? _ReplayOutcome.transientFailure
           : _ReplayOutcome.permanentFailure;
@@ -273,6 +328,29 @@ bool _isTransient(Object error) {
     final code = error.code;
     if (code != null && code.startsWith('PGRST5')) return true;
   }
+  return false;
+}
+
+/// Audit 2026-05-26 H3: detect JWT-expired / unauthenticated
+/// shapes so the drain can stop and let the sign-out flow take
+/// over. Without this, an expired session reaches the
+/// permanent-failure branch and the row sits in the queue
+/// forever — `attemptCount` grows on every reconnect, but no
+/// progress is possible until re-auth.
+///
+/// PGRST301 is PostgREST's "JWT expired"; AuthException is the
+/// supabase_flutter shape. AuthApiException carries an HTTP
+/// status — 401 is the auth-required signal.
+bool _isAuthExpired(Object error) {
+  if (error is AuthException) return true;
+  if (error is PostgrestException) {
+    if (error.code == 'PGRST301') return true;
+  }
+  // HTTP shapes that wrap into a generic exception sometimes
+  // surface a 401 in the message. Best-effort match.
+  final s = error.toString().toLowerCase();
+  if (s.contains('401') && s.contains('unauthorized')) return true;
+  if (s.contains('jwt expired')) return true;
   return false;
 }
 

@@ -151,9 +151,25 @@ class AccountsRepository {
         createdAt: now,
         updatedAt: now,
       );
-      await _writeCacheRow(optimistic);
-      await _queue?.enqueue(
-        QueuedInsert(table: 'accounts', payload: payload, rowId: clientId),
+      // Audit 2026-05-26 H4: cache write + queue enqueue must
+      // be atomic. The prior shape `await cache; await queue`
+      // could leave the UI showing an optimistic row that
+      // never replays (cache write succeeded, queue insert
+      // failed on disk-full / locked db). User sees the row,
+      // assumes it's saved, the next online fetch silently
+      // wipes it.
+      //
+      // Both writes target the same drift database; wrapping
+      // them in db.transaction makes the queue insert participate
+      // in the same SQL transaction as the cache upsert. Either
+      // both land or neither does.
+      await _atomicCacheAndEnqueue(
+        write: () => _writeCacheRow(optimistic),
+        queueOp: QueuedInsert(
+          table: 'accounts',
+          payload: payload,
+          rowId: clientId,
+        ),
       );
       return optimistic;
     }
@@ -210,9 +226,13 @@ class AccountsRepository {
         interestRate: interestRate,
         updatedAt: DateTime.now().toUtc(),
       );
-      await _writeCacheRow(patched);
-      await _queue?.enqueue(
-        QueuedUpdate(table: 'accounts', rowId: accountId, payload: patch),
+      await _atomicCacheAndEnqueue(
+        write: () => _writeCacheRow(patched),
+        queueOp: QueuedUpdate(
+          table: 'accounts',
+          rowId: accountId,
+          payload: patch,
+        ),
       );
       return patched;
     }
@@ -233,23 +253,28 @@ class AccountsRepository {
           .eq('id', accountId);
     } catch (e) {
       if (!isTransientWriteError(e)) rethrow;
-      await _queue?.enqueue(
-        QueuedUpdate(
-          table: 'accounts',
-          rowId: accountId,
-          payload: {'current_balance': cents},
-        ),
-      );
-      // Optimistically patch the cached balance so the UI
-      // doesn't show a stale value while the queue waits.
+      // Optimistically patch the cached balance + enqueue the
+      // UPDATE atomically (H4). If the cache patch can't find
+      // the row, fall back to enqueue-only — the next online
+      // fetch will reconcile.
       final existing = await _loadCacheRowById(accountId);
+      final queueOp = QueuedUpdate(
+        table: 'accounts',
+        rowId: accountId,
+        payload: {'current_balance': cents},
+      );
       if (existing != null) {
-        await _writeCacheRow(
-          existing.copyWith(
-            currentBalance: cents,
-            updatedAt: DateTime.now().toUtc(),
+        await _atomicCacheAndEnqueue(
+          write: () => _writeCacheRow(
+            existing.copyWith(
+              currentBalance: cents,
+              updatedAt: DateTime.now().toUtc(),
+            ),
           ),
+          queueOp: queueOp,
         );
+      } else {
+        await _queue?.enqueue(queueOp);
       }
     }
   }
@@ -290,10 +315,10 @@ class AccountsRepository {
       if (!isTransientWriteError(e)) rethrow;
       // Soft-delete is the user's intent; remove from cache so
       // the list immediately drops the row. Queue the same
-      // is_active=false UPDATE for replay.
-      await _deleteCacheRow(accountId);
-      await _queue?.enqueue(
-        QueuedUpdate(
+      // is_active=false UPDATE for replay (H4: atomic).
+      await _atomicCacheAndEnqueue(
+        write: () => _deleteCacheRow(accountId),
+        queueOp: QueuedUpdate(
           table: 'accounts',
           rowId: accountId,
           payload: {'is_active': false},
@@ -360,6 +385,40 @@ class AccountsRepository {
   /// optimistic-update paths to fetch the current state before
   /// patching it. Returns null when the row isn't cached or the
   /// database isn't wired (legacy zero-arg constructor).
+  /// Audit 2026-05-26 H4: atomic optimistic-cache + queue
+  /// enqueue. Both writes hit the same drift database; wrapping
+  /// in `db.transaction(...)` makes them succeed or roll back
+  /// together. Without this, a disk-full / locked-db error on
+  /// the queue insert AFTER the cache write left the UI showing
+  /// an "optimistic" row that would never replay — visible on
+  /// relaunch, silently wiped by the next online fetch.
+  ///
+  /// Falls through to "queue only" when db is null (legacy
+  /// zero-arg constructor used by older tests). The cache half
+  /// is best-effort regardless; the queue half is the load-
+  /// bearing part for offline correctness.
+  Future<void> _atomicCacheAndEnqueue({
+    required Future<void> Function() write,
+    required QueuedOp queueOp,
+  }) async {
+    final db = _db;
+    final queue = _queue;
+    if (db == null) {
+      // No drift wiring; just enqueue if a queue is present.
+      await queue?.enqueue(queueOp);
+      return;
+    }
+    if (queue == null) {
+      // No queue wiring; just do the cache write.
+      await write();
+      return;
+    }
+    await db.transaction(() async {
+      await write();
+      await queue.enqueue(queueOp);
+    });
+  }
+
   Future<Account?> _loadCacheRowById(String id) async {
     final db = _db;
     if (db == null) return null;

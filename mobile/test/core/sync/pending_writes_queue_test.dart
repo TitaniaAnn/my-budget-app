@@ -32,9 +32,14 @@ void main() {
   group('PendingWritesQueue.enqueue', () {
     test('persists a QueuedInsert with payload + table', () async {
       await queue.enqueue(
-        const QueuedInsert(
+        QueuedInsert(
           table: 'transactions',
-          payload: {
+          // Audit 2026-05-26 C6: payload MUST contain 'id'
+          // matching rowId so the replay UPSERT can conflict-
+          // resolve idempotently. The runtime assert in
+          // QueuedInsert enforces this.
+          payload: const {
+            'id': 'tx-client-uuid',
             'household_id': 'hh-1',
             'amount': -2500,
             'description': 'Coffee',
