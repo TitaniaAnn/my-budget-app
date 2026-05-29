@@ -226,16 +226,29 @@ serve(async (req) => {
     ? body.error?.error_code
     : body.webhook_code; // PENDING_EXPIRATION etc. are themselves the code
 
+  // Audit 2026-05-26 M7: wrap routing side-effects in
+  // try/catch so the processed_at stamp below ALWAYS runs.
+  // Pre-fix a routing throw between insert + UPDATE left the
+  // row with processed_at IS NULL forever — and no replay
+  // script existed to recover. Stamp first, log second.
   if (
     isItemError &&
     internalItemId &&
     errorCode &&
     REAUTH_ERROR_CODES.has(errorCode)
   ) {
-    await supabase
-      .from("plaid_items")
-      .update({ last_sync_error: errorCode })
-      .eq("id", internalItemId);
+    try {
+      await supabase
+        .from("plaid_items")
+        .update({ last_sync_error: errorCode })
+        .eq("id", internalItemId);
+    } catch (err) {
+      console.error(
+        "[plaid-webhook] reauth state update failed; processed_at " +
+          "will still be stamped",
+        err,
+      );
+    }
   }
 
   // TRANSACTIONS/SYNC_UPDATES_AVAILABLE: log only for Phase 4.
@@ -245,8 +258,9 @@ serve(async (req) => {
 
   // Mark processed regardless of whether routing did anything —
   // "we got this event and we made our routing decision."
-  // Unprocessed rows (processed_at IS NULL) only exist on
-  // crash, which the unprocessed-events index helps find.
+  // Unprocessed rows (processed_at IS NULL) now only exist on
+  // a pre-routing crash (between event log insert and this
+  // line), which is unrecoverable from outside anyway.
   await supabase
     .from("plaid_webhook_events")
     .update({ processed_at: new Date().toISOString() })
