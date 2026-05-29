@@ -457,6 +457,88 @@ void main() {
     );
 
     test(
+      'dedup: backtracking — Plaid B falls back to its 2nd-choice '
+      'candidate when its 1st choice is taken by Plaid A (review #3)',
+      () async {
+        // Two manual entries on 2026-05-10 + 2026-05-12, both $42.
+        // Plaid A is dated 2026-05-10 (distance 0 to entry 1).
+        // Plaid B is dated 2026-05-11 (distance 1 to entry 1,
+        //                              distance 1 to entry 2).
+        //
+        // The migration-057 algorithm: Plaid B's per_added rank
+        // picks entry 1 as plaid_pref=1 (alphabetical tiebreak),
+        // entry 2 as plaid_pref=2. Only plaid_pref=1 candidates
+        // flow forward. per_existing on entry 1: Plaid A vs
+        // Plaid B, A wins (distance 0 vs 1). Plaid B's
+        // existing_pref=2 → dropped. Plaid B ends up matching
+        // NOTHING — entry 2 left orphaned even though it would
+        // have been a perfectly good match.
+        //
+        // The migration-061 greedy matcher: iterate pairs in
+        // distance-ASC order. Pair (PlaidA, entry1, dist=0)
+        // matches first → both claimed. Pair (PlaidB, entry1,
+        // dist=1) skipped (entry1 already claimed). Pair
+        // (PlaidB, entry2, dist=1) matches → both claimed.
+        // Both Plaid rows merge correctly.
+        final entry1 = await harness.insertTransaction(
+          amountCents: -4200,
+          description: 'Manual entry #1',
+          transactionDate: DateTime.utc(2026, 5, 10),
+        );
+        final entry2 = await harness.insertTransaction(
+          amountCents: -4200,
+          description: 'Manual entry #2',
+          transactionDate: DateTime.utc(2026, 5, 12),
+        );
+
+        final result = await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-backtrack-A',
+              'amount_cents': -4200,
+              'description': 'Plaid A',
+              'date': '2026-05-10', // distance 0 to entry1, 2 to entry2
+            },
+            {
+              'plaid_transaction_id': 'plaid-tx-backtrack-B',
+              'amount_cents': -4200,
+              'description': 'Plaid B',
+              'date': '2026-05-11', // distance 1 to entry1, 1 to entry2
+            },
+          ],
+        );
+        expect(result['merged'], 2, reason: 'both Plaid rows find a match');
+        expect(result['added'], 0);
+
+        // entry1 was claimed by Plaid A (distance 0 wins).
+        final after1 = await harness.client
+            .from('transactions')
+            .select('external_id, description')
+            .eq('id', entry1)
+            .single();
+        expect(after1['external_id'], 'plaid-tx-backtrack-A');
+        expect(after1['description'], 'Manual entry #1');
+
+        // entry2 was claimed by Plaid B (after entry1 was taken).
+        final after2 = await harness.client
+            .from('transactions')
+            .select('external_id, description')
+            .eq('id', entry2)
+            .single();
+        expect(after2['external_id'], 'plaid-tx-backtrack-B');
+        expect(after2['description'], 'Manual entry #2');
+
+        // Total rows: still 2 (no new inserts).
+        final rows = await harness.client
+            .from('transactions')
+            .select('id')
+            .eq('account_id', harness.accountId);
+        expect((rows as List).length, 2);
+      },
+      skip: reason,
+    );
+
+    test(
       'dedup: existing transfer-leg / receipt-paired rows are NEVER '
       'merged even when amount+date match',
       () async {
