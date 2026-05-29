@@ -245,6 +245,30 @@ interface CachedJwk {
 const _jwkCache = new Map<string, CachedJwk>();
 const _JWK_TTL_MS = 24 * 60 * 60 * 1000;
 
+/// Distinct error class: "we couldn't reach Plaid to fetch the
+/// JWK for this kid." Caller (the webhook handler) catches this
+/// SEPARATELY from a plain Error so it can return 500 (telling
+/// Plaid to retry) instead of 200 + dead-letter (which is what
+/// "this signature is invalid" deserves).
+///
+/// Audit 2026-05-26 C5: without this differentiation, a Plaid
+/// JWK endpoint outage during an Edge Function cold start —
+/// when the per-instance cache is empty — fails-closed silently.
+/// Every webhook in that window becomes `{received: false,
+/// reason: "invalid signature"}` and Plaid stops retrying per
+/// our 200-means-handled contract. Hours of missed webhooks
+/// with no signal anywhere.
+export class PlaidJwkFetchError extends Error {
+  constructor(public readonly inner: unknown) {
+    super(
+      `Plaid-Verification: JWK fetch failed (${
+        inner instanceof Error ? inner.message : String(inner)
+      })`,
+    );
+    this.name = "PlaidJwkFetchError";
+  }
+}
+
 /// Constant-time hex-string comparison. Plain `===` exits at
 /// the first mismatching byte, leaking match-prefix length via
 /// timing. Not exploitable against asymmetric-signed payloads
@@ -307,17 +331,27 @@ export async function verifyPlaidWebhook(
   if (cached && (Date.now() - cached.cachedAt) < _JWK_TTL_MS) {
     jwkRaw = cached.key;
   } else {
-    const keyResponse = await plaidPost<{
-      key: Record<string, unknown> & {
-        kty: string;
-        alg: string;
-        use: string;
-        kid: string;
-        expired_at?: string | null;
-      };
-    }>("/webhook_verification_key/get", { key_id: kid });
-    jwkRaw = keyResponse.key;
-    _jwkCache.set(kid, { key: jwkRaw, cachedAt: Date.now() });
+    // Audit C5: wrap the JWK fetch in a try/catch that lifts
+    // any failure into PlaidJwkFetchError. The caller branches
+    // on the class to differentiate "we can't reach Plaid"
+    // (retry-worthy 500) from "this signature is bad" (200
+    // dead-letter). Without this both paths returned 200 and a
+    // JWK outage was invisible.
+    try {
+      const keyResponse = await plaidPost<{
+        key: Record<string, unknown> & {
+          kty: string;
+          alg: string;
+          use: string;
+          kid: string;
+          expired_at?: string | null;
+        };
+      }>("/webhook_verification_key/get", { key_id: kid });
+      jwkRaw = keyResponse.key;
+      _jwkCache.set(kid, { key: jwkRaw, cachedAt: Date.now() });
+    } catch (err) {
+      throw new PlaidJwkFetchError(err);
+    }
   }
 
   // Step 3 & 4: verify the JWT signature AND the body hash.
@@ -349,14 +383,24 @@ export async function verifyPlaidWebhook(
     );
   }
 
-  // Step 5: iat freshness (5-minute replay window). jose's
-  // jwtVerify already checks exp; iat needs a manual bound.
+  // Step 5: iat freshness check. Audit 2026-05-26 H8: the iat
+  // bound has no security value here — the JWT signature is
+  // what authenticates the message, the body-hash claim binds
+  // the signature to THIS body, and the dedup_hash UNIQUE on
+  // plaid_webhook_events (migration 060) stops a replay against
+  // the same body from double-processing. Plaid retries with
+  // exponential backoff over MINUTES on transient delivery
+  // failures, and the prior ±5-min window rejected those legit
+  // retries. Widened to 24h so a Plaid retry stuck behind their
+  // own backoff still verifies, but a clock-drift catastrophe
+  // (someone replays a JWT from a different day) still gets
+  // caught.
   const iat = (payload as { iat?: number }).iat;
   if (!iat) throw new Error("Plaid-Verification: missing iat claim");
   const ageSec = Math.floor(Date.now() / 1000) - iat;
-  if (ageSec < -60 || ageSec > 300) {
+  if (ageSec < -300 || ageSec > 86400) {
     throw new Error(
-      `Plaid-Verification: iat ${iat} outside the 5-minute replay window ` +
+      `Plaid-Verification: iat ${iat} outside the 24-hour replay window ` +
         `(${ageSec}s old)`,
     );
   }

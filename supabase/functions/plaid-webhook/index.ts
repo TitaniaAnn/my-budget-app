@@ -43,7 +43,11 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { jsonError, verifyPlaidWebhook } from "../_shared/plaid.ts";
+import {
+  jsonError,
+  PlaidJwkFetchError,
+  verifyPlaidWebhook,
+} from "../_shared/plaid.ts";
 
 interface PlaidWebhookBody {
   webhook_type: string;
@@ -81,6 +85,19 @@ serve(async (req) => {
   try {
     await verifyPlaidWebhook(verificationHeader, rawBody);
   } catch (err) {
+    // Audit 2026-05-26 C5: differentiate "we couldn't reach
+    // Plaid to verify" from "signature is invalid." The former
+    // is transient — we want Plaid to retry, so 500. The latter
+    // is final — 200 with a dead-letter log so a forgery
+    // doesn't generate retry traffic and an attacker can't use
+    // timing differences to probe.
+    if (err instanceof PlaidJwkFetchError) {
+      console.error("[plaid-webhook] JWK fetch failed (retry-worthy)", err);
+      return jsonError(
+        503,
+        "could not reach Plaid to verify signature; retry expected",
+      );
+    }
     console.error(
       "[plaid-webhook] signature verification failed",
       err instanceof Error ? err.message : err,
