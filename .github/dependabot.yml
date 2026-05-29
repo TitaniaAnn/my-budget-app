@@ -1,0 +1,47 @@
+version: 2
+
+# Audit 2026-05-26 C10. Weekly checks against the two registries
+# that ship critical dependencies — pub (Plaid SDK, Supabase SDK,
+# drift, all the Flutter packages) and github-actions (CI runner
+# updates). Daily-scaled is unnecessary noise; monthly misses
+# security advisories. Weekly is the right cadence.
+#
+# Major-version bumps grouped so the SDK ecosystem (Supabase ↔
+# postgrest_dart ↔ gotrue ↔ realtime_dart) lands as one PR
+# instead of four.
+
+updates:
+  - package-ecosystem: pub
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      supabase:
+        patterns:
+          - "supabase*"
+          - "postgrest*"
+          - "gotrue*"
+          - "realtime*"
+          - "storage_client*"
+      riverpod:
+        patterns:
+          - "*riverpod*"
+      drift:
+        patterns:
+          - "drift*"
+          - "sqlite3*"
+          - "sqlparser*"
+      build:
+        patterns:
+          - "build_runner"
+          - "json_serializable"
+          - "freezed*"
+          - "source_gen*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

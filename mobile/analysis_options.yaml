@@ -30,8 +30,21 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # Audit 2026-05-26 C9: lock in the rules that already
+    # pass on the current codebase. Adding stricter rules later
+    # (use_build_context_synchronously as error, avoid_dynamic_calls,
+    # require_trailing_commas) would surface meaningful diffs
+    # and should be done in their own focused PRs.
+    #
+    # avoid_print — the codebase already has none in lib/. Lock
+    # it in so a stray debug print can't sneak through review.
+    avoid_print: true
+    # unawaited_futures — flags `someFuture()` without `await`
+    # or `unawaited(...)`. The codebase uses `// ignore:
+    # discarded_futures` at the few intentional sites; this
+    # promotes "I forgot await" from silent runtime hang to a
+    # surfaced warning.
+    unawaited_futures: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

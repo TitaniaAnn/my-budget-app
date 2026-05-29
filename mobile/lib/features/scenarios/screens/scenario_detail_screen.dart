@@ -758,6 +758,7 @@ class _EventTile extends ConsumerWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 if (v == 'edit') {
+                  // ignore: unawaited_futures
                   showAppSheet<void>(
                     context,
                     child: AddEventSheet(

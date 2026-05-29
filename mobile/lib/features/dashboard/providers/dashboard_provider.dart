@@ -4,6 +4,8 @@
 // the last 30 days so both the monthly summary and the spending sparkline are
 // served from a single query; the monthly figures are derived by filtering in
 // Dart to >= the 1st of the current month.
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/utils/retry.dart';
@@ -266,14 +268,14 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // The provider is keepAlive so the call still runs at most once
   // per app process.
   // ignore: unused_result
-  ref.read(runRecurringSchedulerProvider.future);
+  unawaited(ref.read(runRecurringSchedulerProvider.future));
 
   // Trigger the notifications pass (budget-over + large-tx). Fire-
   // and-forget for the same reasons as the scheduler above. The
   // provider is keepAlive so the engine still runs once per app
   // process even though we don't await.
   // ignore: unused_result
-  ref.read(runNotificationsProvider.future);
+  unawaited(ref.read(runNotificationsProvider.future));
 
   // Trigger Plaid sync. Fire-and-forget, same shape as the
   // scheduler + notifications above. The keepAlive provider
@@ -281,7 +283,7 @@ Future<DashboardData> dashboardData(DashboardDataRef ref) async {
   // one app session; pull-to-refresh invalidates the trigger
   // provider directly to force a re-sync.
   // ignore: unused_result
-  ref.read(plaidSyncTriggerProvider.future);
+  unawaited(ref.read(plaidSyncTriggerProvider.future));
 
   final accountsRepo = ref.read(accountsRepositoryProvider);
   final txRepo = ref.read(transactionsRepositoryProvider);

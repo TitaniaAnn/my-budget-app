@@ -17,7 +17,13 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "com.mybudgetapp.mobile"
-    compileSdk = flutter.compileSdkVersion
+    // Audit 2026-05-26 C7: pin SDK levels literally instead of
+    // inheriting from `flutter.*`. A future Flutter SDK bump
+    // would otherwise silently shift targetSdk and change
+    // behaviour for runtime permissions / background services
+    // / scoped storage on every build. Play Store requires
+    // targetSdk=35 as of Aug 2025. Bump deliberately.
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -43,8 +49,11 @@ android {
 
     defaultConfig {
         applicationId = "com.mybudgetapp.mobile"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // C7: literal pins. minSdk=23 (Android 6) is the floor
+        // Flutter currently supports for most plugins. targetSdk
+        // tracks the compileSdk pin above.
+        minSdk = 23
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

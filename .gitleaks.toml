@@ -1,0 +1,64 @@
+# Audit 2026-05-26 C2 — secret-scanner config.
+#
+# Catches Plaid client_id / secret leaks (the dominant risk for
+# this codebase: supabase/functions/.env.local holds Plaid
+# sandbox creds and the same file format will hold prod creds at
+# deploy). Runs in CI via .github/workflows/gitleaks.yaml.
+#
+# The default ruleset already covers AWS / GCP / generic high-
+# entropy strings; this file ADDS the Plaid-specific patterns
+# and a whitelist for the few legitimate "looks like a secret
+# but isn't" strings in the repo (sandbox public keys in fixture
+# JSON, etc).
+
+title = "MyBudget gitleaks config"
+
+# Inherit gitleaks' built-in rules (AWS keys, GCP keys, GitHub
+# tokens, JWT, etc) and layer Plaid + Supabase patterns on top.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "plaid-client-id"
+description = "Plaid client_id (24-hex-char identifier)"
+# Plaid documents client_id as a 24-character hex string. False-
+# positive risk: a 24-char hex commit SHA in a comment. Mitigated
+# by requiring the literal "plaid" in the same line via the
+# `keywords` filter — gitleaks' AND across rule + keywords.
+regex = '''[0-9a-f]{24}'''
+keywords = ["plaid", "PLAID", "client_id", "PLAID_CLIENT_ID"]
+
+[[rules]]
+id = "plaid-secret"
+description = "Plaid sandbox/dev/prod secret"
+# Plaid secrets are 30-character hex (per their docs).
+regex = '''[0-9a-f]{30}'''
+keywords = ["plaid_secret", "PLAID_SECRET", "plaid", "PLAID"]
+
+[[rules]]
+id = "supabase-service-role-key"
+description = "Supabase service-role JWT"
+# Service-role keys are full JWTs. The JWT header for Supabase
+# uses HS256; the second segment encodes role=service_role
+# which we anchor on to avoid matching anon keys (legitimate
+# in .env.json).
+regex = '''eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]*c2VydmljZV9yb2xl[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+'''
+
+[allowlist]
+description = "Paths + patterns where a 'secret-shaped' string is intentional."
+paths = [
+  # The anon key is supposed to be embedded in the client app
+  # — it's a public capability, not a secret. Test fixtures
+  # carry sandbox keys for local Supabase.
+  '''mobile/test/integration/.*\.dart''',
+  '''mobile/\.env\.example\.json''',
+  '''supabase/functions/.+/README\.md''',
+  # Generated drift schema dumps contain looks-like-hash uuids.
+  '''mobile/lib/core/database/.*\.g\.dart''',
+]
+# Specific strings to exempt across the whole repo:
+regexes = [
+  # Supabase local-dev demo anon key (deterministic, public,
+  # documented in supabase docs).
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24i[A-Za-z0-9_.\-=]+''',
+]

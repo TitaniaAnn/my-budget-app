@@ -1,0 +1,37 @@
+# Audit 2026-05-26 C2 — secret-scanner workflow.
+#
+# Runs gitleaks on every push + PR. Uses the repo-root
+# .gitleaks.toml which adds Plaid + Supabase service-role
+# patterns on top of gitleaks' default ruleset.
+#
+# Why not pre-commit instead: pre-commit hooks are local-only,
+# require dev setup, and don't catch secrets that arrived in a
+# branch from somewhere else (rebase, cherry-pick, GitHub web
+# edit). CI is the authoritative gate.
+
+name: secret-scan
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks scans history; depth=0 ⇒ full clone so a
+          # secret committed in an earlier commit doesn't slip
+          # through because we only fetched the latest.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          # gitleaks-action looks for the config at repo root
+          # automatically when GITLEAKS_CONFIG isn't set, but
+          # be explicit so a future move of the config file
+          # doesn't silently silently fall back to defaults.
+          GITLEAKS_CONFIG: .gitleaks.toml

@@ -74,6 +74,9 @@ class _CaptureReceiptSheetState extends ConsumerState<CaptureReceiptSheet> {
 
       if (mounted) {
         Navigator.of(context).pop(); // close sheet
+        // Fire-and-forget: the push completes when the user
+        // backs out of the detail; we don't need to wait.
+        // ignore: unawaited_futures
         context.push('/receipts/${receipt.id}');
       }
     } catch (e) {
