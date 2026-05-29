@@ -248,9 +248,11 @@ RecurringTransactionsCacheCompanion _toCompanion(RecurringTransaction r) {
     merchant: Value(r.merchant),
     categoryId: Value(r.categoryId),
     cadence: Value(r.cadence.dbValue),
-    nextOccurrenceDate: Value(r.nextOccurrenceDate.toUtc()),
+    // M10: DATE columns stored without toUtc; lastEmittedAt is
+    // TIMESTAMPTZ so it keeps the .toUtc().
+    nextOccurrenceDate: Value(r.nextOccurrenceDate),
     lastEmittedAt: Value(r.lastEmittedAt?.toUtc()),
-    skippedUntilDate: Value(r.skippedUntilDate?.toUtc()),
+    skippedUntilDate: Value(r.skippedUntilDate),
     isActive: Value(r.isActive),
     createdBy: Value(r.createdBy),
     createdAt: Value(r.createdAt.toUtc()),

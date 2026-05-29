@@ -553,7 +553,8 @@ ReceiptsCacheCompanion _receiptToCompanion(Receipt r) {
     storagePath: Value(r.storagePath),
     thumbnailPath: Value(r.thumbnailPath),
     merchantName: Value(r.merchantName),
-    receiptDate: Value(r.receiptDate?.toUtc()),
+    // M10: DATE column — no .toUtc().
+    receiptDate: Value(r.receiptDate),
     totalAmount: Value(r.totalAmount),
     ocrStatus: Value(_ocrStatusDbValue(r.ocrStatus)),
     ocrRawJson: Value(r.ocrRaw == null ? null : jsonEncode(r.ocrRaw)),

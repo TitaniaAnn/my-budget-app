@@ -356,8 +356,10 @@ BudgetsCacheCompanion _budgetToCompanion(Budget b) {
     amount: Value(b.amount),
     currency: Value(b.currency),
     period: Value(b.period.dbValue),
-    startDate: Value(b.startDate.toUtc()),
-    endDate: Value(b.endDate?.toUtc()),
+    // M10: DATE columns stored without toUtc — see the
+    // explanation in transactions_repository.dart.
+    startDate: Value(b.startDate),
+    endDate: Value(b.endDate),
     createdBy: Value(b.createdBy),
     cachedAt: Value(DateTime.now().toUtc()),
   );

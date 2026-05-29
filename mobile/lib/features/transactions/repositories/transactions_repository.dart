@@ -933,8 +933,14 @@ TransactionsCacheCompanion _transactionToCompanion(Transaction t) {
     description: Value(t.description),
     merchant: Value(t.merchant),
     categoryId: Value(t.categoryId),
-    transactionDate: Value(t.transactionDate.toUtc()),
-    postedDate: Value(t.postedDate?.toUtc()),
+    // Audit 2026-05-26 M10: DATE columns are stored without
+    // toUtc(). The server returns YYYY-MM-DD which DateTime.parse
+    // interprets as LOCAL midnight; calling .toUtc() then shifts
+    // the day back by the host's UTC offset (UTC+10 user sees
+    // a May 28 row stored as May 27). Leave as the original
+    // local-midnight value so the calendar day round-trips.
+    transactionDate: Value(t.transactionDate),
+    postedDate: Value(t.postedDate),
     pending: Value(t.pending),
     source: Value(t.source),
     enteredBy: Value(t.enteredBy),

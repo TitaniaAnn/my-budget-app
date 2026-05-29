@@ -138,7 +138,8 @@ class FxRatesRepository {
             householdId: Value(householdId),
             fromCurrency: Value(fromCurrency),
             toCurrency: Value(toCurrency),
-            asOfDate: Value(asOfDate.toUtc()),
+            // M10: DATE column — no .toUtc().
+            asOfDate: Value(asOfDate),
             rate: Value(rate),
             createdBy: Value(createdBy),
             createdAt: Value(now),
@@ -173,7 +174,8 @@ class FxRatesRepository {
           householdId: householdId,
           fromCurrency: fromCurrency,
           toCurrency: toCurrency,
-          asOfDate: asOfDate.toUtc(),
+          // M10: DATE column — no .toUtc().
+          asOfDate: asOfDate,
         );
       } catch (_) {/**/}
     }
@@ -243,7 +245,8 @@ FxRatesCacheCompanion _fxToCompanion(FxRate r) {
     householdId: Value(r.householdId),
     fromCurrency: Value(r.fromCurrency),
     toCurrency: Value(r.toCurrency),
-    asOfDate: Value(r.asOfDate.toUtc()),
+    // M10: DATE column — no .toUtc().
+    asOfDate: Value(r.asOfDate),
     rate: Value(r.rate),
     createdBy: Value(r.createdBy),
     createdAt: Value(r.createdAt.toUtc()),
