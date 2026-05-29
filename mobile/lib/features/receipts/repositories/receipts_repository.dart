@@ -1,10 +1,19 @@
 // Data access layer for receipts and receipt line items.
 // Also owns the Supabase Storage upload/signed-URL logic so the rest
 // of the app never references the bucket name directly.
+//
+// Audit L1 Phase 2c: cache-through on the read paths (fetchReceipts,
+// fetchReceipt, fetchLineItems). Storage uploads + Edge Function
+// invokes (uploadReceipt, deleteReceipt, retryOcr) stay network-
+// only — Phase 4 handles offline storage queueing.
+import 'dart:convert';
 import 'dart:io';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/receipt.dart';
 import '../models/receipt_line_item.dart';
@@ -15,32 +24,50 @@ const _bucket = 'receipts';
 
 @riverpod
 ReceiptsRepository receiptsRepository(ReceiptsRepositoryRef ref) {
-  return ReceiptsRepository();
+  return ReceiptsRepository(db: ref.watch(appDatabaseProvider));
 }
 
 class ReceiptsRepository {
+  ReceiptsRepository({AppDatabase? db}) : _db = db;
+  final AppDatabase? _db;
   final _uuid = const Uuid();
 
   /// Fetches all receipts for a household, newest first.
   Future<List<Receipt>> fetchReceipts(String householdId) async {
-    final data = await supabase
-        .from('receipts')
-        .select()
-        .eq('household_id', householdId)
-        .order('uploaded_at', ascending: false);
+    try {
+      final data = await supabase
+          .from('receipts')
+          .select()
+          .eq('household_id', householdId)
+          .order('uploaded_at', ascending: false);
 
-    return data.map<Receipt>(Receipt.fromJson).toList();
+      final receipts = data.map<Receipt>(Receipt.fromJson).toList();
+      await _refreshReceiptsCacheForHousehold(householdId, receipts);
+      return receipts;
+    } catch (_) {
+      final cached = await _loadReceiptsFromCache(householdId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Fetches a single receipt by ID (for the detail screen).
   Future<Receipt> fetchReceipt(String receiptId) async {
-    final data = await supabase
-        .from('receipts')
-        .select()
-        .eq('id', receiptId)
-        .single();
+    try {
+      final data = await supabase
+          .from('receipts')
+          .select()
+          .eq('id', receiptId)
+          .single();
 
-    return Receipt.fromJson(data);
+      final receipt = Receipt.fromJson(data);
+      await _writeReceiptCacheRow(receipt);
+      return receipt;
+    } catch (_) {
+      final cached = await _loadReceiptFromCache(receiptId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Fetches all line items for a receipt, ordered by sort_order ASC
@@ -52,13 +79,23 @@ class ReceiptsRepository {
   /// `ascending: true` here is load-bearing — without it the editor
   /// would render line items bottom-up.
   Future<List<ReceiptLineItem>> fetchLineItems(String receiptId) async {
-    final data = await supabase
-        .from('receipt_line_items')
-        .select()
-        .eq('receipt_id', receiptId)
-        .order('sort_order', ascending: true);
+    try {
+      final data = await supabase
+          .from('receipt_line_items')
+          .select()
+          .eq('receipt_id', receiptId)
+          .order('sort_order', ascending: true);
 
-    return data.map<ReceiptLineItem>(ReceiptLineItem.fromJson).toList();
+      final items = data
+          .map<ReceiptLineItem>(ReceiptLineItem.fromJson)
+          .toList();
+      await _refreshLineItemsCacheForReceipt(receiptId, items);
+      return items;
+    } catch (_) {
+      final cached = await _loadLineItemsFromCache(receiptId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Uploads [imageFile] (full resolution) AND a 256-px JPEG thumbnail
@@ -136,7 +173,9 @@ class ReceiptsRepository {
           })
           .select()
           .single();
-      return Receipt.fromJson(data);
+      final receipt = Receipt.fromJson(data);
+      await _writeReceiptCacheRow(receipt);
+      return receipt;
     } catch (_) {
       // Compensate both objects. Swallow cleanup failures — the
       // original insert error is what the caller needs to see.
@@ -166,7 +205,9 @@ class ReceiptsRepository {
         .select()
         .single();
 
-    return Receipt.fromJson(data);
+    final receipt = Receipt.fromJson(data);
+    await _writeReceiptCacheRow(receipt);
+    return receipt;
   }
 
   /// Atomically replaces all line items for a receipt.
@@ -182,12 +223,20 @@ class ReceiptsRepository {
       'save_receipt_line_items',
       params: {'p_receipt_id': receiptId, 'p_items': items},
     );
-    if (data == null) return [];
-    return (data as List)
+    if (data == null) {
+      // The RPC returned nothing — mirror that on the cache side
+      // by clearing the receipt's line items. Otherwise stale rows
+      // from a prior save would survive a clear-out.
+      await _refreshLineItemsCacheForReceipt(receiptId, const []);
+      return [];
+    }
+    final saved = (data as List)
         .map<ReceiptLineItem>(
           (e) => ReceiptLineItem.fromJson(e as Map<String, dynamic>),
         )
         .toList();
+    await _refreshLineItemsCacheForReceipt(receiptId, saved);
+    return saved;
   }
 
   /// Fetches line items whose OCR confidence (basis points) falls in
@@ -262,6 +311,11 @@ class ReceiptsRepository {
           'category_id': ?categoryId,
         })
         .eq('id', lineItemId);
+    // The server doesn't return the modified row, so we can't
+    // upsert into the cache directly. The "uncertain review"
+    // surface only cares whether ocr_confidence_bp is non-null,
+    // which is a server-only filter — the next fetchLineItems
+    // for the parent receipt reconciles. Skip cache writes here.
   }
 
   /// Generates a short-lived signed URL for displaying a private receipt image.
@@ -334,6 +388,7 @@ class ReceiptsRepository {
       await supabase.storage.from(_bucket).remove([storagePath]);
     }
     await supabase.from('receipts').delete().eq('id', receiptId);
+    await _deleteReceiptCacheRow(receiptId);
   }
 
   /// Invokes the `process-receipt-ocr` Edge Function to re-attempt
@@ -393,7 +448,183 @@ class ReceiptsRepository {
         )
         .toList();
   }
+
+  // ── Cache helpers ──────────────────────────────────────────
+
+  Future<void> _refreshReceiptsCacheForHousehold(
+    String householdId,
+    List<Receipt> receipts,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceReceiptsForHousehold(
+        householdId,
+        receipts.map(_receiptToCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<void> _writeReceiptCacheRow(Receipt r) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.upsertReceipt(_receiptToCompanion(r));
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteReceiptCacheRow(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.deleteReceipt(id);
+    } catch (_) {/**/}
+  }
+
+  Future<List<Receipt>?> _loadReceiptsFromCache(String householdId) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadReceiptsForHousehold(householdId);
+      if (rows.isEmpty) return null;
+      return rows.map(_receiptFromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Receipt?> _loadReceiptFromCache(String id) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final row = await db.loadReceiptById(id);
+      if (row == null) return null;
+      return _receiptFromCacheRow(row);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _refreshLineItemsCacheForReceipt(
+    String receiptId,
+    List<ReceiptLineItem> items,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceLineItemsForReceipt(
+        receiptId,
+        items.map(_lineItemToCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<List<ReceiptLineItem>?> _loadLineItemsFromCache(
+    String receiptId,
+  ) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadLineItemsForReceipt(receiptId);
+      if (rows.isEmpty) return null;
+      return rows.map(_lineItemFromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
+// ── Receipt ↔ drift Companion mappers ──────────────────────────
+
+ReceiptsCacheCompanion _receiptToCompanion(Receipt r) {
+  return ReceiptsCacheCompanion(
+    id: Value(r.id),
+    householdId: Value(r.householdId),
+    uploadedBy: Value(r.uploadedBy),
+    storagePath: Value(r.storagePath),
+    thumbnailPath: Value(r.thumbnailPath),
+    merchantName: Value(r.merchantName),
+    receiptDate: Value(r.receiptDate?.toUtc()),
+    totalAmount: Value(r.totalAmount),
+    ocrStatus: Value(_ocrStatusDbValue(r.ocrStatus)),
+    ocrRawJson: Value(r.ocrRaw == null ? null : jsonEncode(r.ocrRaw)),
+    uploadedAt: Value(r.uploadedAt.toUtc()),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+Receipt _receiptFromCacheRow(ReceiptsCacheRow r) {
+  return Receipt(
+    id: r.id,
+    householdId: r.householdId,
+    uploadedBy: r.uploadedBy,
+    storagePath: r.storagePath,
+    thumbnailPath: r.thumbnailPath,
+    merchantName: r.merchantName,
+    receiptDate: r.receiptDate,
+    totalAmount: r.totalAmount,
+    ocrStatus: _ocrStatusFromDbValue(r.ocrStatus),
+    ocrRaw: r.ocrRawJson == null
+        ? null
+        : jsonDecode(r.ocrRawJson!) as Map<String, dynamic>,
+    uploadedAt: r.uploadedAt,
+  );
+}
+
+ReceiptLineItemsCacheCompanion _lineItemToCompanion(ReceiptLineItem li) {
+  return ReceiptLineItemsCacheCompanion(
+    id: Value(li.id),
+    receiptId: Value(li.receiptId),
+    description: Value(li.description),
+    amount: Value(li.amount),
+    quantity: Value(li.quantity),
+    unitPrice: Value(li.unitPrice),
+    categoryId: Value(li.categoryId),
+    isTax: Value(li.isTax),
+    isTip: Value(li.isTip),
+    isDiscount: Value(li.isDiscount),
+    sortOrder: Value(li.sortOrder),
+    ocrConfidenceBp: Value(li.ocrConfidenceBp),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+ReceiptLineItem _lineItemFromCacheRow(ReceiptLineItemsCacheRow r) {
+  return ReceiptLineItem(
+    id: r.id,
+    receiptId: r.receiptId,
+    description: r.description,
+    amount: r.amount,
+    quantity: r.quantity,
+    unitPrice: r.unitPrice,
+    categoryId: r.categoryId,
+    isTax: r.isTax,
+    isTip: r.isTip,
+    isDiscount: r.isDiscount,
+    sortOrder: r.sortOrder,
+    ocrConfidenceBp: r.ocrConfidenceBp,
+  );
+}
+
+/// OcrStatus.values uses Dart identifier names, not the DB strings.
+/// `@JsonValue` annotations on the enum map snake_case for the
+/// wire — these helpers do the same for cache writes/reads.
+String _ocrStatusDbValue(OcrStatus s) => switch (s) {
+  OcrStatus.pending => 'pending',
+  OcrStatus.processing => 'processing',
+  OcrStatus.complete => 'complete',
+  OcrStatus.failed => 'failed',
+};
+
+OcrStatus _ocrStatusFromDbValue(String v) => switch (v) {
+  'pending' => OcrStatus.pending,
+  'processing' => OcrStatus.processing,
+  'complete' => OcrStatus.complete,
+  'failed' => OcrStatus.failed,
+  // Forward-compat fallback for a cache row written by a newer
+  // app version that added an OcrStatus variant.
+  _ => OcrStatus.pending,
+};
 
 /// A transaction surfaced as a candidate for pairing with a receipt.
 ///

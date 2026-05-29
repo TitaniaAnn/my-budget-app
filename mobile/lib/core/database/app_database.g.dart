@@ -3995,6 +3995,1544 @@ class FxRatesCacheCompanion extends UpdateCompanion<FxRatesCacheRow> {
   }
 }
 
+class $ReceiptsCacheTable extends ReceiptsCache
+    with TableInfo<$ReceiptsCacheTable, ReceiptsCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceiptsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uploadedByMeta = const VerificationMeta(
+    'uploadedBy',
+  );
+  @override
+  late final GeneratedColumn<String> uploadedBy = GeneratedColumn<String>(
+    'uploaded_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storagePathMeta = const VerificationMeta(
+    'storagePath',
+  );
+  @override
+  late final GeneratedColumn<String> storagePath = GeneratedColumn<String>(
+    'storage_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thumbnailPathMeta = const VerificationMeta(
+    'thumbnailPath',
+  );
+  @override
+  late final GeneratedColumn<String> thumbnailPath = GeneratedColumn<String>(
+    'thumbnail_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _merchantNameMeta = const VerificationMeta(
+    'merchantName',
+  );
+  @override
+  late final GeneratedColumn<String> merchantName = GeneratedColumn<String>(
+    'merchant_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receiptDateMeta = const VerificationMeta(
+    'receiptDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> receiptDate = GeneratedColumn<DateTime>(
+    'receipt_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalAmountMeta = const VerificationMeta(
+    'totalAmount',
+  );
+  @override
+  late final GeneratedColumn<int> totalAmount = GeneratedColumn<int>(
+    'total_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ocrStatusMeta = const VerificationMeta(
+    'ocrStatus',
+  );
+  @override
+  late final GeneratedColumn<String> ocrStatus = GeneratedColumn<String>(
+    'ocr_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ocrRawJsonMeta = const VerificationMeta(
+    'ocrRawJson',
+  );
+  @override
+  late final GeneratedColumn<String> ocrRawJson = GeneratedColumn<String>(
+    'ocr_raw_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _uploadedAtMeta = const VerificationMeta(
+    'uploadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> uploadedAt = GeneratedColumn<DateTime>(
+    'uploaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    uploadedBy,
+    storagePath,
+    thumbnailPath,
+    merchantName,
+    receiptDate,
+    totalAmount,
+    ocrStatus,
+    ocrRawJson,
+    uploadedAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receipts_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReceiptsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('uploaded_by')) {
+      context.handle(
+        _uploadedByMeta,
+        uploadedBy.isAcceptableOrUnknown(data['uploaded_by']!, _uploadedByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uploadedByMeta);
+    }
+    if (data.containsKey('storage_path')) {
+      context.handle(
+        _storagePathMeta,
+        storagePath.isAcceptableOrUnknown(
+          data['storage_path']!,
+          _storagePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_storagePathMeta);
+    }
+    if (data.containsKey('thumbnail_path')) {
+      context.handle(
+        _thumbnailPathMeta,
+        thumbnailPath.isAcceptableOrUnknown(
+          data['thumbnail_path']!,
+          _thumbnailPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('merchant_name')) {
+      context.handle(
+        _merchantNameMeta,
+        merchantName.isAcceptableOrUnknown(
+          data['merchant_name']!,
+          _merchantNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_date')) {
+      context.handle(
+        _receiptDateMeta,
+        receiptDate.isAcceptableOrUnknown(
+          data['receipt_date']!,
+          _receiptDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+        _totalAmountMeta,
+        totalAmount.isAcceptableOrUnknown(
+          data['total_amount']!,
+          _totalAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ocr_status')) {
+      context.handle(
+        _ocrStatusMeta,
+        ocrStatus.isAcceptableOrUnknown(data['ocr_status']!, _ocrStatusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ocrStatusMeta);
+    }
+    if (data.containsKey('ocr_raw_json')) {
+      context.handle(
+        _ocrRawJsonMeta,
+        ocrRawJson.isAcceptableOrUnknown(
+          data['ocr_raw_json']!,
+          _ocrRawJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('uploaded_at')) {
+      context.handle(
+        _uploadedAtMeta,
+        uploadedAt.isAcceptableOrUnknown(data['uploaded_at']!, _uploadedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uploadedAtMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReceiptsCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReceiptsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      uploadedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uploaded_by'],
+      )!,
+      storagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}storage_path'],
+      )!,
+      thumbnailPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumbnail_path'],
+      ),
+      merchantName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant_name'],
+      ),
+      receiptDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}receipt_date'],
+      ),
+      totalAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_amount'],
+      ),
+      ocrStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_status'],
+      )!,
+      ocrRawJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_raw_json'],
+      ),
+      uploadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}uploaded_at'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReceiptsCacheTable createAlias(String alias) {
+    return $ReceiptsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class ReceiptsCacheRow extends DataClass
+    implements Insertable<ReceiptsCacheRow> {
+  final String id;
+  final String householdId;
+  final String uploadedBy;
+  final String storagePath;
+  final String? thumbnailPath;
+  final String? merchantName;
+  final DateTime? receiptDate;
+  final int? totalAmount;
+
+  /// Stores the OcrStatus dbValue verbatim ('pending', etc.).
+  final String ocrStatus;
+
+  /// JSON-encoded `Map<String, dynamic>`. Null when OCR hasn't
+  /// run or returned nothing.
+  final String? ocrRawJson;
+  final DateTime uploadedAt;
+  final DateTime cachedAt;
+  const ReceiptsCacheRow({
+    required this.id,
+    required this.householdId,
+    required this.uploadedBy,
+    required this.storagePath,
+    this.thumbnailPath,
+    this.merchantName,
+    this.receiptDate,
+    this.totalAmount,
+    required this.ocrStatus,
+    this.ocrRawJson,
+    required this.uploadedAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['household_id'] = Variable<String>(householdId);
+    map['uploaded_by'] = Variable<String>(uploadedBy);
+    map['storage_path'] = Variable<String>(storagePath);
+    if (!nullToAbsent || thumbnailPath != null) {
+      map['thumbnail_path'] = Variable<String>(thumbnailPath);
+    }
+    if (!nullToAbsent || merchantName != null) {
+      map['merchant_name'] = Variable<String>(merchantName);
+    }
+    if (!nullToAbsent || receiptDate != null) {
+      map['receipt_date'] = Variable<DateTime>(receiptDate);
+    }
+    if (!nullToAbsent || totalAmount != null) {
+      map['total_amount'] = Variable<int>(totalAmount);
+    }
+    map['ocr_status'] = Variable<String>(ocrStatus);
+    if (!nullToAbsent || ocrRawJson != null) {
+      map['ocr_raw_json'] = Variable<String>(ocrRawJson);
+    }
+    map['uploaded_at'] = Variable<DateTime>(uploadedAt);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  ReceiptsCacheCompanion toCompanion(bool nullToAbsent) {
+    return ReceiptsCacheCompanion(
+      id: Value(id),
+      householdId: Value(householdId),
+      uploadedBy: Value(uploadedBy),
+      storagePath: Value(storagePath),
+      thumbnailPath: thumbnailPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailPath),
+      merchantName: merchantName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(merchantName),
+      receiptDate: receiptDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptDate),
+      totalAmount: totalAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalAmount),
+      ocrStatus: Value(ocrStatus),
+      ocrRawJson: ocrRawJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrRawJson),
+      uploadedAt: Value(uploadedAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory ReceiptsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReceiptsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String>(json['householdId']),
+      uploadedBy: serializer.fromJson<String>(json['uploadedBy']),
+      storagePath: serializer.fromJson<String>(json['storagePath']),
+      thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
+      merchantName: serializer.fromJson<String?>(json['merchantName']),
+      receiptDate: serializer.fromJson<DateTime?>(json['receiptDate']),
+      totalAmount: serializer.fromJson<int?>(json['totalAmount']),
+      ocrStatus: serializer.fromJson<String>(json['ocrStatus']),
+      ocrRawJson: serializer.fromJson<String?>(json['ocrRawJson']),
+      uploadedAt: serializer.fromJson<DateTime>(json['uploadedAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String>(householdId),
+      'uploadedBy': serializer.toJson<String>(uploadedBy),
+      'storagePath': serializer.toJson<String>(storagePath),
+      'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
+      'merchantName': serializer.toJson<String?>(merchantName),
+      'receiptDate': serializer.toJson<DateTime?>(receiptDate),
+      'totalAmount': serializer.toJson<int?>(totalAmount),
+      'ocrStatus': serializer.toJson<String>(ocrStatus),
+      'ocrRawJson': serializer.toJson<String?>(ocrRawJson),
+      'uploadedAt': serializer.toJson<DateTime>(uploadedAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  ReceiptsCacheRow copyWith({
+    String? id,
+    String? householdId,
+    String? uploadedBy,
+    String? storagePath,
+    Value<String?> thumbnailPath = const Value.absent(),
+    Value<String?> merchantName = const Value.absent(),
+    Value<DateTime?> receiptDate = const Value.absent(),
+    Value<int?> totalAmount = const Value.absent(),
+    String? ocrStatus,
+    Value<String?> ocrRawJson = const Value.absent(),
+    DateTime? uploadedAt,
+    DateTime? cachedAt,
+  }) => ReceiptsCacheRow(
+    id: id ?? this.id,
+    householdId: householdId ?? this.householdId,
+    uploadedBy: uploadedBy ?? this.uploadedBy,
+    storagePath: storagePath ?? this.storagePath,
+    thumbnailPath: thumbnailPath.present
+        ? thumbnailPath.value
+        : this.thumbnailPath,
+    merchantName: merchantName.present ? merchantName.value : this.merchantName,
+    receiptDate: receiptDate.present ? receiptDate.value : this.receiptDate,
+    totalAmount: totalAmount.present ? totalAmount.value : this.totalAmount,
+    ocrStatus: ocrStatus ?? this.ocrStatus,
+    ocrRawJson: ocrRawJson.present ? ocrRawJson.value : this.ocrRawJson,
+    uploadedAt: uploadedAt ?? this.uploadedAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  ReceiptsCacheRow copyWithCompanion(ReceiptsCacheCompanion data) {
+    return ReceiptsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      uploadedBy: data.uploadedBy.present
+          ? data.uploadedBy.value
+          : this.uploadedBy,
+      storagePath: data.storagePath.present
+          ? data.storagePath.value
+          : this.storagePath,
+      thumbnailPath: data.thumbnailPath.present
+          ? data.thumbnailPath.value
+          : this.thumbnailPath,
+      merchantName: data.merchantName.present
+          ? data.merchantName.value
+          : this.merchantName,
+      receiptDate: data.receiptDate.present
+          ? data.receiptDate.value
+          : this.receiptDate,
+      totalAmount: data.totalAmount.present
+          ? data.totalAmount.value
+          : this.totalAmount,
+      ocrStatus: data.ocrStatus.present ? data.ocrStatus.value : this.ocrStatus,
+      ocrRawJson: data.ocrRawJson.present
+          ? data.ocrRawJson.value
+          : this.ocrRawJson,
+      uploadedAt: data.uploadedAt.present
+          ? data.uploadedAt.value
+          : this.uploadedAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptsCacheRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('uploadedBy: $uploadedBy, ')
+          ..write('storagePath: $storagePath, ')
+          ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('merchantName: $merchantName, ')
+          ..write('receiptDate: $receiptDate, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('ocrStatus: $ocrStatus, ')
+          ..write('ocrRawJson: $ocrRawJson, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    uploadedBy,
+    storagePath,
+    thumbnailPath,
+    merchantName,
+    receiptDate,
+    totalAmount,
+    ocrStatus,
+    ocrRawJson,
+    uploadedAt,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReceiptsCacheRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.uploadedBy == this.uploadedBy &&
+          other.storagePath == this.storagePath &&
+          other.thumbnailPath == this.thumbnailPath &&
+          other.merchantName == this.merchantName &&
+          other.receiptDate == this.receiptDate &&
+          other.totalAmount == this.totalAmount &&
+          other.ocrStatus == this.ocrStatus &&
+          other.ocrRawJson == this.ocrRawJson &&
+          other.uploadedAt == this.uploadedAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class ReceiptsCacheCompanion extends UpdateCompanion<ReceiptsCacheRow> {
+  final Value<String> id;
+  final Value<String> householdId;
+  final Value<String> uploadedBy;
+  final Value<String> storagePath;
+  final Value<String?> thumbnailPath;
+  final Value<String?> merchantName;
+  final Value<DateTime?> receiptDate;
+  final Value<int?> totalAmount;
+  final Value<String> ocrStatus;
+  final Value<String?> ocrRawJson;
+  final Value<DateTime> uploadedAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const ReceiptsCacheCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.uploadedBy = const Value.absent(),
+    this.storagePath = const Value.absent(),
+    this.thumbnailPath = const Value.absent(),
+    this.merchantName = const Value.absent(),
+    this.receiptDate = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.ocrStatus = const Value.absent(),
+    this.ocrRawJson = const Value.absent(),
+    this.uploadedAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReceiptsCacheCompanion.insert({
+    required String id,
+    required String householdId,
+    required String uploadedBy,
+    required String storagePath,
+    this.thumbnailPath = const Value.absent(),
+    this.merchantName = const Value.absent(),
+    this.receiptDate = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    required String ocrStatus,
+    this.ocrRawJson = const Value.absent(),
+    required DateTime uploadedAt,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       householdId = Value(householdId),
+       uploadedBy = Value(uploadedBy),
+       storagePath = Value(storagePath),
+       ocrStatus = Value(ocrStatus),
+       uploadedAt = Value(uploadedAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<ReceiptsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? uploadedBy,
+    Expression<String>? storagePath,
+    Expression<String>? thumbnailPath,
+    Expression<String>? merchantName,
+    Expression<DateTime>? receiptDate,
+    Expression<int>? totalAmount,
+    Expression<String>? ocrStatus,
+    Expression<String>? ocrRawJson,
+    Expression<DateTime>? uploadedAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (uploadedBy != null) 'uploaded_by': uploadedBy,
+      if (storagePath != null) 'storage_path': storagePath,
+      if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
+      if (merchantName != null) 'merchant_name': merchantName,
+      if (receiptDate != null) 'receipt_date': receiptDate,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (ocrStatus != null) 'ocr_status': ocrStatus,
+      if (ocrRawJson != null) 'ocr_raw_json': ocrRawJson,
+      if (uploadedAt != null) 'uploaded_at': uploadedAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReceiptsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? householdId,
+    Value<String>? uploadedBy,
+    Value<String>? storagePath,
+    Value<String?>? thumbnailPath,
+    Value<String?>? merchantName,
+    Value<DateTime?>? receiptDate,
+    Value<int?>? totalAmount,
+    Value<String>? ocrStatus,
+    Value<String?>? ocrRawJson,
+    Value<DateTime>? uploadedAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return ReceiptsCacheCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      uploadedBy: uploadedBy ?? this.uploadedBy,
+      storagePath: storagePath ?? this.storagePath,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      merchantName: merchantName ?? this.merchantName,
+      receiptDate: receiptDate ?? this.receiptDate,
+      totalAmount: totalAmount ?? this.totalAmount,
+      ocrStatus: ocrStatus ?? this.ocrStatus,
+      ocrRawJson: ocrRawJson ?? this.ocrRawJson,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (uploadedBy.present) {
+      map['uploaded_by'] = Variable<String>(uploadedBy.value);
+    }
+    if (storagePath.present) {
+      map['storage_path'] = Variable<String>(storagePath.value);
+    }
+    if (thumbnailPath.present) {
+      map['thumbnail_path'] = Variable<String>(thumbnailPath.value);
+    }
+    if (merchantName.present) {
+      map['merchant_name'] = Variable<String>(merchantName.value);
+    }
+    if (receiptDate.present) {
+      map['receipt_date'] = Variable<DateTime>(receiptDate.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<int>(totalAmount.value);
+    }
+    if (ocrStatus.present) {
+      map['ocr_status'] = Variable<String>(ocrStatus.value);
+    }
+    if (ocrRawJson.present) {
+      map['ocr_raw_json'] = Variable<String>(ocrRawJson.value);
+    }
+    if (uploadedAt.present) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('uploadedBy: $uploadedBy, ')
+          ..write('storagePath: $storagePath, ')
+          ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('merchantName: $merchantName, ')
+          ..write('receiptDate: $receiptDate, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('ocrStatus: $ocrStatus, ')
+          ..write('ocrRawJson: $ocrRawJson, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReceiptLineItemsCacheTable extends ReceiptLineItemsCache
+    with TableInfo<$ReceiptLineItemsCacheTable, ReceiptLineItemsCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceiptLineItemsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receiptIdMeta = const VerificationMeta(
+    'receiptId',
+  );
+  @override
+  late final GeneratedColumn<String> receiptId = GeneratedColumn<String>(
+    'receipt_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
+    'quantity',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitPriceMeta = const VerificationMeta(
+    'unitPrice',
+  );
+  @override
+  late final GeneratedColumn<int> unitPrice = GeneratedColumn<int>(
+    'unit_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isTaxMeta = const VerificationMeta('isTax');
+  @override
+  late final GeneratedColumn<bool> isTax = GeneratedColumn<bool>(
+    'is_tax',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_tax" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _isTipMeta = const VerificationMeta('isTip');
+  @override
+  late final GeneratedColumn<bool> isTip = GeneratedColumn<bool>(
+    'is_tip',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_tip" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _isDiscountMeta = const VerificationMeta(
+    'isDiscount',
+  );
+  @override
+  late final GeneratedColumn<bool> isDiscount = GeneratedColumn<bool>(
+    'is_discount',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_discount" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ocrConfidenceBpMeta = const VerificationMeta(
+    'ocrConfidenceBp',
+  );
+  @override
+  late final GeneratedColumn<int> ocrConfidenceBp = GeneratedColumn<int>(
+    'ocr_confidence_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    receiptId,
+    description,
+    amount,
+    quantity,
+    unitPrice,
+    categoryId,
+    isTax,
+    isTip,
+    isDiscount,
+    sortOrder,
+    ocrConfidenceBp,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receipt_line_items_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReceiptLineItemsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('receipt_id')) {
+      context.handle(
+        _receiptIdMeta,
+        receiptId.isAcceptableOrUnknown(data['receipt_id']!, _receiptIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_receiptIdMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(
+        _unitPriceMeta,
+        unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta),
+      );
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('is_tax')) {
+      context.handle(
+        _isTaxMeta,
+        isTax.isAcceptableOrUnknown(data['is_tax']!, _isTaxMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isTaxMeta);
+    }
+    if (data.containsKey('is_tip')) {
+      context.handle(
+        _isTipMeta,
+        isTip.isAcceptableOrUnknown(data['is_tip']!, _isTipMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isTipMeta);
+    }
+    if (data.containsKey('is_discount')) {
+      context.handle(
+        _isDiscountMeta,
+        isDiscount.isAcceptableOrUnknown(data['is_discount']!, _isDiscountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isDiscountMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sortOrderMeta);
+    }
+    if (data.containsKey('ocr_confidence_bp')) {
+      context.handle(
+        _ocrConfidenceBpMeta,
+        ocrConfidenceBp.isAcceptableOrUnknown(
+          data['ocr_confidence_bp']!,
+          _ocrConfidenceBpMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReceiptLineItemsCacheRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReceiptLineItemsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      receiptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_id'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}quantity'],
+      ),
+      unitPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_price'],
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      ),
+      isTax: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_tax'],
+      )!,
+      isTip: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_tip'],
+      )!,
+      isDiscount: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_discount'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      ocrConfidenceBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ocr_confidence_bp'],
+      ),
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReceiptLineItemsCacheTable createAlias(String alias) {
+    return $ReceiptLineItemsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class ReceiptLineItemsCacheRow extends DataClass
+    implements Insertable<ReceiptLineItemsCacheRow> {
+  final String id;
+  final String receiptId;
+  final String description;
+  final int amount;
+  final double? quantity;
+  final int? unitPrice;
+  final String? categoryId;
+  final bool isTax;
+  final bool isTip;
+  final bool isDiscount;
+  final int sortOrder;
+  final int? ocrConfidenceBp;
+  final DateTime cachedAt;
+  const ReceiptLineItemsCacheRow({
+    required this.id,
+    required this.receiptId,
+    required this.description,
+    required this.amount,
+    this.quantity,
+    this.unitPrice,
+    this.categoryId,
+    required this.isTax,
+    required this.isTip,
+    required this.isDiscount,
+    required this.sortOrder,
+    this.ocrConfidenceBp,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['receipt_id'] = Variable<String>(receiptId);
+    map['description'] = Variable<String>(description);
+    map['amount'] = Variable<int>(amount);
+    if (!nullToAbsent || quantity != null) {
+      map['quantity'] = Variable<double>(quantity);
+    }
+    if (!nullToAbsent || unitPrice != null) {
+      map['unit_price'] = Variable<int>(unitPrice);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<String>(categoryId);
+    }
+    map['is_tax'] = Variable<bool>(isTax);
+    map['is_tip'] = Variable<bool>(isTip);
+    map['is_discount'] = Variable<bool>(isDiscount);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || ocrConfidenceBp != null) {
+      map['ocr_confidence_bp'] = Variable<int>(ocrConfidenceBp);
+    }
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  ReceiptLineItemsCacheCompanion toCompanion(bool nullToAbsent) {
+    return ReceiptLineItemsCacheCompanion(
+      id: Value(id),
+      receiptId: Value(receiptId),
+      description: Value(description),
+      amount: Value(amount),
+      quantity: quantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantity),
+      unitPrice: unitPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitPrice),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      isTax: Value(isTax),
+      isTip: Value(isTip),
+      isDiscount: Value(isDiscount),
+      sortOrder: Value(sortOrder),
+      ocrConfidenceBp: ocrConfidenceBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrConfidenceBp),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory ReceiptLineItemsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReceiptLineItemsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      receiptId: serializer.fromJson<String>(json['receiptId']),
+      description: serializer.fromJson<String>(json['description']),
+      amount: serializer.fromJson<int>(json['amount']),
+      quantity: serializer.fromJson<double?>(json['quantity']),
+      unitPrice: serializer.fromJson<int?>(json['unitPrice']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      isTax: serializer.fromJson<bool>(json['isTax']),
+      isTip: serializer.fromJson<bool>(json['isTip']),
+      isDiscount: serializer.fromJson<bool>(json['isDiscount']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      ocrConfidenceBp: serializer.fromJson<int?>(json['ocrConfidenceBp']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'receiptId': serializer.toJson<String>(receiptId),
+      'description': serializer.toJson<String>(description),
+      'amount': serializer.toJson<int>(amount),
+      'quantity': serializer.toJson<double?>(quantity),
+      'unitPrice': serializer.toJson<int?>(unitPrice),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'isTax': serializer.toJson<bool>(isTax),
+      'isTip': serializer.toJson<bool>(isTip),
+      'isDiscount': serializer.toJson<bool>(isDiscount),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'ocrConfidenceBp': serializer.toJson<int?>(ocrConfidenceBp),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  ReceiptLineItemsCacheRow copyWith({
+    String? id,
+    String? receiptId,
+    String? description,
+    int? amount,
+    Value<double?> quantity = const Value.absent(),
+    Value<int?> unitPrice = const Value.absent(),
+    Value<String?> categoryId = const Value.absent(),
+    bool? isTax,
+    bool? isTip,
+    bool? isDiscount,
+    int? sortOrder,
+    Value<int?> ocrConfidenceBp = const Value.absent(),
+    DateTime? cachedAt,
+  }) => ReceiptLineItemsCacheRow(
+    id: id ?? this.id,
+    receiptId: receiptId ?? this.receiptId,
+    description: description ?? this.description,
+    amount: amount ?? this.amount,
+    quantity: quantity.present ? quantity.value : this.quantity,
+    unitPrice: unitPrice.present ? unitPrice.value : this.unitPrice,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    isTax: isTax ?? this.isTax,
+    isTip: isTip ?? this.isTip,
+    isDiscount: isDiscount ?? this.isDiscount,
+    sortOrder: sortOrder ?? this.sortOrder,
+    ocrConfidenceBp: ocrConfidenceBp.present
+        ? ocrConfidenceBp.value
+        : this.ocrConfidenceBp,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  ReceiptLineItemsCacheRow copyWithCompanion(
+    ReceiptLineItemsCacheCompanion data,
+  ) {
+    return ReceiptLineItemsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      receiptId: data.receiptId.present ? data.receiptId.value : this.receiptId,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      isTax: data.isTax.present ? data.isTax.value : this.isTax,
+      isTip: data.isTip.present ? data.isTip.value : this.isTip,
+      isDiscount: data.isDiscount.present
+          ? data.isDiscount.value
+          : this.isDiscount,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      ocrConfidenceBp: data.ocrConfidenceBp.present
+          ? data.ocrConfidenceBp.value
+          : this.ocrConfidenceBp,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptLineItemsCacheRow(')
+          ..write('id: $id, ')
+          ..write('receiptId: $receiptId, ')
+          ..write('description: $description, ')
+          ..write('amount: $amount, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isTax: $isTax, ')
+          ..write('isTip: $isTip, ')
+          ..write('isDiscount: $isDiscount, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('ocrConfidenceBp: $ocrConfidenceBp, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    receiptId,
+    description,
+    amount,
+    quantity,
+    unitPrice,
+    categoryId,
+    isTax,
+    isTip,
+    isDiscount,
+    sortOrder,
+    ocrConfidenceBp,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReceiptLineItemsCacheRow &&
+          other.id == this.id &&
+          other.receiptId == this.receiptId &&
+          other.description == this.description &&
+          other.amount == this.amount &&
+          other.quantity == this.quantity &&
+          other.unitPrice == this.unitPrice &&
+          other.categoryId == this.categoryId &&
+          other.isTax == this.isTax &&
+          other.isTip == this.isTip &&
+          other.isDiscount == this.isDiscount &&
+          other.sortOrder == this.sortOrder &&
+          other.ocrConfidenceBp == this.ocrConfidenceBp &&
+          other.cachedAt == this.cachedAt);
+}
+
+class ReceiptLineItemsCacheCompanion
+    extends UpdateCompanion<ReceiptLineItemsCacheRow> {
+  final Value<String> id;
+  final Value<String> receiptId;
+  final Value<String> description;
+  final Value<int> amount;
+  final Value<double?> quantity;
+  final Value<int?> unitPrice;
+  final Value<String?> categoryId;
+  final Value<bool> isTax;
+  final Value<bool> isTip;
+  final Value<bool> isDiscount;
+  final Value<int> sortOrder;
+  final Value<int?> ocrConfidenceBp;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const ReceiptLineItemsCacheCompanion({
+    this.id = const Value.absent(),
+    this.receiptId = const Value.absent(),
+    this.description = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isTax = const Value.absent(),
+    this.isTip = const Value.absent(),
+    this.isDiscount = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.ocrConfidenceBp = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReceiptLineItemsCacheCompanion.insert({
+    required String id,
+    required String receiptId,
+    required String description,
+    required int amount,
+    this.quantity = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    required bool isTax,
+    required bool isTip,
+    required bool isDiscount,
+    required int sortOrder,
+    this.ocrConfidenceBp = const Value.absent(),
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       receiptId = Value(receiptId),
+       description = Value(description),
+       amount = Value(amount),
+       isTax = Value(isTax),
+       isTip = Value(isTip),
+       isDiscount = Value(isDiscount),
+       sortOrder = Value(sortOrder),
+       cachedAt = Value(cachedAt);
+  static Insertable<ReceiptLineItemsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? receiptId,
+    Expression<String>? description,
+    Expression<int>? amount,
+    Expression<double>? quantity,
+    Expression<int>? unitPrice,
+    Expression<String>? categoryId,
+    Expression<bool>? isTax,
+    Expression<bool>? isTip,
+    Expression<bool>? isDiscount,
+    Expression<int>? sortOrder,
+    Expression<int>? ocrConfidenceBp,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (receiptId != null) 'receipt_id': receiptId,
+      if (description != null) 'description': description,
+      if (amount != null) 'amount': amount,
+      if (quantity != null) 'quantity': quantity,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (categoryId != null) 'category_id': categoryId,
+      if (isTax != null) 'is_tax': isTax,
+      if (isTip != null) 'is_tip': isTip,
+      if (isDiscount != null) 'is_discount': isDiscount,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (ocrConfidenceBp != null) 'ocr_confidence_bp': ocrConfidenceBp,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReceiptLineItemsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? receiptId,
+    Value<String>? description,
+    Value<int>? amount,
+    Value<double?>? quantity,
+    Value<int?>? unitPrice,
+    Value<String?>? categoryId,
+    Value<bool>? isTax,
+    Value<bool>? isTip,
+    Value<bool>? isDiscount,
+    Value<int>? sortOrder,
+    Value<int?>? ocrConfidenceBp,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return ReceiptLineItemsCacheCompanion(
+      id: id ?? this.id,
+      receiptId: receiptId ?? this.receiptId,
+      description: description ?? this.description,
+      amount: amount ?? this.amount,
+      quantity: quantity ?? this.quantity,
+      unitPrice: unitPrice ?? this.unitPrice,
+      categoryId: categoryId ?? this.categoryId,
+      isTax: isTax ?? this.isTax,
+      isTip: isTip ?? this.isTip,
+      isDiscount: isDiscount ?? this.isDiscount,
+      sortOrder: sortOrder ?? this.sortOrder,
+      ocrConfidenceBp: ocrConfidenceBp ?? this.ocrConfidenceBp,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (receiptId.present) {
+      map['receipt_id'] = Variable<String>(receiptId.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<int>(unitPrice.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (isTax.present) {
+      map['is_tax'] = Variable<bool>(isTax.value);
+    }
+    if (isTip.present) {
+      map['is_tip'] = Variable<bool>(isTip.value);
+    }
+    if (isDiscount.present) {
+      map['is_discount'] = Variable<bool>(isDiscount.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (ocrConfidenceBp.present) {
+      map['ocr_confidence_bp'] = Variable<int>(ocrConfidenceBp.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptLineItemsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('receiptId: $receiptId, ')
+          ..write('description: $description, ')
+          ..write('amount: $amount, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isTax: $isTax, ')
+          ..write('isTip: $isTip, ')
+          ..write('isDiscount: $isDiscount, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('ocrConfidenceBp: $ocrConfidenceBp, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4006,6 +5544,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionsCacheTable(this);
   late final $BudgetsCacheTable budgetsCache = $BudgetsCacheTable(this);
   late final $FxRatesCacheTable fxRatesCache = $FxRatesCacheTable(this);
+  late final $ReceiptsCacheTable receiptsCache = $ReceiptsCacheTable(this);
+  late final $ReceiptLineItemsCacheTable receiptLineItemsCache =
+      $ReceiptLineItemsCacheTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4016,6 +5557,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionsCache,
     budgetsCache,
     fxRatesCache,
+    receiptsCache,
+    receiptLineItemsCache,
   ];
 }
 
@@ -5888,6 +7431,740 @@ typedef $$FxRatesCacheTableProcessedTableManager =
       FxRatesCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$ReceiptsCacheTableCreateCompanionBuilder =
+    ReceiptsCacheCompanion Function({
+      required String id,
+      required String householdId,
+      required String uploadedBy,
+      required String storagePath,
+      Value<String?> thumbnailPath,
+      Value<String?> merchantName,
+      Value<DateTime?> receiptDate,
+      Value<int?> totalAmount,
+      required String ocrStatus,
+      Value<String?> ocrRawJson,
+      required DateTime uploadedAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$ReceiptsCacheTableUpdateCompanionBuilder =
+    ReceiptsCacheCompanion Function({
+      Value<String> id,
+      Value<String> householdId,
+      Value<String> uploadedBy,
+      Value<String> storagePath,
+      Value<String?> thumbnailPath,
+      Value<String?> merchantName,
+      Value<DateTime?> receiptDate,
+      Value<int?> totalAmount,
+      Value<String> ocrStatus,
+      Value<String?> ocrRawJson,
+      Value<DateTime> uploadedAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$ReceiptsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceiptsCacheTable> {
+  $$ReceiptsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uploadedBy => $composableBuilder(
+    column: $table.uploadedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storagePath => $composableBuilder(
+    column: $table.storagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchantName => $composableBuilder(
+    column: $table.merchantName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get receiptDate => $composableBuilder(
+    column: $table.receiptDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrStatus => $composableBuilder(
+    column: $table.ocrStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrRawJson => $composableBuilder(
+    column: $table.ocrRawJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReceiptsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceiptsCacheTable> {
+  $$ReceiptsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uploadedBy => $composableBuilder(
+    column: $table.uploadedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storagePath => $composableBuilder(
+    column: $table.storagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchantName => $composableBuilder(
+    column: $table.merchantName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get receiptDate => $composableBuilder(
+    column: $table.receiptDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrStatus => $composableBuilder(
+    column: $table.ocrStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrRawJson => $composableBuilder(
+    column: $table.ocrRawJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceiptsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceiptsCacheTable> {
+  $$ReceiptsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get uploadedBy => $composableBuilder(
+    column: $table.uploadedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storagePath => $composableBuilder(
+    column: $table.storagePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get merchantName => $composableBuilder(
+    column: $table.merchantName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get receiptDate => $composableBuilder(
+    column: $table.receiptDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ocrStatus =>
+      $composableBuilder(column: $table.ocrStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get ocrRawJson => $composableBuilder(
+    column: $table.ocrRawJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$ReceiptsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceiptsCacheTable,
+          ReceiptsCacheRow,
+          $$ReceiptsCacheTableFilterComposer,
+          $$ReceiptsCacheTableOrderingComposer,
+          $$ReceiptsCacheTableAnnotationComposer,
+          $$ReceiptsCacheTableCreateCompanionBuilder,
+          $$ReceiptsCacheTableUpdateCompanionBuilder,
+          (
+            ReceiptsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReceiptsCacheTable,
+              ReceiptsCacheRow
+            >,
+          ),
+          ReceiptsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$ReceiptsCacheTableTableManager(_$AppDatabase db, $ReceiptsCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceiptsCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReceiptsCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReceiptsCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> householdId = const Value.absent(),
+                Value<String> uploadedBy = const Value.absent(),
+                Value<String> storagePath = const Value.absent(),
+                Value<String?> thumbnailPath = const Value.absent(),
+                Value<String?> merchantName = const Value.absent(),
+                Value<DateTime?> receiptDate = const Value.absent(),
+                Value<int?> totalAmount = const Value.absent(),
+                Value<String> ocrStatus = const Value.absent(),
+                Value<String?> ocrRawJson = const Value.absent(),
+                Value<DateTime> uploadedAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptsCacheCompanion(
+                id: id,
+                householdId: householdId,
+                uploadedBy: uploadedBy,
+                storagePath: storagePath,
+                thumbnailPath: thumbnailPath,
+                merchantName: merchantName,
+                receiptDate: receiptDate,
+                totalAmount: totalAmount,
+                ocrStatus: ocrStatus,
+                ocrRawJson: ocrRawJson,
+                uploadedAt: uploadedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String householdId,
+                required String uploadedBy,
+                required String storagePath,
+                Value<String?> thumbnailPath = const Value.absent(),
+                Value<String?> merchantName = const Value.absent(),
+                Value<DateTime?> receiptDate = const Value.absent(),
+                Value<int?> totalAmount = const Value.absent(),
+                required String ocrStatus,
+                Value<String?> ocrRawJson = const Value.absent(),
+                required DateTime uploadedAt,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptsCacheCompanion.insert(
+                id: id,
+                householdId: householdId,
+                uploadedBy: uploadedBy,
+                storagePath: storagePath,
+                thumbnailPath: thumbnailPath,
+                merchantName: merchantName,
+                receiptDate: receiptDate,
+                totalAmount: totalAmount,
+                ocrStatus: ocrStatus,
+                ocrRawJson: ocrRawJson,
+                uploadedAt: uploadedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReceiptsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceiptsCacheTable,
+      ReceiptsCacheRow,
+      $$ReceiptsCacheTableFilterComposer,
+      $$ReceiptsCacheTableOrderingComposer,
+      $$ReceiptsCacheTableAnnotationComposer,
+      $$ReceiptsCacheTableCreateCompanionBuilder,
+      $$ReceiptsCacheTableUpdateCompanionBuilder,
+      (
+        ReceiptsCacheRow,
+        BaseReferences<_$AppDatabase, $ReceiptsCacheTable, ReceiptsCacheRow>,
+      ),
+      ReceiptsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ReceiptLineItemsCacheTableCreateCompanionBuilder =
+    ReceiptLineItemsCacheCompanion Function({
+      required String id,
+      required String receiptId,
+      required String description,
+      required int amount,
+      Value<double?> quantity,
+      Value<int?> unitPrice,
+      Value<String?> categoryId,
+      required bool isTax,
+      required bool isTip,
+      required bool isDiscount,
+      required int sortOrder,
+      Value<int?> ocrConfidenceBp,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$ReceiptLineItemsCacheTableUpdateCompanionBuilder =
+    ReceiptLineItemsCacheCompanion Function({
+      Value<String> id,
+      Value<String> receiptId,
+      Value<String> description,
+      Value<int> amount,
+      Value<double?> quantity,
+      Value<int?> unitPrice,
+      Value<String?> categoryId,
+      Value<bool> isTax,
+      Value<bool> isTip,
+      Value<bool> isDiscount,
+      Value<int> sortOrder,
+      Value<int?> ocrConfidenceBp,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$ReceiptLineItemsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemsCacheTable> {
+  $$ReceiptLineItemsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptId => $composableBuilder(
+    column: $table.receiptId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTax => $composableBuilder(
+    column: $table.isTax,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTip => $composableBuilder(
+    column: $table.isTip,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDiscount => $composableBuilder(
+    column: $table.isDiscount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ocrConfidenceBp => $composableBuilder(
+    column: $table.ocrConfidenceBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReceiptLineItemsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemsCacheTable> {
+  $$ReceiptLineItemsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptId => $composableBuilder(
+    column: $table.receiptId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isTax => $composableBuilder(
+    column: $table.isTax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isTip => $composableBuilder(
+    column: $table.isTip,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDiscount => $composableBuilder(
+    column: $table.isDiscount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ocrConfidenceBp => $composableBuilder(
+    column: $table.ocrConfidenceBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceiptLineItemsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemsCacheTable> {
+  $$ReceiptLineItemsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get receiptId =>
+      $composableBuilder(column: $table.receiptId, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<double> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<int> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isTax =>
+      $composableBuilder(column: $table.isTax, builder: (column) => column);
+
+  GeneratedColumn<bool> get isTip =>
+      $composableBuilder(column: $table.isTip, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDiscount => $composableBuilder(
+    column: $table.isDiscount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get ocrConfidenceBp => $composableBuilder(
+    column: $table.ocrConfidenceBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$ReceiptLineItemsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceiptLineItemsCacheTable,
+          ReceiptLineItemsCacheRow,
+          $$ReceiptLineItemsCacheTableFilterComposer,
+          $$ReceiptLineItemsCacheTableOrderingComposer,
+          $$ReceiptLineItemsCacheTableAnnotationComposer,
+          $$ReceiptLineItemsCacheTableCreateCompanionBuilder,
+          $$ReceiptLineItemsCacheTableUpdateCompanionBuilder,
+          (
+            ReceiptLineItemsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReceiptLineItemsCacheTable,
+              ReceiptLineItemsCacheRow
+            >,
+          ),
+          ReceiptLineItemsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$ReceiptLineItemsCacheTableTableManager(
+    _$AppDatabase db,
+    $ReceiptLineItemsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceiptLineItemsCacheTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ReceiptLineItemsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ReceiptLineItemsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> receiptId = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<double?> quantity = const Value.absent(),
+                Value<int?> unitPrice = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                Value<bool> isTax = const Value.absent(),
+                Value<bool> isTip = const Value.absent(),
+                Value<bool> isDiscount = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int?> ocrConfidenceBp = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptLineItemsCacheCompanion(
+                id: id,
+                receiptId: receiptId,
+                description: description,
+                amount: amount,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                categoryId: categoryId,
+                isTax: isTax,
+                isTip: isTip,
+                isDiscount: isDiscount,
+                sortOrder: sortOrder,
+                ocrConfidenceBp: ocrConfidenceBp,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String receiptId,
+                required String description,
+                required int amount,
+                Value<double?> quantity = const Value.absent(),
+                Value<int?> unitPrice = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                required bool isTax,
+                required bool isTip,
+                required bool isDiscount,
+                required int sortOrder,
+                Value<int?> ocrConfidenceBp = const Value.absent(),
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptLineItemsCacheCompanion.insert(
+                id: id,
+                receiptId: receiptId,
+                description: description,
+                amount: amount,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                categoryId: categoryId,
+                isTax: isTax,
+                isTip: isTip,
+                isDiscount: isDiscount,
+                sortOrder: sortOrder,
+                ocrConfidenceBp: ocrConfidenceBp,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReceiptLineItemsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceiptLineItemsCacheTable,
+      ReceiptLineItemsCacheRow,
+      $$ReceiptLineItemsCacheTableFilterComposer,
+      $$ReceiptLineItemsCacheTableOrderingComposer,
+      $$ReceiptLineItemsCacheTableAnnotationComposer,
+      $$ReceiptLineItemsCacheTableCreateCompanionBuilder,
+      $$ReceiptLineItemsCacheTableUpdateCompanionBuilder,
+      (
+        ReceiptLineItemsCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ReceiptLineItemsCacheTable,
+          ReceiptLineItemsCacheRow
+        >,
+      ),
+      ReceiptLineItemsCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5902,4 +8179,8 @@ class $AppDatabaseManager {
       $$BudgetsCacheTableTableManager(_db, _db.budgetsCache);
   $$FxRatesCacheTableTableManager get fxRatesCache =>
       $$FxRatesCacheTableTableManager(_db, _db.fxRatesCache);
+  $$ReceiptsCacheTableTableManager get receiptsCache =>
+      $$ReceiptsCacheTableTableManager(_db, _db.receiptsCache);
+  $$ReceiptLineItemsCacheTableTableManager get receiptLineItemsCache =>
+      $$ReceiptLineItemsCacheTableTableManager(_db, _db.receiptLineItemsCache);
 }

@@ -218,6 +218,61 @@ class FxRatesCache extends Table {
       {householdId, fromCurrency, toCurrency, asOfDate};
 }
 
+/// Mirror of the Supabase `receipts` table.
+///
+/// One row per uploaded receipt. `ocrRaw` is stored as a JSON
+/// TEXT column — drift has no native JSON type and the column is
+/// rarely read (only the OCR retry surface looks at it). The
+/// repository's mapper handles the jsonEncode / jsonDecode.
+@DataClassName('ReceiptsCacheRow')
+class ReceiptsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get uploadedBy => text()();
+  TextColumn get storagePath => text()();
+  TextColumn get thumbnailPath => text().nullable()();
+  TextColumn get merchantName => text().nullable()();
+  DateTimeColumn get receiptDate => dateTime().nullable()();
+  IntColumn get totalAmount => integer().nullable()();
+
+  /// Stores the OcrStatus dbValue verbatim ('pending', etc.).
+  TextColumn get ocrStatus => text()();
+
+  /// JSON-encoded `Map<String, dynamic>`. Null when OCR hasn't
+  /// run or returned nothing.
+  TextColumn get ocrRawJson => text().nullable()();
+  DateTimeColumn get uploadedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of the Supabase `receipt_line_items` table.
+///
+/// Loaded per receipt, sorted by sort_order ASC. The cache uses
+/// the receiptId as a filter (no need for a composite index — a
+/// typical receipt has tens of line items, not thousands).
+@DataClassName('ReceiptLineItemsCacheRow')
+class ReceiptLineItemsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get receiptId => text()();
+  TextColumn get description => text()();
+  IntColumn get amount => integer()();
+  RealColumn get quantity => real().nullable()();
+  IntColumn get unitPrice => integer().nullable()();
+  TextColumn get categoryId => text().nullable()();
+  BoolColumn get isTax => boolean()();
+  BoolColumn get isTip => boolean()();
+  BoolColumn get isDiscount => boolean()();
+  IntColumn get sortOrder => integer()();
+  IntColumn get ocrConfidenceBp => integer().nullable()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     AccountsCache,
@@ -225,6 +280,8 @@ class FxRatesCache extends Table {
     TransactionsCache,
     BudgetsCache,
     FxRatesCache,
+    ReceiptsCache,
+    ReceiptLineItemsCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -253,7 +310,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -286,6 +343,12 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('DROP TABLE IF EXISTS budgets_cache');
         await customStatement('DROP TABLE IF EXISTS fx_rates_cache');
         await m.createAll();
+      }
+      // v4 → v5: added ReceiptsCache + ReceiptLineItemsCache for
+      // Phase 2c.
+      if (from < 5) {
+        await m.createTable(receiptsCache);
+        await m.createTable(receiptLineItemsCache);
       }
     },
   );
@@ -606,6 +669,86 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([(t) => OrderingTerm.desc(t.asOfDate)])
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  // ── Receipts cache surface ──────────────────────────────────
+
+  /// Replace the cached receipt set for a household. Mirrors
+  /// fetchReceipts(householdId)'s return.
+  Future<void> replaceReceiptsForHousehold(
+    String householdId,
+    List<ReceiptsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        receiptsCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(receiptsCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertReceipt(ReceiptsCacheCompanion row) {
+    return into(receiptsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteReceipt(String id) {
+    return (delete(receiptsCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Read all cached receipts for a household, sorted by
+  /// uploaded_at DESC (matches the server fetchReceipts contract).
+  Future<List<ReceiptsCacheRow>> loadReceiptsForHousehold(String householdId) {
+    return (select(receiptsCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.desc(t.uploadedAt)]))
+        .get();
+  }
+
+  /// Read a single cached receipt by id, or null. Mirrors
+  /// fetchReceipt(receiptId).
+  Future<ReceiptsCacheRow?> loadReceiptById(String id) {
+    return (select(receiptsCache)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  // ── Receipt line items cache surface ────────────────────────
+
+  /// Replace every cached line item for a receipt. The server
+  /// saveLineItems RPC (migration 028) atomically replaces — we
+  /// mirror the same shape here so the cache stays in sync.
+  Future<void> replaceLineItemsForReceipt(
+    String receiptId,
+    List<ReceiptLineItemsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        receiptLineItemsCache,
+      )..where((t) => t.receiptId.equals(receiptId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(receiptLineItemsCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertLineItem(ReceiptLineItemsCacheCompanion row) {
+    return into(receiptLineItemsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  /// Read all cached line items for a receipt, sorted by
+  /// sort_order ASC to match the server contract.
+  Future<List<ReceiptLineItemsCacheRow>> loadLineItemsForReceipt(
+    String receiptId,
+  ) {
+    return (select(receiptLineItemsCache)
+          ..where((t) => t.receiptId.equals(receiptId))
+          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        .get();
   }
 }
 
