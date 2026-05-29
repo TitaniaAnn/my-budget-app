@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/providers/ledger_invalidation.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/plural.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/accounts/models/account.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
@@ -242,8 +243,8 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             '${result.reconciled} recurring entries reconciled',
         ];
         final msg = extras.isEmpty
-            ? 'Imported ${result.inserted} transactions'
-            : 'Imported ${result.inserted} transactions '
+            ? 'Imported ${plural(result.inserted, "transaction")}'
+            : 'Imported ${plural(result.inserted, "transaction")} '
                   '(${extras.join(', ')})';
         context.showSnackBar(msg);
       }
@@ -314,7 +315,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             Row(
               children: [
                 Text(
-                  '${_preview.length} transactions found',
+                  '${plural(_preview.length, "transaction")} found',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: context.appColors.income,
@@ -412,7 +413,9 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             LoadingButton(
               loading: _importing,
               onPressed: _import,
-              child: Text('Import ${_preview.length} Transactions'),
+              child: Text(
+                'Import ${plural(_preview.length, "Transaction")}',
+              ),
             ),
           ],
           const SizedBox(height: 8),

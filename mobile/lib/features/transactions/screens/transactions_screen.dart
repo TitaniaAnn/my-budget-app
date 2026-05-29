@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/utils/plural.dart';
 import '../../../features/accounts/providers/accounts_provider.dart';
 import '../../../features/accounts/repositories/accounts_repository.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -761,7 +762,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       if (saved != null) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Exported ${transactions.length} transactions'),
+            content: Text(
+              'Exported ${plural(transactions.length, "transaction")}',
+            ),
           ),
         );
       }
