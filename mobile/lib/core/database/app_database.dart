@@ -920,6 +920,26 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  /// Batch variant — load every cached line item belonging to
+  /// any of [receiptIds]. Used by the offline category-spending
+  /// calculator (Phase 4a). Returns rows interleaved, sorted by
+  /// receipt_id then sort_order; the caller groups by
+  /// receipt_id.
+  Future<List<ReceiptLineItemsCacheRow>> loadLineItemsForReceipts(
+    List<String> receiptIds,
+  ) {
+    if (receiptIds.isEmpty) {
+      return Future.value(const []);
+    }
+    return (select(receiptLineItemsCache)
+          ..where((t) => t.receiptId.isIn(receiptIds))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.receiptId),
+            (t) => OrderingTerm.asc(t.sortOrder),
+          ]))
+        .get();
+  }
+
   // ── Holdings cache surface ──────────────────────────────────
 
   Future<void> replaceHoldingsForHousehold(

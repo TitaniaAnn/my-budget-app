@@ -2,15 +2,20 @@
 // Fetches budgets joined with their category, and provides actual spending
 // totals for the current period by querying the transactions table.
 //
-// Audit L1 Phase 2b: cache-through on the budget set; the
-// fetchSpendingByCategory RPC stays network-only (deferred to
-// Phase 4 — FX-aware spending math ported to Dart).
+// Audit L1 Phase 2b (budget reads cache-through) + Phase 4a
+// (fetchSpendingByCategory falls back to a pure-Dart port of
+// the SQL function when offline). The numbers match the SQL
+// function's contract; see services/spending_calculator.dart
+// for the algorithm + multi-currency rules.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../receipts/models/receipt_line_item.dart';
+import '../../transactions/models/transaction.dart';
 import '../models/budget.dart';
+import '../services/spending_calculator.dart';
 
 part 'budget_repository.g.dart';
 
@@ -57,20 +62,25 @@ class BudgetRepository {
   /// of every transaction in the range. RLS still applies (the RPC runs
   /// as the caller, no SECURITY DEFINER).
   ///
-  /// Network-only for L1 Phase 2b. Offline returns an empty map (the
-  /// budget UI shows budgets at $0 spent), not an exception. This is
-  /// the right offline behaviour because:
-  ///   (a) the RPC's FX-aware aggregation logic isn't trivially
-  ///       portable to Dart (Option B rollup with line-item dedupe,
-  ///       FX conversion per row, transfer exclusion);
-  ///   (b) "I'm offline and don't know the latest spend" is more
-  ///       honest than "I think you spent $0 this period."
-  /// Phase 4 ports the SQL to Dart and lifts this restriction.
+  /// Audit L1 Phase 4a — offline fallback. When the RPC fails
+  /// (offline, captive portal, server 5xx), the fallback reads
+  /// the cached transactions + line items for the household and
+  /// runs `computeCategorySpending` (a byte-for-byte Dart port
+  /// of the SQL function). The result has the same shape as the
+  /// RPC response.
+  ///
+  /// [displayCurrency] is required for the FX identity branch —
+  /// rows in the household's display currency convert at 1.0
+  /// even though the rates map doesn't normally include the
+  /// display→display entry. Callers that don't track multi-
+  /// currency just pass 'USD' (or any matching currency); when
+  /// [ratesToDisplay] is null the parameter is a no-op.
   Future<Map<String, int>> fetchSpendingByCategory({
     required String householdId,
     required DateTime from,
     required DateTime to,
     Map<String, double>? ratesToDisplay,
+    String displayCurrency = 'USD',
   }) async {
     try {
       // p_rates JSONB defaults to NULL on the SQL side; passing
@@ -93,6 +103,16 @@ class BudgetRepository {
           row['category_id'] as String: (row['net_cents'] as num).toInt(),
       };
     } catch (_) {
+      final fromCache = await _computeSpendingFromCache(
+        householdId: householdId,
+        from: from,
+        to: to,
+        ratesToDisplay: ratesToDisplay,
+        displayCurrency: displayCurrency,
+      );
+      if (fromCache != null) return fromCache;
+      // Cache miss — surface the zero map so the UI shows
+      // "no spending data" rather than throwing.
       return const {};
     }
   }
@@ -206,6 +226,116 @@ class BudgetRepository {
       return null;
     }
   }
+
+  /// Offline equivalent of the RPC. Reads cached transactions in
+  /// the date range + their receipt line items, then runs the
+  /// pure-Dart spending calculator. Returns null on any cache
+  /// failure so the caller can decide what to surface; an empty
+  /// map result means "we successfully computed and the household
+  /// has no spending in this period."
+  Future<Map<String, int>?> _computeSpendingFromCache({
+    required String householdId,
+    required DateTime from,
+    required DateTime to,
+    Map<String, double>? ratesToDisplay,
+    required String displayCurrency,
+  }) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      // Pull every cached transaction for the household in the
+      // window. The calculator does the rest of the filtering
+      // (category != null, receipt-vs-unpaired branching).
+      final txRows = await db.loadTransactionsForHousehold(
+        householdId: householdId,
+        from: from,
+        to: to,
+        // No paging — spending math needs every row in the
+        // window. Bumping limit past the default 1000 covers a
+        // very heavy month; the cache is local so the read is
+        // cheap.
+        limit: 1000000,
+      );
+
+      final transactions = <Transaction>[
+        for (final row in txRows) _txFromCacheRow(row),
+      ];
+
+      // Collect the receipt ids referenced by paired transactions
+      // in scope. The line-item branch of the calculator only
+      // looks up these receipts.
+      final receiptIds = <String>{
+        for (final t in transactions)
+          if (t.receiptId != null) t.receiptId!,
+      };
+
+      final liRows = await db.loadLineItemsForReceipts(receiptIds.toList());
+      final lineItemsByReceiptId = <String, List<ReceiptLineItem>>{};
+      for (final li in liRows) {
+        final converted = _liFromCacheRow(li);
+        (lineItemsByReceiptId[li.receiptId] ??= <ReceiptLineItem>[])
+            .add(converted);
+      }
+
+      return computeCategorySpending(
+        transactions: transactions,
+        lineItemsByReceiptId: lineItemsByReceiptId,
+        from: from,
+        to: to,
+        ratesToDisplay: ratesToDisplay,
+        displayCurrency: displayCurrency,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Local cache-row → Transaction mapper. Kept private here
+/// rather than importing TransactionsRepository's mappers —
+/// circular dependencies + the mapper itself is small.
+Transaction _txFromCacheRow(TransactionWithCategoryRow row) {
+  final r = row.transaction;
+  return Transaction(
+    id: r.id,
+    householdId: r.householdId,
+    accountId: r.accountId,
+    amount: r.amount,
+    currency: r.currency,
+    description: r.description,
+    merchant: r.merchant,
+    categoryId: r.categoryId,
+    transactionDate: r.transactionDate,
+    postedDate: r.postedDate,
+    pending: r.pending,
+    source: r.source,
+    enteredBy: r.enteredBy,
+    receiptId: r.receiptId,
+    rateId: r.rateId,
+    notes: r.notes,
+    externalId: r.externalId,
+    transferId: r.transferId,
+    mlModelConfidence: r.mlModelConfidence,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  );
+}
+
+ReceiptLineItem _liFromCacheRow(ReceiptLineItemsCacheRow r) {
+  return ReceiptLineItem(
+    id: r.id,
+    receiptId: r.receiptId,
+    description: r.description,
+    amount: r.amount,
+    quantity: r.quantity,
+    unitPrice: r.unitPrice,
+    categoryId: r.categoryId,
+    isTax: r.isTax,
+    isTip: r.isTip,
+    isDiscount: r.isDiscount,
+    sortOrder: r.sortOrder,
+    ocrConfidenceBp: r.ocrConfidenceBp,
+  );
 }
 
 BudgetsCacheCompanion _budgetToCompanion(Budget b) {
