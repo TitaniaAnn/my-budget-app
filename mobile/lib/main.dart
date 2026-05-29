@@ -10,6 +10,7 @@ import 'core/providers/ledger_invalidation.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/pending_writes_queue.dart';
+import 'core/sync/sign_out_cache_clear.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notifications/services/notification_service.dart';
 
@@ -200,6 +201,13 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
     // invalidation above because draining a queued mutation
     // happens BEFORE the re-fetch that reads its result.
     ref.watch(pendingWritesAutoDrainProvider);
+
+    // Audit 2026-05-26 C1: subscribe to Supabase auth state and
+    // wipe every drift cache row + the pending_writes queue on
+    // signedOut. Prevents cross-user data leaks on same-device
+    // re-sign-in and stops queued writes from replaying against
+    // the wrong session.
+    ref.watch(signOutCacheClearProvider);
 
     // Audit L4: hook the notification-tap callback into the router
     // so tapping a budget-over / large-tx notification lands on the

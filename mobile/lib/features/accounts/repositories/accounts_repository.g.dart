@@ -7,7 +7,7 @@ part of 'accounts_repository.dart';
 // **************************************************************************
 
 String _$accountsRepositoryHash() =>
-    r'a1f8909854cf5e4b5d9320167ce0e44c5f2a8e2e';
+    r'9a30d3cba5440607528ce2811365c3dab75deee0';
 
 /// Provides a singleton [AccountsRepository] instance via Riverpod.
 ///

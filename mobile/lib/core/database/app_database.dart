@@ -1246,6 +1246,43 @@ class AppDatabase extends _$AppDatabase {
         .getSingle();
   }
 
+  /// Wipe every cached row + every queued write. Called on
+  /// sign-out (Audit 2026-05-26 C1) so the next user signing
+  /// in on the same device doesn't see the previous user's
+  /// data, and queued writes can't replay against the wrong
+  /// session.
+  ///
+  /// Runs every delete inside one transaction so a mid-clear
+  /// crash leaves the database either fully populated (rollback)
+  /// or fully empty (commit) — never half-cleared with one
+  /// table's rows still around.
+  ///
+  /// The categories table is included even though it's not
+  /// per-household (system categories are shared) — household-
+  /// specific custom categories from the prior user need to go,
+  /// and the rest will re-populate on the next fetch.
+  Future<void> clearAllCachesForSignOut() async {
+    await transaction(() async {
+      await delete(accountsCache).go();
+      await delete(categoriesCache).go();
+      await delete(transactionsCache).go();
+      await delete(budgetsCache).go();
+      await delete(fxRatesCache).go();
+      await delete(receiptsCache).go();
+      await delete(receiptLineItemsCache).go();
+      await delete(holdingsCache).go();
+      await delete(recurringTransactionsCache).go();
+      await delete(transactionTagsCache).go();
+      await delete(transactionTagAssignmentsCache).go();
+      await delete(receiptLineItemTagAssignmentsCache).go();
+      // Queued writes from the previous session must die too —
+      // replaying them as the new user would either fail RLS
+      // (best case) or, in a write-queue bug, hit Supabase with
+      // the new user's JWT but the old user's payload.
+      await delete(pendingWrites).go();
+    });
+  }
+
   /// Maximum `cached_at` timestamp across every cache table
   /// that has one. Used by the offline banner (Phase 5a) to
   /// surface "showing data from X minutes ago" — a single
