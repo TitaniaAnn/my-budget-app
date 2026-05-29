@@ -165,7 +165,68 @@ class TransactionsCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [AccountsCache, CategoriesCache, TransactionsCache])
+/// Mirror of the Supabase `budgets` table.
+///
+/// One row per (household, category, period) — the budgets UI
+/// shows the row joined with its category. Cached with the
+/// drift-only `cachedAt` to support a "last synced" indicator.
+@DataClassName('BudgetsCacheRow')
+class BudgetsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get categoryId => text()();
+  IntColumn get amount => integer()();
+  TextColumn get currency => text().withDefault(const Constant('USD'))();
+
+  /// Stores the BudgetPeriod dbValue verbatim ('weekly',
+  /// 'monthly', etc.). Repository maps to/from the enum.
+  TextColumn get period => text()();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  TextColumn get createdBy => text()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of the Supabase `fx_rates` table.
+///
+/// Composite primary key matches the server side:
+/// (household_id, from_currency, to_currency, as_of_date). The
+/// "latest rate at or before X" hot query is supported by
+/// loadLatestRate, which mirrors the server's
+/// `.order(as_of_date DESC).limit(1)` shape.
+@DataClassName('FxRatesCacheRow')
+class FxRatesCache extends Table {
+  TextColumn get householdId => text()();
+  TextColumn get fromCurrency => text()();
+  TextColumn get toCurrency => text()();
+  DateTimeColumn get asOfDate => dateTime()();
+
+  /// Drift's `real()` is a double. The server stores
+  /// NUMERIC(18,8); the JSON-wire-coerce in FxRate.fromJson
+  /// already handles the string-to-double bridge.
+  RealColumn get rate => real()();
+  TextColumn get createdBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey =>
+      {householdId, fromCurrency, toCurrency, asOfDate};
+}
+
+@DriftDatabase(
+  tables: [
+    AccountsCache,
+    CategoriesCache,
+    TransactionsCache,
+    BudgetsCache,
+    FxRatesCache,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -174,8 +235,25 @@ class AppDatabase extends _$AppDatabase {
   /// and avoid touching the real filesystem.
   AppDatabase.withExecutor(super.e);
 
+  /// Store DateTime columns as ISO 8601 TEXT instead of the
+  /// default Unix-epoch INT. The int encoding round-trips through
+  /// the device's local timezone — a UTC midnight value written
+  /// in a UTC+0 zone reads back as the same wall-clock UTC
+  /// midnight in a UTC-5 zone, silently shifting transaction/
+  /// budget/rate calendar days by a day. Text encoding preserves
+  /// the original instant as an ISO string with the `Z` suffix,
+  /// matching what Postgres returns over the wire.
+  ///
+  /// Changing this is a one-way decision: rows written under the
+  /// other encoding can't be transparently read back. The
+  /// schemaVersion bump + onUpgrade drop-and-recreate below
+  /// handles the v3 → v4 transition.
   @override
-  int get schemaVersion => 2;
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
+
+  @override
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -184,11 +262,30 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       // v1 → v2: added CategoriesCache + TransactionsCache for
-      // Phase 2 of the offline cache rollout. The accounts cache
+      // Phase 2a of the offline cache rollout. The accounts cache
       // table from v1 is unchanged.
       if (from < 2) {
         await m.createTable(categoriesCache);
         await m.createTable(transactionsCache);
+      }
+      // v2 → v3: added BudgetsCache + FxRatesCache for Phase 2b.
+      if (from < 3) {
+        await m.createTable(budgetsCache);
+        await m.createTable(fxRatesCache);
+      }
+      // v3 → v4: switched DateTime storage from epoch INT to ISO
+      // TEXT (see [options] above). Existing INT-encoded values
+      // can't be read back as TEXT, so drop and recreate every
+      // cache table. Cost: the user pays one re-fetch on first
+      // app open after upgrade — acceptable for an offline cache
+      // (we never lost source-of-truth data).
+      if (from < 4) {
+        await customStatement('DROP TABLE IF EXISTS accounts_cache');
+        await customStatement('DROP TABLE IF EXISTS categories_cache');
+        await customStatement('DROP TABLE IF EXISTS transactions_cache');
+        await customStatement('DROP TABLE IF EXISTS budgets_cache');
+        await customStatement('DROP TABLE IF EXISTS fx_rates_cache');
+        await m.createAll();
       }
     },
   );
@@ -396,6 +493,119 @@ class AppDatabase extends _$AppDatabase {
         category: row.readTableOrNull(categoriesCache),
       );
     }).toList();
+  }
+
+  // ── Budgets cache surface ───────────────────────────────────
+
+  /// Replace the cached budget set for a household. Mirrors the
+  /// server query (`fetchBudgets(householdId)`) which always
+  /// returns the full set for that household; we don't have a
+  /// "delta" of which budgets changed, so the safest mirror is
+  /// "throw away the old, write the new" inside one transaction.
+  Future<void> replaceBudgetsForHousehold(
+    String householdId,
+    List<BudgetsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        budgetsCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(budgetsCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertBudget(BudgetsCacheCompanion row) {
+    return into(budgetsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteBudget(String id) {
+    return (delete(budgetsCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Read all cached budgets for a household, sorted by
+  /// start_date ASC — matches the server fetchBudgets contract.
+  Future<List<BudgetsCacheRow>> loadBudgetsForHousehold(String householdId) {
+    return (select(budgetsCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.asc(t.startDate)]))
+        .get();
+  }
+
+  // ── FX rates cache surface ──────────────────────────────────
+
+  /// Replace the cached rate set for a household. Same shape as
+  /// budgets — fxRatesRepository.fetchAll returns the full set,
+  /// so we mirror "purge then insert" for atomic refresh.
+  Future<void> replaceFxRatesForHousehold(
+    String householdId,
+    List<FxRatesCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        fxRatesCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(fxRatesCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertFxRate(FxRatesCacheCompanion row) {
+    return into(fxRatesCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteFxRate({
+    required String householdId,
+    required String fromCurrency,
+    required String toCurrency,
+    required DateTime asOfDate,
+  }) {
+    return (delete(fxRatesCache)..where(
+          (t) =>
+              t.householdId.equals(householdId) &
+              t.fromCurrency.equals(fromCurrency) &
+              t.toCurrency.equals(toCurrency) &
+              t.asOfDate.equals(asOfDate),
+        ))
+        .go();
+  }
+
+  /// Load all cached rates for a household, newest first (matches
+  /// fetchAll's `order(as_of_date DESC)` contract).
+  Future<List<FxRatesCacheRow>> loadFxRatesForHousehold(String householdId) {
+    return (select(fxRatesCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.desc(t.asOfDate)]))
+        .get();
+  }
+
+  /// Latest cached rate for (from, to) at or before [asOf]. Same
+  /// shape as FxRatesRepository.latestRate's network query.
+  /// Returns null when nothing is cached for that pair.
+  Future<FxRatesCacheRow?> loadLatestFxRate({
+    required String householdId,
+    required String fromCurrency,
+    required String toCurrency,
+    DateTime? asOf,
+  }) {
+    final cutoff = (asOf ?? DateTime.now().toUtc());
+    return (select(fxRatesCache)
+          ..where(
+            (t) =>
+                t.householdId.equals(householdId) &
+                t.fromCurrency.equals(fromCurrency) &
+                t.toCurrency.equals(toCurrency) &
+                t.asOfDate.isSmallerOrEqualValue(cutoff),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.asOfDate)])
+          ..limit(1))
+        .getSingleOrNull();
   }
 }
 

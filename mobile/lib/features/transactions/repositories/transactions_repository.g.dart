@@ -7,7 +7,7 @@ part of 'transactions_repository.dart';
 // **************************************************************************
 
 String _$transactionsRepositoryHash() =>
-    r'645852cc01a9f124b773ac983bab34290a6e097e';
+    r'006855c4134b5fa1b2be6ecd2c2e75e0f5109a82';
 
 /// Provides a singleton [TransactionsRepository] instance via Riverpod.
 ///

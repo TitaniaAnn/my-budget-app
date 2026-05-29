@@ -2797,6 +2797,1204 @@ class TransactionsCacheCompanion extends UpdateCompanion<TransactionsCacheRow> {
   }
 }
 
+class $BudgetsCacheTable extends BudgetsCache
+    with TableInfo<$BudgetsCacheTable, BudgetsCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
+  @override
+  late final GeneratedColumn<String> period = GeneratedColumn<String>(
+    'period',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    categoryId,
+    amount,
+    currency,
+    period,
+    startDate,
+    endDate,
+    createdBy,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budgets_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BudgetsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('period')) {
+      context.handle(
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_periodMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdByMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BudgetsCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BudgetsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}period'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      ),
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BudgetsCacheTable createAlias(String alias) {
+    return $BudgetsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class BudgetsCacheRow extends DataClass implements Insertable<BudgetsCacheRow> {
+  final String id;
+  final String householdId;
+  final String categoryId;
+  final int amount;
+  final String currency;
+
+  /// Stores the BudgetPeriod dbValue verbatim ('weekly',
+  /// 'monthly', etc.). Repository maps to/from the enum.
+  final String period;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final String createdBy;
+  final DateTime cachedAt;
+  const BudgetsCacheRow({
+    required this.id,
+    required this.householdId,
+    required this.categoryId,
+    required this.amount,
+    required this.currency,
+    required this.period,
+    required this.startDate,
+    this.endDate,
+    required this.createdBy,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['household_id'] = Variable<String>(householdId);
+    map['category_id'] = Variable<String>(categoryId);
+    map['amount'] = Variable<int>(amount);
+    map['currency'] = Variable<String>(currency);
+    map['period'] = Variable<String>(period);
+    map['start_date'] = Variable<DateTime>(startDate);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    map['created_by'] = Variable<String>(createdBy);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  BudgetsCacheCompanion toCompanion(bool nullToAbsent) {
+    return BudgetsCacheCompanion(
+      id: Value(id),
+      householdId: Value(householdId),
+      categoryId: Value(categoryId),
+      amount: Value(amount),
+      currency: Value(currency),
+      period: Value(period),
+      startDate: Value(startDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      createdBy: Value(createdBy),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory BudgetsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BudgetsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String>(json['householdId']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      amount: serializer.fromJson<int>(json['amount']),
+      currency: serializer.fromJson<String>(json['currency']),
+      period: serializer.fromJson<String>(json['period']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      createdBy: serializer.fromJson<String>(json['createdBy']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String>(householdId),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'amount': serializer.toJson<int>(amount),
+      'currency': serializer.toJson<String>(currency),
+      'period': serializer.toJson<String>(period),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'createdBy': serializer.toJson<String>(createdBy),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  BudgetsCacheRow copyWith({
+    String? id,
+    String? householdId,
+    String? categoryId,
+    int? amount,
+    String? currency,
+    String? period,
+    DateTime? startDate,
+    Value<DateTime?> endDate = const Value.absent(),
+    String? createdBy,
+    DateTime? cachedAt,
+  }) => BudgetsCacheRow(
+    id: id ?? this.id,
+    householdId: householdId ?? this.householdId,
+    categoryId: categoryId ?? this.categoryId,
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    period: period ?? this.period,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate.present ? endDate.value : this.endDate,
+    createdBy: createdBy ?? this.createdBy,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  BudgetsCacheRow copyWithCompanion(BudgetsCacheCompanion data) {
+    return BudgetsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      period: data.period.present ? data.period.value : this.period,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetsCacheRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('period: $period, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    categoryId,
+    amount,
+    currency,
+    period,
+    startDate,
+    endDate,
+    createdBy,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BudgetsCacheRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.categoryId == this.categoryId &&
+          other.amount == this.amount &&
+          other.currency == this.currency &&
+          other.period == this.period &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.createdBy == this.createdBy &&
+          other.cachedAt == this.cachedAt);
+}
+
+class BudgetsCacheCompanion extends UpdateCompanion<BudgetsCacheRow> {
+  final Value<String> id;
+  final Value<String> householdId;
+  final Value<String> categoryId;
+  final Value<int> amount;
+  final Value<String> currency;
+  final Value<String> period;
+  final Value<DateTime> startDate;
+  final Value<DateTime?> endDate;
+  final Value<String> createdBy;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const BudgetsCacheCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.period = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BudgetsCacheCompanion.insert({
+    required String id,
+    required String householdId,
+    required String categoryId,
+    required int amount,
+    this.currency = const Value.absent(),
+    required String period,
+    required DateTime startDate,
+    this.endDate = const Value.absent(),
+    required String createdBy,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       householdId = Value(householdId),
+       categoryId = Value(categoryId),
+       amount = Value(amount),
+       period = Value(period),
+       startDate = Value(startDate),
+       createdBy = Value(createdBy),
+       cachedAt = Value(cachedAt);
+  static Insertable<BudgetsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? categoryId,
+    Expression<int>? amount,
+    Expression<String>? currency,
+    Expression<String>? period,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? createdBy,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (amount != null) 'amount': amount,
+      if (currency != null) 'currency': currency,
+      if (period != null) 'period': period,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (createdBy != null) 'created_by': createdBy,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BudgetsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? householdId,
+    Value<String>? categoryId,
+    Value<int>? amount,
+    Value<String>? currency,
+    Value<String>? period,
+    Value<DateTime>? startDate,
+    Value<DateTime?>? endDate,
+    Value<String>? createdBy,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return BudgetsCacheCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      categoryId: categoryId ?? this.categoryId,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      period: period ?? this.period,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      createdBy: createdBy ?? this.createdBy,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (period.present) {
+      map['period'] = Variable<String>(period.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('period: $period, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FxRatesCacheTable extends FxRatesCache
+    with TableInfo<$FxRatesCacheTable, FxRatesCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FxRatesCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromCurrencyMeta = const VerificationMeta(
+    'fromCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> fromCurrency = GeneratedColumn<String>(
+    'from_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toCurrencyMeta = const VerificationMeta(
+    'toCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> toCurrency = GeneratedColumn<String>(
+    'to_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _asOfDateMeta = const VerificationMeta(
+    'asOfDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> asOfDate = GeneratedColumn<DateTime>(
+    'as_of_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateMeta = const VerificationMeta('rate');
+  @override
+  late final GeneratedColumn<double> rate = GeneratedColumn<double>(
+    'rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    householdId,
+    fromCurrency,
+    toCurrency,
+    asOfDate,
+    rate,
+    createdBy,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fx_rates_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FxRatesCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('from_currency')) {
+      context.handle(
+        _fromCurrencyMeta,
+        fromCurrency.isAcceptableOrUnknown(
+          data['from_currency']!,
+          _fromCurrencyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromCurrencyMeta);
+    }
+    if (data.containsKey('to_currency')) {
+      context.handle(
+        _toCurrencyMeta,
+        toCurrency.isAcceptableOrUnknown(data['to_currency']!, _toCurrencyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toCurrencyMeta);
+    }
+    if (data.containsKey('as_of_date')) {
+      context.handle(
+        _asOfDateMeta,
+        asOfDate.isAcceptableOrUnknown(data['as_of_date']!, _asOfDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_asOfDateMeta);
+    }
+    if (data.containsKey('rate')) {
+      context.handle(
+        _rateMeta,
+        rate.isAcceptableOrUnknown(data['rate']!, _rateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rateMeta);
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {
+    householdId,
+    fromCurrency,
+    toCurrency,
+    asOfDate,
+  };
+  @override
+  FxRatesCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FxRatesCacheRow(
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      fromCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}from_currency'],
+      )!,
+      toCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_currency'],
+      )!,
+      asOfDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}as_of_date'],
+      )!,
+      rate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rate'],
+      )!,
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FxRatesCacheTable createAlias(String alias) {
+    return $FxRatesCacheTable(attachedDatabase, alias);
+  }
+}
+
+class FxRatesCacheRow extends DataClass implements Insertable<FxRatesCacheRow> {
+  final String householdId;
+  final String fromCurrency;
+  final String toCurrency;
+  final DateTime asOfDate;
+
+  /// Drift's `real()` is a double. The server stores
+  /// NUMERIC(18,8); the JSON-wire-coerce in FxRate.fromJson
+  /// already handles the string-to-double bridge.
+  final double rate;
+  final String? createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime cachedAt;
+  const FxRatesCacheRow({
+    required this.householdId,
+    required this.fromCurrency,
+    required this.toCurrency,
+    required this.asOfDate,
+    required this.rate,
+    this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['household_id'] = Variable<String>(householdId);
+    map['from_currency'] = Variable<String>(fromCurrency);
+    map['to_currency'] = Variable<String>(toCurrency);
+    map['as_of_date'] = Variable<DateTime>(asOfDate);
+    map['rate'] = Variable<double>(rate);
+    if (!nullToAbsent || createdBy != null) {
+      map['created_by'] = Variable<String>(createdBy);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  FxRatesCacheCompanion toCompanion(bool nullToAbsent) {
+    return FxRatesCacheCompanion(
+      householdId: Value(householdId),
+      fromCurrency: Value(fromCurrency),
+      toCurrency: Value(toCurrency),
+      asOfDate: Value(asOfDate),
+      rate: Value(rate),
+      createdBy: createdBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory FxRatesCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FxRatesCacheRow(
+      householdId: serializer.fromJson<String>(json['householdId']),
+      fromCurrency: serializer.fromJson<String>(json['fromCurrency']),
+      toCurrency: serializer.fromJson<String>(json['toCurrency']),
+      asOfDate: serializer.fromJson<DateTime>(json['asOfDate']),
+      rate: serializer.fromJson<double>(json['rate']),
+      createdBy: serializer.fromJson<String?>(json['createdBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'householdId': serializer.toJson<String>(householdId),
+      'fromCurrency': serializer.toJson<String>(fromCurrency),
+      'toCurrency': serializer.toJson<String>(toCurrency),
+      'asOfDate': serializer.toJson<DateTime>(asOfDate),
+      'rate': serializer.toJson<double>(rate),
+      'createdBy': serializer.toJson<String?>(createdBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  FxRatesCacheRow copyWith({
+    String? householdId,
+    String? fromCurrency,
+    String? toCurrency,
+    DateTime? asOfDate,
+    double? rate,
+    Value<String?> createdBy = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? cachedAt,
+  }) => FxRatesCacheRow(
+    householdId: householdId ?? this.householdId,
+    fromCurrency: fromCurrency ?? this.fromCurrency,
+    toCurrency: toCurrency ?? this.toCurrency,
+    asOfDate: asOfDate ?? this.asOfDate,
+    rate: rate ?? this.rate,
+    createdBy: createdBy.present ? createdBy.value : this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  FxRatesCacheRow copyWithCompanion(FxRatesCacheCompanion data) {
+    return FxRatesCacheRow(
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      fromCurrency: data.fromCurrency.present
+          ? data.fromCurrency.value
+          : this.fromCurrency,
+      toCurrency: data.toCurrency.present
+          ? data.toCurrency.value
+          : this.toCurrency,
+      asOfDate: data.asOfDate.present ? data.asOfDate.value : this.asOfDate,
+      rate: data.rate.present ? data.rate.value : this.rate,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FxRatesCacheRow(')
+          ..write('householdId: $householdId, ')
+          ..write('fromCurrency: $fromCurrency, ')
+          ..write('toCurrency: $toCurrency, ')
+          ..write('asOfDate: $asOfDate, ')
+          ..write('rate: $rate, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    householdId,
+    fromCurrency,
+    toCurrency,
+    asOfDate,
+    rate,
+    createdBy,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FxRatesCacheRow &&
+          other.householdId == this.householdId &&
+          other.fromCurrency == this.fromCurrency &&
+          other.toCurrency == this.toCurrency &&
+          other.asOfDate == this.asOfDate &&
+          other.rate == this.rate &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class FxRatesCacheCompanion extends UpdateCompanion<FxRatesCacheRow> {
+  final Value<String> householdId;
+  final Value<String> fromCurrency;
+  final Value<String> toCurrency;
+  final Value<DateTime> asOfDate;
+  final Value<double> rate;
+  final Value<String?> createdBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const FxRatesCacheCompanion({
+    this.householdId = const Value.absent(),
+    this.fromCurrency = const Value.absent(),
+    this.toCurrency = const Value.absent(),
+    this.asOfDate = const Value.absent(),
+    this.rate = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FxRatesCacheCompanion.insert({
+    required String householdId,
+    required String fromCurrency,
+    required String toCurrency,
+    required DateTime asOfDate,
+    required double rate,
+    this.createdBy = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : householdId = Value(householdId),
+       fromCurrency = Value(fromCurrency),
+       toCurrency = Value(toCurrency),
+       asOfDate = Value(asOfDate),
+       rate = Value(rate),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<FxRatesCacheRow> custom({
+    Expression<String>? householdId,
+    Expression<String>? fromCurrency,
+    Expression<String>? toCurrency,
+    Expression<DateTime>? asOfDate,
+    Expression<double>? rate,
+    Expression<String>? createdBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (householdId != null) 'household_id': householdId,
+      if (fromCurrency != null) 'from_currency': fromCurrency,
+      if (toCurrency != null) 'to_currency': toCurrency,
+      if (asOfDate != null) 'as_of_date': asOfDate,
+      if (rate != null) 'rate': rate,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FxRatesCacheCompanion copyWith({
+    Value<String>? householdId,
+    Value<String>? fromCurrency,
+    Value<String>? toCurrency,
+    Value<DateTime>? asOfDate,
+    Value<double>? rate,
+    Value<String?>? createdBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return FxRatesCacheCompanion(
+      householdId: householdId ?? this.householdId,
+      fromCurrency: fromCurrency ?? this.fromCurrency,
+      toCurrency: toCurrency ?? this.toCurrency,
+      asOfDate: asOfDate ?? this.asOfDate,
+      rate: rate ?? this.rate,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (fromCurrency.present) {
+      map['from_currency'] = Variable<String>(fromCurrency.value);
+    }
+    if (toCurrency.present) {
+      map['to_currency'] = Variable<String>(toCurrency.value);
+    }
+    if (asOfDate.present) {
+      map['as_of_date'] = Variable<DateTime>(asOfDate.value);
+    }
+    if (rate.present) {
+      map['rate'] = Variable<double>(rate.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FxRatesCacheCompanion(')
+          ..write('householdId: $householdId, ')
+          ..write('fromCurrency: $fromCurrency, ')
+          ..write('toCurrency: $toCurrency, ')
+          ..write('asOfDate: $asOfDate, ')
+          ..write('rate: $rate, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2806,6 +4004,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $TransactionsCacheTable transactionsCache =
       $TransactionsCacheTable(this);
+  late final $BudgetsCacheTable budgetsCache = $BudgetsCacheTable(this);
+  late final $FxRatesCacheTable fxRatesCache = $FxRatesCacheTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2814,6 +4014,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     accountsCache,
     categoriesCache,
     transactionsCache,
+    budgetsCache,
+    fxRatesCache,
   ];
 }
 
@@ -4105,6 +5307,587 @@ typedef $$TransactionsCacheTableProcessedTableManager =
       TransactionsCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$BudgetsCacheTableCreateCompanionBuilder =
+    BudgetsCacheCompanion Function({
+      required String id,
+      required String householdId,
+      required String categoryId,
+      required int amount,
+      Value<String> currency,
+      required String period,
+      required DateTime startDate,
+      Value<DateTime?> endDate,
+      required String createdBy,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$BudgetsCacheTableUpdateCompanionBuilder =
+    BudgetsCacheCompanion Function({
+      Value<String> id,
+      Value<String> householdId,
+      Value<String> categoryId,
+      Value<int> amount,
+      Value<String> currency,
+      Value<String> period,
+      Value<DateTime> startDate,
+      Value<DateTime?> endDate,
+      Value<String> createdBy,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$BudgetsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $BudgetsCacheTable> {
+  $$BudgetsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BudgetsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $BudgetsCacheTable> {
+  $$BudgetsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BudgetsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BudgetsCacheTable> {
+  $$BudgetsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$BudgetsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BudgetsCacheTable,
+          BudgetsCacheRow,
+          $$BudgetsCacheTableFilterComposer,
+          $$BudgetsCacheTableOrderingComposer,
+          $$BudgetsCacheTableAnnotationComposer,
+          $$BudgetsCacheTableCreateCompanionBuilder,
+          $$BudgetsCacheTableUpdateCompanionBuilder,
+          (
+            BudgetsCacheRow,
+            BaseReferences<_$AppDatabase, $BudgetsCacheTable, BudgetsCacheRow>,
+          ),
+          BudgetsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$BudgetsCacheTableTableManager(_$AppDatabase db, $BudgetsCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BudgetsCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetsCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetsCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> householdId = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String> period = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> createdBy = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BudgetsCacheCompanion(
+                id: id,
+                householdId: householdId,
+                categoryId: categoryId,
+                amount: amount,
+                currency: currency,
+                period: period,
+                startDate: startDate,
+                endDate: endDate,
+                createdBy: createdBy,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String householdId,
+                required String categoryId,
+                required int amount,
+                Value<String> currency = const Value.absent(),
+                required String period,
+                required DateTime startDate,
+                Value<DateTime?> endDate = const Value.absent(),
+                required String createdBy,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => BudgetsCacheCompanion.insert(
+                id: id,
+                householdId: householdId,
+                categoryId: categoryId,
+                amount: amount,
+                currency: currency,
+                period: period,
+                startDate: startDate,
+                endDate: endDate,
+                createdBy: createdBy,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BudgetsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BudgetsCacheTable,
+      BudgetsCacheRow,
+      $$BudgetsCacheTableFilterComposer,
+      $$BudgetsCacheTableOrderingComposer,
+      $$BudgetsCacheTableAnnotationComposer,
+      $$BudgetsCacheTableCreateCompanionBuilder,
+      $$BudgetsCacheTableUpdateCompanionBuilder,
+      (
+        BudgetsCacheRow,
+        BaseReferences<_$AppDatabase, $BudgetsCacheTable, BudgetsCacheRow>,
+      ),
+      BudgetsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FxRatesCacheTableCreateCompanionBuilder =
+    FxRatesCacheCompanion Function({
+      required String householdId,
+      required String fromCurrency,
+      required String toCurrency,
+      required DateTime asOfDate,
+      required double rate,
+      Value<String?> createdBy,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$FxRatesCacheTableUpdateCompanionBuilder =
+    FxRatesCacheCompanion Function({
+      Value<String> householdId,
+      Value<String> fromCurrency,
+      Value<String> toCurrency,
+      Value<DateTime> asOfDate,
+      Value<double> rate,
+      Value<String?> createdBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$FxRatesCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $FxRatesCacheTable> {
+  $$FxRatesCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fromCurrency => $composableBuilder(
+    column: $table.fromCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get toCurrency => $composableBuilder(
+    column: $table.toCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get asOfDate => $composableBuilder(
+    column: $table.asOfDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rate => $composableBuilder(
+    column: $table.rate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FxRatesCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $FxRatesCacheTable> {
+  $$FxRatesCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fromCurrency => $composableBuilder(
+    column: $table.fromCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toCurrency => $composableBuilder(
+    column: $table.toCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get asOfDate => $composableBuilder(
+    column: $table.asOfDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rate => $composableBuilder(
+    column: $table.rate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FxRatesCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FxRatesCacheTable> {
+  $$FxRatesCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fromCurrency => $composableBuilder(
+    column: $table.fromCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get toCurrency => $composableBuilder(
+    column: $table.toCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get asOfDate =>
+      $composableBuilder(column: $table.asOfDate, builder: (column) => column);
+
+  GeneratedColumn<double> get rate =>
+      $composableBuilder(column: $table.rate, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$FxRatesCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FxRatesCacheTable,
+          FxRatesCacheRow,
+          $$FxRatesCacheTableFilterComposer,
+          $$FxRatesCacheTableOrderingComposer,
+          $$FxRatesCacheTableAnnotationComposer,
+          $$FxRatesCacheTableCreateCompanionBuilder,
+          $$FxRatesCacheTableUpdateCompanionBuilder,
+          (
+            FxRatesCacheRow,
+            BaseReferences<_$AppDatabase, $FxRatesCacheTable, FxRatesCacheRow>,
+          ),
+          FxRatesCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$FxRatesCacheTableTableManager(_$AppDatabase db, $FxRatesCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FxRatesCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FxRatesCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FxRatesCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> householdId = const Value.absent(),
+                Value<String> fromCurrency = const Value.absent(),
+                Value<String> toCurrency = const Value.absent(),
+                Value<DateTime> asOfDate = const Value.absent(),
+                Value<double> rate = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FxRatesCacheCompanion(
+                householdId: householdId,
+                fromCurrency: fromCurrency,
+                toCurrency: toCurrency,
+                asOfDate: asOfDate,
+                rate: rate,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String householdId,
+                required String fromCurrency,
+                required String toCurrency,
+                required DateTime asOfDate,
+                required double rate,
+                Value<String?> createdBy = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FxRatesCacheCompanion.insert(
+                householdId: householdId,
+                fromCurrency: fromCurrency,
+                toCurrency: toCurrency,
+                asOfDate: asOfDate,
+                rate: rate,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FxRatesCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FxRatesCacheTable,
+      FxRatesCacheRow,
+      $$FxRatesCacheTableFilterComposer,
+      $$FxRatesCacheTableOrderingComposer,
+      $$FxRatesCacheTableAnnotationComposer,
+      $$FxRatesCacheTableCreateCompanionBuilder,
+      $$FxRatesCacheTableUpdateCompanionBuilder,
+      (
+        FxRatesCacheRow,
+        BaseReferences<_$AppDatabase, $FxRatesCacheTable, FxRatesCacheRow>,
+      ),
+      FxRatesCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4115,4 +5898,8 @@ class $AppDatabaseManager {
       $$CategoriesCacheTableTableManager(_db, _db.categoriesCache);
   $$TransactionsCacheTableTableManager get transactionsCache =>
       $$TransactionsCacheTableTableManager(_db, _db.transactionsCache);
+  $$BudgetsCacheTableTableManager get budgetsCache =>
+      $$BudgetsCacheTableTableManager(_db, _db.budgetsCache);
+  $$FxRatesCacheTableTableManager get fxRatesCache =>
+      $$FxRatesCacheTableTableManager(_db, _db.fxRatesCache);
 }
