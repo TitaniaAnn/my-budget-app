@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/category_icon.dart';
 import '../../../core/utils/color.dart';
@@ -48,7 +49,12 @@ class BudgetScreen extends ConsumerWidget {
         data: (budgets) {
           if (budgets.isEmpty) return const _EmptyState();
           return RefreshIndicator(
-            onRefresh: () => ref.refresh(budgetDataProvider.future),
+            // Audit L1 Phase 5b: pull-to-refresh drains the offline
+            // write queue first, then invalidates the ledger. The
+            // re-fetch reads the server-canonical state including
+            // any queued mutations.
+            onRefresh: () =>
+                ref.read(syncCoordinatorProvider).pullToRefresh(ref),
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: budgets.length,

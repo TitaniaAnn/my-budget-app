@@ -1245,6 +1245,41 @@ class AppDatabase extends _$AppDatabase {
         .map((row) => row.read<int>(pendingWrites.id.count()) ?? 0)
         .getSingle();
   }
+
+  /// Maximum `cached_at` timestamp across every cache table
+  /// that has one. Used by the offline banner (Phase 5a) to
+  /// surface "showing data from X minutes ago" — a single
+  /// scalar that approximates "when did we last hear from the
+  /// server about any data?". Returns null when no cache table
+  /// has any rows (fresh install offline).
+  ///
+  /// Implementation note: a single UNION ALL would also work
+  /// but the per-table SELECT MAX() reads only the index, so
+  /// the cost is constant in the number of cached rows. The
+  /// tag-assignment tables are excluded — they don't carry
+  /// user-visible data on their own and their cachedAt is
+  /// dominated by the dictionary fetch anyway.
+  Future<DateTime?> latestCacheTimestamp() async {
+    final result = await customSelect(
+      '''
+      SELECT MAX(ts) AS ts FROM (
+        SELECT MAX(cached_at) AS ts FROM accounts_cache
+        UNION ALL SELECT MAX(cached_at) FROM categories_cache
+        UNION ALL SELECT MAX(cached_at) FROM transactions_cache
+        UNION ALL SELECT MAX(cached_at) FROM budgets_cache
+        UNION ALL SELECT MAX(cached_at) FROM fx_rates_cache
+        UNION ALL SELECT MAX(cached_at) FROM receipts_cache
+        UNION ALL SELECT MAX(cached_at) FROM receipt_line_items_cache
+        UNION ALL SELECT MAX(cached_at) FROM holdings_cache
+        UNION ALL SELECT MAX(cached_at) FROM recurring_transactions_cache
+        UNION ALL SELECT MAX(cached_at) FROM transaction_tags_cache
+      )
+      ''',
+    ).getSingle();
+    final raw = result.data['ts'] as String?;
+    if (raw == null) return null;
+    return DateTime.parse(raw);
+  }
 }
 
 /// Single row of the transactions-with-joined-category query.

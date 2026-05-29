@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../shared/widgets/app_sheet.dart';
@@ -70,12 +71,16 @@ class _ScenariosScreenState extends ConsumerState<ScenariosScreen>
                 scenarios: plans,
                 emptyMessage:
                     'No plans yet.\nTap + to create a what-if scenario.',
-                onRefresh: () => ref.refresh(scenariosProvider.future),
+                // Phase 5b: drain offline writes + invalidate ledger.
+                onRefresh: () =>
+                    ref.read(syncCoordinatorProvider).pullToRefresh(ref),
               ),
               _ScenarioList(
                 scenarios: goals,
                 emptyMessage: 'No goals yet.\nTap + and toggle "Save as Goal".',
-                onRefresh: () => ref.refresh(scenariosProvider.future),
+                // Phase 5b: drain offline writes + invalidate ledger.
+                onRefresh: () =>
+                    ref.read(syncCoordinatorProvider).pullToRefresh(ref),
               ),
             ],
           );

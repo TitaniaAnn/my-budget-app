@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color.dart';
 import '../../../core/utils/money.dart';
@@ -73,7 +74,12 @@ class _DashboardBody extends ConsumerWidget {
     final monthName = DateFormat('MMMM').format(DateTime.now());
     final budgetsAsync = ref.watch(budgetDataProvider);
 
-    return ListView(
+    // Phase 5b: pull-to-refresh on the dashboard. Drains the
+    // offline write queue then invalidates the ledger so the
+    // re-fetch sees the post-replay state.
+    return RefreshIndicator(
+      onRefresh: () => ref.read(syncCoordinatorProvider).pullToRefresh(ref),
+      child: ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
         // ── Plaid re-auth banner ───────────────────────────────────────────
@@ -252,6 +258,7 @@ class _DashboardBody extends ConsumerWidget {
             ),
           ),
       ],
+      ),
     );
   }
 }

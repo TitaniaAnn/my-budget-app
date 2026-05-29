@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../models/receipt.dart';
@@ -43,7 +44,9 @@ class ReceiptsScreen extends ConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () => ref.refresh(receiptsProvider.future),
+            // Phase 5b: drain offline writes + invalidate ledger.
+            onRefresh: () =>
+                ref.read(syncCoordinatorProvider).pullToRefresh(ref),
             child: GridView.builder(
               padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

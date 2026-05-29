@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/last_synced_provider.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../features/currency/screens/currency_settings_screen.dart';
@@ -210,6 +212,10 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          // ── Sync (Phase 5c) ────────────────────────────────────────────
+          _SectionHeader('Sync'),
+          const _SyncStatusTile(),
 
           // ── Reports ────────────────────────────────────────────────────
           _SectionHeader('Reports'),
@@ -718,4 +724,58 @@ class _ThemeTile extends ConsumerWidget {
     ThemeMode.light => Icons.light_mode,
     ThemeMode.dark => Icons.dark_mode,
   };
+}
+
+/// Settings → Sync section (Phase 5c). Shows the "last synced"
+/// timestamp + pending-write count and exposes a manual "Sync
+/// now" affordance that drains the queue and re-fetches.
+class _SyncStatusTile extends ConsumerWidget {
+  const _SyncStatusTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lastSyncedAsync = ref.watch(lastSyncedAtProvider);
+    final pendingAsync = ref.watch(pendingWritesCountValueProvider);
+    final colors = context.appColors;
+
+    final lastSynced = lastSyncedAsync.valueOrNull;
+    final pending = pendingAsync.valueOrNull ?? 0;
+
+    final subtitleParts = <String>[
+      'Last synced ${formatLastSynced(lastSynced, DateTime.now())}',
+      if (pending > 0)
+        pending == 1
+            ? '1 change waiting to upload'
+            : '$pending changes waiting to upload',
+    ];
+
+    return ListTile(
+      leading: Icon(
+        pending > 0 ? Icons.cloud_sync_outlined : Icons.cloud_done_outlined,
+        color: pending > 0 ? BrandColors.warning : colors.textMuted,
+      ),
+      title: const Text('Sync now'),
+      subtitle: Text(subtitleParts.join(' · ')),
+      trailing: const Icon(Icons.refresh),
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        final result = await ref
+            .read(syncCoordinatorProvider)
+            .pullToRefresh(ref);
+        // Brief feedback so the user knows the action took effect.
+        // Two messages: a "no work" path (queue was empty, just
+        // re-fetched) and a "replayed N, failed M" path.
+        final text = result.drainAttempted == 0
+            ? 'Refreshed.'
+            : result.drainFailed == 0
+            ? 'Refreshed and replayed ${result.drainAttempted} pending '
+                  '${result.drainAttempted == 1 ? "change" : "changes"}.'
+            : 'Refreshed. ${result.drainAttempted - result.drainFailed} '
+                  'replayed, ${result.drainFailed} still pending.';
+        messenger.showSnackBar(
+          SnackBar(content: Text(text), duration: const Duration(seconds: 3)),
+        );
+      },
+    );
+  }
 }

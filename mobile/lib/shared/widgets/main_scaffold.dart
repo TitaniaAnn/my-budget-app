@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/connectivity/connectivity_provider.dart';
+import '../../core/sync/last_synced_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Wraps an authenticated screen in the app's bottom navigation bar.
@@ -94,19 +95,28 @@ class MainScaffold extends ConsumerWidget {
 }
 
 /// Thin status strip rendered at the top of [MainScaffold] when the
-/// platform reports no connectivity. Audit L1 Phase 1.
+/// platform reports no connectivity. Audit L1 Phase 1 + 5a.
 ///
 /// Visually subdued (warning tone, single-line, ~32px tall) — the
 /// goal is "user notices something is up" not "the offline state
 /// dominates the screen." Cache-through repositories still serve
 /// whatever data they have, so most screens stay usable; the
-/// banner just explains why a fresh fetch might fail.
-class _OfflineBanner extends StatelessWidget {
+/// banner explains why a fresh fetch might fail AND surfaces the
+/// last-synced timestamp so the user knows how stale the cached
+/// data is.
+class _OfflineBanner extends ConsumerWidget {
   const _OfflineBanner();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
+    // AsyncValue from the lastSyncedAtProvider — render
+    // optimistically: while the timestamp is loading, hide
+    // the trailing label and just show the offline message.
+    final lastSynced = ref.watch(lastSyncedAtProvider).valueOrNull;
+    final captionStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: colors.textMuted,
+    );
     return SafeArea(
       bottom: false,
       child: Material(
@@ -118,12 +128,14 @@ class _OfflineBanner extends StatelessWidget {
             children: [
               Icon(Icons.cloud_off_outlined, size: 16, color: colors.textMuted),
               const SizedBox(width: 8),
-              Text(
-                "You're offline — showing the last data we cached",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textMuted,
+              Text("You're offline", style: captionStyle),
+              if (lastSynced != null) ...[
+                Text(' · synced ', style: captionStyle),
+                LastSyncedLabel(
+                  lastSyncedAt: lastSynced,
+                  style: captionStyle,
                 ),
-              ),
+              ],
             ],
           ),
         ),
