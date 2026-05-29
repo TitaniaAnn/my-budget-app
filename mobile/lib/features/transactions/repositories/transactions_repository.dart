@@ -504,6 +504,12 @@ class TransactionsRepository {
           'ml_model_confidence': null,
         })
         .inFilter('id', transactionIds);
+    // Audit 2026-05-26 H9: invalidate the cached rows so the
+    // next fetchTransactions re-reads them with the new
+    // category. The server doesn't return the updated rows
+    // (would balloon the wire payload), so invalidate-on-write
+    // is the right trade-off.
+    await _deleteTransactionsCacheByIds(transactionIds);
   }
 
   /// Deletes every transaction in [transactionIds] in one round-trip.
@@ -538,11 +544,24 @@ class TransactionsRepository {
   /// account ids in the same trip; a follow-up SELECT would race
   /// against the cascade.
   Future<List<String>> deleteTransfer(String transferId) async {
+    // Audit 2026-05-26 H9: PostgREST returns only account_id on
+    // the delete; we don't know which transaction ids cascaded.
+    // Pull them first so we can prune the cache too. One extra
+    // SELECT, but transfers are 2 rows so the cost is trivial.
+    final affected = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('transfer_id', transferId);
+    final affectedIds = [
+      for (final r in (affected as List).cast<Map<String, dynamic>>())
+        r['id'] as String,
+    ];
     final rows = await supabase
         .from('transactions')
         .delete()
         .eq('transfer_id', transferId)
         .select('account_id');
+    await _deleteTransactionsCacheByIds(affectedIds);
     return [for (final r in rows as List) r['account_id'] as String];
   }
 
@@ -571,6 +590,10 @@ class TransactionsRepository {
           'ml_model_confidence': null,
         })
         .eq('id', transactionId);
+    // Audit 2026-05-26 H9: invalidate so the next fetch reads
+    // the new category. Without this the row still shows the
+    // ML guess + "needs review" badge until the next reload.
+    await _deleteTransactionCacheRow(transactionId);
   }
 
   /// Fetches every transaction currently paired to [receiptId], ordered
@@ -602,6 +625,13 @@ class TransactionsRepository {
         .from('transactions')
         .update({'receipt_id': receiptId})
         .eq('id', transactionId);
+    // Audit 2026-05-26 H9: pairing a receipt to a transaction
+    // is the most painful cache-skip — user pairs from receipt
+    // detail, navigates back to transactions list, sees "no
+    // receipt" until the next fetch because the cache still
+    // has the pre-pairing row. Invalidate so the navigate-back
+    // re-reads.
+    await _deleteTransactionCacheRow(transactionId);
   }
 
   /// Re-runs the [categorizer] on all uncategorized transactions for
@@ -658,6 +688,11 @@ class TransactionsRepository {
 
     final now = DateTime.now().toUtc().toIso8601String();
     var updated = 0;
+    // Collect every id we touched so we can prune the cache in
+    // one batch after the server-side updates land. Audit
+    // 2026-05-26 H9: without this every recategorized row
+    // shows its old (empty) category until the next fetch.
+    final touchedIds = <String>[];
     await Future.wait(
       groups.entries.map((entry) async {
         final (categoryId, source, confidenceBp) = entry.key;
@@ -673,8 +708,11 @@ class TransactionsRepository {
             })
             .inFilter('id', entry.value);
         updated += entry.value.length;
+        touchedIds.addAll(entry.value);
       }),
     );
+
+    await _deleteTransactionsCacheByIds(touchedIds);
 
     return updated;
   }
