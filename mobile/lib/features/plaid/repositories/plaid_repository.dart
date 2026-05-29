@@ -43,16 +43,26 @@ class PlaidRepository {
   }
 
   /// Mints a Link token for re-auth (update mode) against an
-  /// existing Item. Phase 4 will add a dedicated Edge Function
-  /// for this; for now we pass `plaidItemRowId` to the same
-  /// link-token-create function which will accept an optional
-  /// existing-item parameter later. Throws until that's wired.
-  // ignore: unused_element
+  /// existing Item. Phase 4: passes `plaidItemId` to
+  /// plaid-link-token-create which loads the item's
+  /// access_token server-side and asks Plaid for an update-mode
+  /// token. The mobile app gets back the same link_token shape
+  /// as the fresh-link path and feeds it into PlaidLink.
+  ///
+  /// On `onSuccess`, no public_token exchange is needed (update
+  /// mode reuses the existing access_token); just re-sync.
   Future<String> createUpdateLinkToken(String plaidItemRowId) async {
-    throw UnimplementedError(
-      'createUpdateLinkToken — pending Phase 4 wiring of '
-      'plaid-link-token-create with `access_token` for update mode',
+    final response = await supabase.functions.invoke(
+      'plaid-link-token-create',
+      body: {'plaidItemId': plaidItemRowId},
     );
+    final data = response.data as Map<String, dynamic>?;
+    if (data == null || data['link_token'] is! String) {
+      throw const PlaidEdgeFunctionException(
+        'plaid-link-token-create (update mode) returned no link_token',
+      );
+    }
+    return data['link_token'] as String;
   }
 
   /// Exchanges the [publicToken] returned by Plaid Link

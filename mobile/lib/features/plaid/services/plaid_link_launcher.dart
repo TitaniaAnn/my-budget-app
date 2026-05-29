@@ -52,8 +52,16 @@ class PlaidLinkLauncher {
   /// platform Link UI, and resolves with the first
   /// success/exit event. Subscription is cancelled before the
   /// return so a subsequent launch starts clean.
-  Future<PlaidLinkOutcome> launch() async {
-    final linkToken = await repository.createLinkToken();
+  ///
+  /// When [updateModeForItemId] is non-null, the launch runs
+  /// Link in update mode against that existing Item — used by
+  /// the ReauthBanner. No public_token exchange is needed on
+  /// success in this mode; the caller should re-trigger sync
+  /// instead.
+  Future<PlaidLinkOutcome> launch({String? updateModeForItemId}) async {
+    final linkToken = updateModeForItemId == null
+        ? await repository.createLinkToken()
+        : await repository.createUpdateLinkToken(updateModeForItemId);
     await PlaidLink.create(
       configuration: LinkTokenConfiguration(token: linkToken),
     );
