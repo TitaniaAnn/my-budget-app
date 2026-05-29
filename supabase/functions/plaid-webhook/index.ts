@@ -43,11 +43,7 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import {
-  jsonError,
-  PlaidApiError,
-  verifyPlaidWebhook,
-} from "../_shared/plaid.ts";
+import { jsonError, verifyPlaidWebhook } from "../_shared/plaid.ts";
 
 interface PlaidWebhookBody {
   webhook_type: string;
@@ -127,22 +123,58 @@ serve(async (req) => {
     }
   }
 
+  // Compute SHA-256 of the raw body for replay protection
+  // (review fix #17). Migration 060 added a UNIQUE on
+  // (plaid_item_id, dedup_hash) so a redelivered webhook
+  // ON-CONFLICT-skips the INSERT — RETURNING comes back empty
+  // and we exit early without re-firing the routing
+  // side-effects.
+  const bodyHashBuf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(rawBody),
+  );
+  const dedupHash = Array.from(new Uint8Array(bodyHashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
   // Always log first — even unknown webhook codes go in the
-  // audit table so we can grep for them later.
-  const { data: logRow, error: logErr } = await supabase
+  // audit table so we can grep for them later. Use upsert with
+  // ignoreDuplicates so a replay returns no rows.
+  const { data: logRows, error: logErr } = await supabase
     .from("plaid_webhook_events")
-    .insert({
-      plaid_item_id: internalItemId,
-      webhook_type: body.webhook_type,
-      webhook_code: body.webhook_code,
-      payload: body,
-    })
-    .select("id")
-    .single();
+    .upsert(
+      {
+        plaid_item_id: internalItemId,
+        webhook_type: body.webhook_type,
+        webhook_code: body.webhook_code,
+        payload: body,
+        dedup_hash: dedupHash,
+      },
+      {
+        onConflict: "plaid_item_id,dedup_hash",
+        ignoreDuplicates: true,
+      },
+    )
+    .select("id");
   if (logErr) {
     console.error("[plaid-webhook] event log insert failed", logErr);
     return jsonError(500, "could not record webhook event");
   }
+  if (!logRows || logRows.length === 0) {
+    // Replay detected — Plaid retried a previously-handled
+    // delivery. Skip routing entirely. Return 200 so Plaid
+    // stops retrying.
+    console.log(
+      `[plaid-webhook] replay detected for item ${internalItemId} ` +
+        `(${body.webhook_type}/${body.webhook_code}); skipping`,
+    );
+    return Response.json({
+      received: true,
+      replay: true,
+      plaid_item_id: internalItemId,
+    });
+  }
+  const logRow = logRows[0];
 
   // ── Routing ───────────────────────────────────────────────
   const isItemError = body.webhook_type === "ITEM" &&
@@ -187,11 +219,3 @@ serve(async (req) => {
   });
 });
 
-// Note: PlaidApiError can be thrown by verifyPlaidWebhook's
-// internal call to plaidPost (for the /webhook_verification_key/get
-// fetch). It's caught by the outer try/catch around verify and
-// surfaced as "invalid signature" / 200, same as any other
-// verification failure — Plaid retries on 5xx but we don't want
-// retries for "our Plaid creds are stale."
-// ignore: unused_element
-type _Unused = PlaidApiError;
