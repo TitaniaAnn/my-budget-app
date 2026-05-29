@@ -229,3 +229,94 @@ export async function requireAuthedUser(req: Request): Promise<
 export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
 }
+
+/// Verifies a Plaid webhook against the JWT in the
+/// `Plaid-Verification` header. Returns the parsed body on
+/// success; throws on any verification failure.
+///
+/// Verification steps per Plaid's docs:
+///   1. Decode the JWT header to extract the `kid` (key id).
+///   2. Fetch the corresponding JWK from Plaid's
+///      `/webhook_verification_key/get` endpoint.
+///   3. Verify the JWT signature with that JWK (ES256).
+///   4. Verify the body's SHA-256 matches the JWT's
+///      `request_body_sha256` claim — this is what binds the
+///      signature to THIS request's body.
+///   5. Verify the JWT's iat is within the last 5 minutes (replay
+///      window).
+///
+/// Without this, anyone with the function URL could forge
+/// webhooks — sync triggers, fake re-auth states, garbage
+/// audit log rows.
+export async function verifyPlaidWebhook(
+  verificationHeader: string,
+  rawBody: string,
+): Promise<void> {
+  // Lazy npm import — jose is heavyweight, only pulled in on
+  // webhook calls (not for the other plaid-* functions).
+  const jose = await import("https://esm.sh/jose@5");
+
+  // Step 1: decode the JWT header to get the kid. Don't trust
+  // the alg field — pin to ES256 below.
+  const decodedHeader = jose.decodeProtectedHeader(verificationHeader);
+  const kid = decodedHeader.kid;
+  if (!kid) throw new Error("Plaid-Verification: JWT has no `kid`");
+
+  // Step 2: fetch the JWK from Plaid.
+  const keyResponse = await plaidPost<{
+    key: {
+      kty: string;
+      alg: string;
+      use: string;
+      kid: string;
+      crv?: string;
+      x?: string;
+      y?: string;
+      expired_at?: string | null;
+    };
+  }>("/webhook_verification_key/get", { key_id: kid });
+
+  // Step 3 & 4: verify the JWT signature AND the body hash.
+  // jose's jwtVerify checks signature + standard claims (iat, exp);
+  // we still need to manually verify the body hash.
+  const publicKey = await jose.importJWK(
+    keyResponse.key as jose.JWK,
+    "ES256",
+  );
+  const { payload } = await jose.jwtVerify(
+    verificationHeader,
+    publicKey,
+    { algorithms: ["ES256"] },
+  );
+
+  const requestBodySha256 = (payload as { request_body_sha256?: string })
+    .request_body_sha256;
+  if (!requestBodySha256) {
+    throw new Error("Plaid-Verification: missing request_body_sha256 claim");
+  }
+
+  // Compute SHA-256 of the raw body and compare.
+  const bodyBytes = new TextEncoder().encode(rawBody);
+  const bodyHashBuf = await crypto.subtle.digest("SHA-256", bodyBytes);
+  const bodyHashHex = Array.from(new Uint8Array(bodyHashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  if (bodyHashHex !== requestBodySha256) {
+    throw new Error(
+      "Plaid-Verification: body sha256 mismatch (request was modified " +
+        "between signature + arrival)",
+    );
+  }
+
+  // Step 5: iat freshness (5-minute replay window). jose's
+  // jwtVerify already checks exp; iat needs a manual bound.
+  const iat = (payload as { iat?: number }).iat;
+  if (!iat) throw new Error("Plaid-Verification: missing iat claim");
+  const ageSec = Math.floor(Date.now() / 1000) - iat;
+  if (ageSec < -60 || ageSec > 300) {
+    throw new Error(
+      `Plaid-Verification: iat ${iat} outside the 5-minute replay window ` +
+        `(${ageSec}s old)`,
+    );
+  }
+}
