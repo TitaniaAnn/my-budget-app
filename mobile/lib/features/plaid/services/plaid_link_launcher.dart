@@ -44,9 +44,20 @@ class PlaidLinkExitOutcome extends PlaidLinkOutcome {
 }
 
 class PlaidLinkLauncher {
-  PlaidLinkLauncher({required this.repository});
+  PlaidLinkLauncher({required this.repository, this.timeout = _kDefaultTimeout});
 
   final PlaidRepository repository;
+
+  /// How long to wait for a `LinkSuccess` or `LinkExit` event
+  /// before resolving with a synthetic TIMEOUT exit. Without
+  /// this a hung native bridge / dead network during the Link
+  /// flow leaves the calling UI's `_busy` flag stuck forever
+  /// (code review fix #7). Five minutes is generous enough that
+  /// a real user filling in their bank's 2FA isn't cut off but
+  /// short enough that a stuck launch eventually unsticks.
+  final Duration timeout;
+
+  static const _kDefaultTimeout = Duration(minutes: 5);
 
   /// Mints a token via the Edge Function, hands it to the
   /// platform Link UI, and resolves with the first
@@ -69,6 +80,7 @@ class PlaidLinkLauncher {
     final completer = Completer<PlaidLinkOutcome>();
     StreamSubscription<LinkSuccess>? successSub;
     StreamSubscription<LinkExit>? exitSub;
+    Timer? timeoutTimer;
 
     void finish(PlaidLinkOutcome outcome) {
       if (!completer.isCompleted) completer.complete(outcome);
@@ -76,6 +88,7 @@ class PlaidLinkLauncher {
       successSub?.cancel();
       // ignore: discarded_futures
       exitSub?.cancel();
+      timeoutTimer?.cancel();
     }
 
     successSub = PlaidLink.onSuccess.listen((event) {
@@ -93,6 +106,24 @@ class PlaidLinkLauncher {
           errorMessage: event.error?.message,
         ),
       );
+    });
+
+    // Timeout fallback. Triggered if neither onSuccess nor
+    // onExit fires within [timeout]. Synthesises an exit
+    // outcome with errorCode='TIMEOUT' so callers can
+    // distinguish from a genuine user cancellation
+    // (errorCode == null) or a Plaid error.
+    timeoutTimer = Timer(timeout, () {
+      finish(
+        const PlaidLinkExitOutcome(
+          errorCode: 'TIMEOUT',
+          errorMessage: 'Plaid Link did not return within the timeout window',
+        ),
+      );
+      // Best-effort close — if the native bridge is responsive
+      // it'll tear the UI down; if it's truly dead this no-ops.
+      // ignore: discarded_futures
+      PlaidLink.close();
     });
 
     try {
