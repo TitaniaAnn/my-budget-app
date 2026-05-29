@@ -7,7 +7,7 @@ part of 'receipts_repository.dart';
 // **************************************************************************
 
 String _$receiptsRepositoryHash() =>
-    r'5e0b7d2ea2ecdaefbea63c16cbfdb498698f35b5';
+    r'895d23fbab69889c327bb0e6dabcf39fd8dee3bd';
 
 /// See also [receiptsRepository].
 @ProviderFor(receiptsRepository)

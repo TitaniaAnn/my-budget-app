@@ -6,7 +6,7 @@ part of 'fx_rates_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$fxRatesRepositoryHash() => r'd942cb427a1e81fa1e97e2b0faa8af8e1444854e';
+String _$fxRatesRepositoryHash() => r'3bc9d856cefe205db857ba5c405c9f34a3c50640';
 
 /// See also [fxRatesRepository].
 @ProviderFor(fxRatesRepository)

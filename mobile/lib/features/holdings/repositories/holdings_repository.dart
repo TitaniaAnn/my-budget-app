@@ -3,7 +3,14 @@
 // are scoped to a household and to a specific account; RLS handles
 // the visibility filter, so callers pass the householdId only when
 // they need the wider rollup for the dashboard's allocation donut.
+//
+// Audit L1 Phase 2d: cache-through on the read paths
+// (fetchForAccount, fetchForHousehold). Writes update the cache
+// after the server returns the row.
+import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/holding.dart';
 
@@ -11,22 +18,37 @@ part 'holdings_repository.g.dart';
 
 @riverpod
 HoldingsRepository holdingsRepository(HoldingsRepositoryRef ref) {
-  return HoldingsRepository();
+  return HoldingsRepository(db: ref.watch(appDatabaseProvider));
 }
 
 class HoldingsRepository {
+  HoldingsRepository({AppDatabase? db}) : _db = db;
+  final AppDatabase? _db;
+
   /// Every holding inside [accountId], symbol-sorted (case-
   /// insensitive A→Z). Powers the per-account holdings list.
   ///
   /// postgrest's .order() defaults to DESCENDING — see the audit in
   /// commit d194f07 — so the `ascending: true` here is load-bearing.
+  ///
+  /// Cache fallback: returns rows from the local mirror filtered to
+  /// the same account. The mirror is refreshed by every
+  /// fetchForHousehold or fetchForAccount call.
   Future<List<Holding>> fetchForAccount(String accountId) async {
-    final data = await supabase
-        .from('holdings')
-        .select()
-        .eq('account_id', accountId)
-        .order('symbol', ascending: true);
-    return data.map<Holding>(Holding.fromJson).toList();
+    try {
+      final data = await supabase
+          .from('holdings')
+          .select()
+          .eq('account_id', accountId)
+          .order('symbol', ascending: true);
+      final holdings = data.map<Holding>(Holding.fromJson).toList();
+      await _writeHoldingsCache(holdings);
+      return holdings;
+    } catch (_) {
+      final cached = await _loadFromCacheForAccount(accountId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Every holding in [householdId]. Used by the dashboard to roll
@@ -35,12 +57,20 @@ class HoldingsRepository {
   /// filter is belt-and-braces and keeps the caching key stable
   /// when the household changes.
   Future<List<Holding>> fetchForHousehold(String householdId) async {
-    final data = await supabase
-        .from('holdings')
-        .select()
-        .eq('household_id', householdId)
-        .order('symbol', ascending: true);
-    return data.map<Holding>(Holding.fromJson).toList();
+    try {
+      final data = await supabase
+          .from('holdings')
+          .select()
+          .eq('household_id', householdId)
+          .order('symbol', ascending: true);
+      final holdings = data.map<Holding>(Holding.fromJson).toList();
+      await _refreshHoldingsCacheForHousehold(householdId, holdings);
+      return holdings;
+    } catch (_) {
+      final cached = await _loadFromCacheForHousehold(householdId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Inserts a new holding and returns it.
@@ -77,7 +107,9 @@ class HoldingsRepository {
         })
         .select()
         .single();
-    return Holding.fromJson(data);
+    final holding = Holding.fromJson(data);
+    await _writeHoldingsCache([holding]);
+    return holding;
   }
 
   /// Updates an existing holding. All fields are mutable — symbol
@@ -114,12 +146,113 @@ class HoldingsRepository {
         .eq('id', holdingId)
         .select()
         .single();
-    return Holding.fromJson(data);
+    final holding = Holding.fromJson(data);
+    await _writeHoldingsCache([holding]);
+    return holding;
   }
 
   /// Removes a holding. The trade itself (a sale) lives in the
   /// transactions table; this just clears the position record.
   Future<void> deleteHolding(String holdingId) async {
     await supabase.from('holdings').delete().eq('id', holdingId);
+    await _deleteHoldingCacheRow(holdingId);
   }
+
+  // ── Cache helpers ──────────────────────────────────────────
+
+  Future<void> _refreshHoldingsCacheForHousehold(
+    String householdId,
+    List<Holding> holdings,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceHoldingsForHousehold(
+        householdId,
+        holdings.map(_toCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<void> _writeHoldingsCache(List<Holding> holdings) async {
+    final db = _db;
+    if (db == null || holdings.isEmpty) return;
+    try {
+      for (final h in holdings) {
+        await db.upsertHolding(_toCompanion(h));
+      }
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteHoldingCacheRow(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.deleteHolding(id);
+    } catch (_) {/**/}
+  }
+
+  Future<List<Holding>?> _loadFromCacheForHousehold(String householdId) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadHoldingsForHousehold(householdId);
+      if (rows.isEmpty) return null;
+      return rows.map(_fromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Holding>?> _loadFromCacheForAccount(String accountId) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadHoldingsForAccount(accountId);
+      if (rows.isEmpty) return null;
+      return rows.map(_fromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+HoldingsCacheCompanion _toCompanion(Holding h) {
+  return HoldingsCacheCompanion(
+    id: Value(h.id),
+    householdId: Value(h.householdId),
+    accountId: Value(h.accountId),
+    symbol: Value(h.symbol),
+    description: Value(h.description),
+    quantity: Value(h.quantity),
+    costBasis: Value(h.costBasis),
+    currentValue: Value(h.currentValue),
+    assetClass: Value(h.assetClass?.dbValue),
+    lastPricedAt: Value(h.lastPricedAt?.toUtc()),
+    createdAt: Value(h.createdAt.toUtc()),
+    updatedAt: Value(h.updatedAt.toUtc()),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+Holding _fromCacheRow(HoldingsCacheRow r) {
+  return Holding(
+    id: r.id,
+    householdId: r.householdId,
+    accountId: r.accountId,
+    symbol: r.symbol,
+    description: r.description,
+    quantity: r.quantity,
+    costBasis: r.costBasis,
+    currentValue: r.currentValue,
+    assetClass: r.assetClass == null
+        ? null
+        : AssetClass.values.firstWhere(
+            (a) => a.dbValue == r.assetClass,
+            orElse: () => AssetClass.other,
+          ),
+    lastPricedAt: r.lastPricedAt,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  );
 }

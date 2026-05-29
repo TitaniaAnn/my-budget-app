@@ -5533,6 +5533,2786 @@ class ReceiptLineItemsCacheCompanion
   }
 }
 
+class $HoldingsCacheTable extends HoldingsCache
+    with TableInfo<$HoldingsCacheTable, HoldingsCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HoldingsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _costBasisMeta = const VerificationMeta(
+    'costBasis',
+  );
+  @override
+  late final GeneratedColumn<int> costBasis = GeneratedColumn<int>(
+    'cost_basis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currentValueMeta = const VerificationMeta(
+    'currentValue',
+  );
+  @override
+  late final GeneratedColumn<int> currentValue = GeneratedColumn<int>(
+    'current_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetClassMeta = const VerificationMeta(
+    'assetClass',
+  );
+  @override
+  late final GeneratedColumn<String> assetClass = GeneratedColumn<String>(
+    'asset_class',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastPricedAtMeta = const VerificationMeta(
+    'lastPricedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastPricedAt = GeneratedColumn<DateTime>(
+    'last_priced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    accountId,
+    symbol,
+    description,
+    quantity,
+    costBasis,
+    currentValue,
+    assetClass,
+    lastPricedAt,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'holdings_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HoldingsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symbolMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('cost_basis')) {
+      context.handle(
+        _costBasisMeta,
+        costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta),
+      );
+    }
+    if (data.containsKey('current_value')) {
+      context.handle(
+        _currentValueMeta,
+        currentValue.isAcceptableOrUnknown(
+          data['current_value']!,
+          _currentValueMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currentValueMeta);
+    }
+    if (data.containsKey('asset_class')) {
+      context.handle(
+        _assetClassMeta,
+        assetClass.isAcceptableOrUnknown(data['asset_class']!, _assetClassMeta),
+      );
+    }
+    if (data.containsKey('last_priced_at')) {
+      context.handle(
+        _lastPricedAtMeta,
+        lastPricedAt.isAcceptableOrUnknown(
+          data['last_priced_at']!,
+          _lastPricedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HoldingsCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HoldingsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}quantity'],
+      )!,
+      costBasis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cost_basis'],
+      ),
+      currentValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_value'],
+      )!,
+      assetClass: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_class'],
+      ),
+      lastPricedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_priced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HoldingsCacheTable createAlias(String alias) {
+    return $HoldingsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class HoldingsCacheRow extends DataClass
+    implements Insertable<HoldingsCacheRow> {
+  final String id;
+  final String householdId;
+  final String accountId;
+  final String symbol;
+  final String? description;
+  final double quantity;
+  final int? costBasis;
+  final int currentValue;
+
+  /// Stores AssetClass dbValue verbatim ('us_equity', etc.).
+  /// Null is meaningful — "asset class not yet classified."
+  final String? assetClass;
+  final DateTime? lastPricedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime cachedAt;
+  const HoldingsCacheRow({
+    required this.id,
+    required this.householdId,
+    required this.accountId,
+    required this.symbol,
+    this.description,
+    required this.quantity,
+    this.costBasis,
+    required this.currentValue,
+    this.assetClass,
+    this.lastPricedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['household_id'] = Variable<String>(householdId);
+    map['account_id'] = Variable<String>(accountId);
+    map['symbol'] = Variable<String>(symbol);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['quantity'] = Variable<double>(quantity);
+    if (!nullToAbsent || costBasis != null) {
+      map['cost_basis'] = Variable<int>(costBasis);
+    }
+    map['current_value'] = Variable<int>(currentValue);
+    if (!nullToAbsent || assetClass != null) {
+      map['asset_class'] = Variable<String>(assetClass);
+    }
+    if (!nullToAbsent || lastPricedAt != null) {
+      map['last_priced_at'] = Variable<DateTime>(lastPricedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  HoldingsCacheCompanion toCompanion(bool nullToAbsent) {
+    return HoldingsCacheCompanion(
+      id: Value(id),
+      householdId: Value(householdId),
+      accountId: Value(accountId),
+      symbol: Value(symbol),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      quantity: Value(quantity),
+      costBasis: costBasis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(costBasis),
+      currentValue: Value(currentValue),
+      assetClass: assetClass == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetClass),
+      lastPricedAt: lastPricedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPricedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory HoldingsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HoldingsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String>(json['householdId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      symbol: serializer.fromJson<String>(json['symbol']),
+      description: serializer.fromJson<String?>(json['description']),
+      quantity: serializer.fromJson<double>(json['quantity']),
+      costBasis: serializer.fromJson<int?>(json['costBasis']),
+      currentValue: serializer.fromJson<int>(json['currentValue']),
+      assetClass: serializer.fromJson<String?>(json['assetClass']),
+      lastPricedAt: serializer.fromJson<DateTime?>(json['lastPricedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String>(householdId),
+      'accountId': serializer.toJson<String>(accountId),
+      'symbol': serializer.toJson<String>(symbol),
+      'description': serializer.toJson<String?>(description),
+      'quantity': serializer.toJson<double>(quantity),
+      'costBasis': serializer.toJson<int?>(costBasis),
+      'currentValue': serializer.toJson<int>(currentValue),
+      'assetClass': serializer.toJson<String?>(assetClass),
+      'lastPricedAt': serializer.toJson<DateTime?>(lastPricedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  HoldingsCacheRow copyWith({
+    String? id,
+    String? householdId,
+    String? accountId,
+    String? symbol,
+    Value<String?> description = const Value.absent(),
+    double? quantity,
+    Value<int?> costBasis = const Value.absent(),
+    int? currentValue,
+    Value<String?> assetClass = const Value.absent(),
+    Value<DateTime?> lastPricedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? cachedAt,
+  }) => HoldingsCacheRow(
+    id: id ?? this.id,
+    householdId: householdId ?? this.householdId,
+    accountId: accountId ?? this.accountId,
+    symbol: symbol ?? this.symbol,
+    description: description.present ? description.value : this.description,
+    quantity: quantity ?? this.quantity,
+    costBasis: costBasis.present ? costBasis.value : this.costBasis,
+    currentValue: currentValue ?? this.currentValue,
+    assetClass: assetClass.present ? assetClass.value : this.assetClass,
+    lastPricedAt: lastPricedAt.present ? lastPricedAt.value : this.lastPricedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  HoldingsCacheRow copyWithCompanion(HoldingsCacheCompanion data) {
+    return HoldingsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      currentValue: data.currentValue.present
+          ? data.currentValue.value
+          : this.currentValue,
+      assetClass: data.assetClass.present
+          ? data.assetClass.value
+          : this.assetClass,
+      lastPricedAt: data.lastPricedAt.present
+          ? data.lastPricedAt.value
+          : this.lastPricedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HoldingsCacheRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('accountId: $accountId, ')
+          ..write('symbol: $symbol, ')
+          ..write('description: $description, ')
+          ..write('quantity: $quantity, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('currentValue: $currentValue, ')
+          ..write('assetClass: $assetClass, ')
+          ..write('lastPricedAt: $lastPricedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    accountId,
+    symbol,
+    description,
+    quantity,
+    costBasis,
+    currentValue,
+    assetClass,
+    lastPricedAt,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HoldingsCacheRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.accountId == this.accountId &&
+          other.symbol == this.symbol &&
+          other.description == this.description &&
+          other.quantity == this.quantity &&
+          other.costBasis == this.costBasis &&
+          other.currentValue == this.currentValue &&
+          other.assetClass == this.assetClass &&
+          other.lastPricedAt == this.lastPricedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class HoldingsCacheCompanion extends UpdateCompanion<HoldingsCacheRow> {
+  final Value<String> id;
+  final Value<String> householdId;
+  final Value<String> accountId;
+  final Value<String> symbol;
+  final Value<String?> description;
+  final Value<double> quantity;
+  final Value<int?> costBasis;
+  final Value<int> currentValue;
+  final Value<String?> assetClass;
+  final Value<DateTime?> lastPricedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const HoldingsCacheCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.description = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.currentValue = const Value.absent(),
+    this.assetClass = const Value.absent(),
+    this.lastPricedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HoldingsCacheCompanion.insert({
+    required String id,
+    required String householdId,
+    required String accountId,
+    required String symbol,
+    this.description = const Value.absent(),
+    required double quantity,
+    this.costBasis = const Value.absent(),
+    required int currentValue,
+    this.assetClass = const Value.absent(),
+    this.lastPricedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       householdId = Value(householdId),
+       accountId = Value(accountId),
+       symbol = Value(symbol),
+       quantity = Value(quantity),
+       currentValue = Value(currentValue),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<HoldingsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? accountId,
+    Expression<String>? symbol,
+    Expression<String>? description,
+    Expression<double>? quantity,
+    Expression<int>? costBasis,
+    Expression<int>? currentValue,
+    Expression<String>? assetClass,
+    Expression<DateTime>? lastPricedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (accountId != null) 'account_id': accountId,
+      if (symbol != null) 'symbol': symbol,
+      if (description != null) 'description': description,
+      if (quantity != null) 'quantity': quantity,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (currentValue != null) 'current_value': currentValue,
+      if (assetClass != null) 'asset_class': assetClass,
+      if (lastPricedAt != null) 'last_priced_at': lastPricedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HoldingsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? householdId,
+    Value<String>? accountId,
+    Value<String>? symbol,
+    Value<String?>? description,
+    Value<double>? quantity,
+    Value<int?>? costBasis,
+    Value<int>? currentValue,
+    Value<String?>? assetClass,
+    Value<DateTime?>? lastPricedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return HoldingsCacheCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      accountId: accountId ?? this.accountId,
+      symbol: symbol ?? this.symbol,
+      description: description ?? this.description,
+      quantity: quantity ?? this.quantity,
+      costBasis: costBasis ?? this.costBasis,
+      currentValue: currentValue ?? this.currentValue,
+      assetClass: assetClass ?? this.assetClass,
+      lastPricedAt: lastPricedAt ?? this.lastPricedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<int>(costBasis.value);
+    }
+    if (currentValue.present) {
+      map['current_value'] = Variable<int>(currentValue.value);
+    }
+    if (assetClass.present) {
+      map['asset_class'] = Variable<String>(assetClass.value);
+    }
+    if (lastPricedAt.present) {
+      map['last_priced_at'] = Variable<DateTime>(lastPricedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HoldingsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('accountId: $accountId, ')
+          ..write('symbol: $symbol, ')
+          ..write('description: $description, ')
+          ..write('quantity: $quantity, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('currentValue: $currentValue, ')
+          ..write('assetClass: $assetClass, ')
+          ..write('lastPricedAt: $lastPricedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RecurringTransactionsCacheTable extends RecurringTransactionsCache
+    with
+        TableInfo<
+          $RecurringTransactionsCacheTable,
+          RecurringTransactionsCacheRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecurringTransactionsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _merchantMeta = const VerificationMeta(
+    'merchant',
+  );
+  @override
+  late final GeneratedColumn<String> merchant = GeneratedColumn<String>(
+    'merchant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cadenceMeta = const VerificationMeta(
+    'cadence',
+  );
+  @override
+  late final GeneratedColumn<String> cadence = GeneratedColumn<String>(
+    'cadence',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nextOccurrenceDateMeta =
+      const VerificationMeta('nextOccurrenceDate');
+  @override
+  late final GeneratedColumn<DateTime> nextOccurrenceDate =
+      GeneratedColumn<DateTime>(
+        'next_occurrence_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _lastEmittedAtMeta = const VerificationMeta(
+    'lastEmittedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastEmittedAt =
+      GeneratedColumn<DateTime>(
+        'last_emitted_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _skippedUntilDateMeta = const VerificationMeta(
+    'skippedUntilDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> skippedUntilDate =
+      GeneratedColumn<DateTime>(
+        'skipped_until_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    accountId,
+    amountCents,
+    currency,
+    description,
+    merchant,
+    categoryId,
+    cadence,
+    nextOccurrenceDate,
+    lastEmittedAt,
+    skippedUntilDate,
+    isActive,
+    createdBy,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recurring_transactions_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecurringTransactionsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('merchant')) {
+      context.handle(
+        _merchantMeta,
+        merchant.isAcceptableOrUnknown(data['merchant']!, _merchantMeta),
+      );
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('cadence')) {
+      context.handle(
+        _cadenceMeta,
+        cadence.isAcceptableOrUnknown(data['cadence']!, _cadenceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cadenceMeta);
+    }
+    if (data.containsKey('next_occurrence_date')) {
+      context.handle(
+        _nextOccurrenceDateMeta,
+        nextOccurrenceDate.isAcceptableOrUnknown(
+          data['next_occurrence_date']!,
+          _nextOccurrenceDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_nextOccurrenceDateMeta);
+    }
+    if (data.containsKey('last_emitted_at')) {
+      context.handle(
+        _lastEmittedAtMeta,
+        lastEmittedAt.isAcceptableOrUnknown(
+          data['last_emitted_at']!,
+          _lastEmittedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('skipped_until_date')) {
+      context.handle(
+        _skippedUntilDateMeta,
+        skippedUntilDate.isAcceptableOrUnknown(
+          data['skipped_until_date']!,
+          _skippedUntilDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isActiveMeta);
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecurringTransactionsCacheRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecurringTransactionsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      merchant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant'],
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      ),
+      cadence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cadence'],
+      )!,
+      nextOccurrenceDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_occurrence_date'],
+      )!,
+      lastEmittedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_emitted_at'],
+      ),
+      skippedUntilDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}skipped_until_date'],
+      ),
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RecurringTransactionsCacheTable createAlias(String alias) {
+    return $RecurringTransactionsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class RecurringTransactionsCacheRow extends DataClass
+    implements Insertable<RecurringTransactionsCacheRow> {
+  final String id;
+  final String householdId;
+  final String accountId;
+  final int amountCents;
+  final String currency;
+  final String description;
+  final String? merchant;
+  final String? categoryId;
+
+  /// Stores RecurrenceCadence dbValue ('weekly', 'monthly', etc.).
+  final String cadence;
+  final DateTime nextOccurrenceDate;
+  final DateTime? lastEmittedAt;
+  final DateTime? skippedUntilDate;
+  final bool isActive;
+  final String? createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime cachedAt;
+  const RecurringTransactionsCacheRow({
+    required this.id,
+    required this.householdId,
+    required this.accountId,
+    required this.amountCents,
+    required this.currency,
+    required this.description,
+    this.merchant,
+    this.categoryId,
+    required this.cadence,
+    required this.nextOccurrenceDate,
+    this.lastEmittedAt,
+    this.skippedUntilDate,
+    required this.isActive,
+    this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['household_id'] = Variable<String>(householdId);
+    map['account_id'] = Variable<String>(accountId);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['currency'] = Variable<String>(currency);
+    map['description'] = Variable<String>(description);
+    if (!nullToAbsent || merchant != null) {
+      map['merchant'] = Variable<String>(merchant);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<String>(categoryId);
+    }
+    map['cadence'] = Variable<String>(cadence);
+    map['next_occurrence_date'] = Variable<DateTime>(nextOccurrenceDate);
+    if (!nullToAbsent || lastEmittedAt != null) {
+      map['last_emitted_at'] = Variable<DateTime>(lastEmittedAt);
+    }
+    if (!nullToAbsent || skippedUntilDate != null) {
+      map['skipped_until_date'] = Variable<DateTime>(skippedUntilDate);
+    }
+    map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || createdBy != null) {
+      map['created_by'] = Variable<String>(createdBy);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  RecurringTransactionsCacheCompanion toCompanion(bool nullToAbsent) {
+    return RecurringTransactionsCacheCompanion(
+      id: Value(id),
+      householdId: Value(householdId),
+      accountId: Value(accountId),
+      amountCents: Value(amountCents),
+      currency: Value(currency),
+      description: Value(description),
+      merchant: merchant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(merchant),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      cadence: Value(cadence),
+      nextOccurrenceDate: Value(nextOccurrenceDate),
+      lastEmittedAt: lastEmittedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastEmittedAt),
+      skippedUntilDate: skippedUntilDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(skippedUntilDate),
+      isActive: Value(isActive),
+      createdBy: createdBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory RecurringTransactionsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecurringTransactionsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String>(json['householdId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      currency: serializer.fromJson<String>(json['currency']),
+      description: serializer.fromJson<String>(json['description']),
+      merchant: serializer.fromJson<String?>(json['merchant']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      cadence: serializer.fromJson<String>(json['cadence']),
+      nextOccurrenceDate: serializer.fromJson<DateTime>(
+        json['nextOccurrenceDate'],
+      ),
+      lastEmittedAt: serializer.fromJson<DateTime?>(json['lastEmittedAt']),
+      skippedUntilDate: serializer.fromJson<DateTime?>(
+        json['skippedUntilDate'],
+      ),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdBy: serializer.fromJson<String?>(json['createdBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String>(householdId),
+      'accountId': serializer.toJson<String>(accountId),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'currency': serializer.toJson<String>(currency),
+      'description': serializer.toJson<String>(description),
+      'merchant': serializer.toJson<String?>(merchant),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'cadence': serializer.toJson<String>(cadence),
+      'nextOccurrenceDate': serializer.toJson<DateTime>(nextOccurrenceDate),
+      'lastEmittedAt': serializer.toJson<DateTime?>(lastEmittedAt),
+      'skippedUntilDate': serializer.toJson<DateTime?>(skippedUntilDate),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdBy': serializer.toJson<String?>(createdBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  RecurringTransactionsCacheRow copyWith({
+    String? id,
+    String? householdId,
+    String? accountId,
+    int? amountCents,
+    String? currency,
+    String? description,
+    Value<String?> merchant = const Value.absent(),
+    Value<String?> categoryId = const Value.absent(),
+    String? cadence,
+    DateTime? nextOccurrenceDate,
+    Value<DateTime?> lastEmittedAt = const Value.absent(),
+    Value<DateTime?> skippedUntilDate = const Value.absent(),
+    bool? isActive,
+    Value<String?> createdBy = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? cachedAt,
+  }) => RecurringTransactionsCacheRow(
+    id: id ?? this.id,
+    householdId: householdId ?? this.householdId,
+    accountId: accountId ?? this.accountId,
+    amountCents: amountCents ?? this.amountCents,
+    currency: currency ?? this.currency,
+    description: description ?? this.description,
+    merchant: merchant.present ? merchant.value : this.merchant,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    cadence: cadence ?? this.cadence,
+    nextOccurrenceDate: nextOccurrenceDate ?? this.nextOccurrenceDate,
+    lastEmittedAt: lastEmittedAt.present
+        ? lastEmittedAt.value
+        : this.lastEmittedAt,
+    skippedUntilDate: skippedUntilDate.present
+        ? skippedUntilDate.value
+        : this.skippedUntilDate,
+    isActive: isActive ?? this.isActive,
+    createdBy: createdBy.present ? createdBy.value : this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  RecurringTransactionsCacheRow copyWithCompanion(
+    RecurringTransactionsCacheCompanion data,
+  ) {
+    return RecurringTransactionsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      merchant: data.merchant.present ? data.merchant.value : this.merchant,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      cadence: data.cadence.present ? data.cadence.value : this.cadence,
+      nextOccurrenceDate: data.nextOccurrenceDate.present
+          ? data.nextOccurrenceDate.value
+          : this.nextOccurrenceDate,
+      lastEmittedAt: data.lastEmittedAt.present
+          ? data.lastEmittedAt.value
+          : this.lastEmittedAt,
+      skippedUntilDate: data.skippedUntilDate.present
+          ? data.skippedUntilDate.value
+          : this.skippedUntilDate,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringTransactionsCacheRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('currency: $currency, ')
+          ..write('description: $description, ')
+          ..write('merchant: $merchant, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('cadence: $cadence, ')
+          ..write('nextOccurrenceDate: $nextOccurrenceDate, ')
+          ..write('lastEmittedAt: $lastEmittedAt, ')
+          ..write('skippedUntilDate: $skippedUntilDate, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    accountId,
+    amountCents,
+    currency,
+    description,
+    merchant,
+    categoryId,
+    cadence,
+    nextOccurrenceDate,
+    lastEmittedAt,
+    skippedUntilDate,
+    isActive,
+    createdBy,
+    createdAt,
+    updatedAt,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecurringTransactionsCacheRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.accountId == this.accountId &&
+          other.amountCents == this.amountCents &&
+          other.currency == this.currency &&
+          other.description == this.description &&
+          other.merchant == this.merchant &&
+          other.categoryId == this.categoryId &&
+          other.cadence == this.cadence &&
+          other.nextOccurrenceDate == this.nextOccurrenceDate &&
+          other.lastEmittedAt == this.lastEmittedAt &&
+          other.skippedUntilDate == this.skippedUntilDate &&
+          other.isActive == this.isActive &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class RecurringTransactionsCacheCompanion
+    extends UpdateCompanion<RecurringTransactionsCacheRow> {
+  final Value<String> id;
+  final Value<String> householdId;
+  final Value<String> accountId;
+  final Value<int> amountCents;
+  final Value<String> currency;
+  final Value<String> description;
+  final Value<String?> merchant;
+  final Value<String?> categoryId;
+  final Value<String> cadence;
+  final Value<DateTime> nextOccurrenceDate;
+  final Value<DateTime?> lastEmittedAt;
+  final Value<DateTime?> skippedUntilDate;
+  final Value<bool> isActive;
+  final Value<String?> createdBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const RecurringTransactionsCacheCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.description = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.cadence = const Value.absent(),
+    this.nextOccurrenceDate = const Value.absent(),
+    this.lastEmittedAt = const Value.absent(),
+    this.skippedUntilDate = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecurringTransactionsCacheCompanion.insert({
+    required String id,
+    required String householdId,
+    required String accountId,
+    required int amountCents,
+    required String currency,
+    required String description,
+    this.merchant = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    required String cadence,
+    required DateTime nextOccurrenceDate,
+    this.lastEmittedAt = const Value.absent(),
+    this.skippedUntilDate = const Value.absent(),
+    required bool isActive,
+    this.createdBy = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       householdId = Value(householdId),
+       accountId = Value(accountId),
+       amountCents = Value(amountCents),
+       currency = Value(currency),
+       description = Value(description),
+       cadence = Value(cadence),
+       nextOccurrenceDate = Value(nextOccurrenceDate),
+       isActive = Value(isActive),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<RecurringTransactionsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? accountId,
+    Expression<int>? amountCents,
+    Expression<String>? currency,
+    Expression<String>? description,
+    Expression<String>? merchant,
+    Expression<String>? categoryId,
+    Expression<String>? cadence,
+    Expression<DateTime>? nextOccurrenceDate,
+    Expression<DateTime>? lastEmittedAt,
+    Expression<DateTime>? skippedUntilDate,
+    Expression<bool>? isActive,
+    Expression<String>? createdBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (accountId != null) 'account_id': accountId,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (currency != null) 'currency': currency,
+      if (description != null) 'description': description,
+      if (merchant != null) 'merchant': merchant,
+      if (categoryId != null) 'category_id': categoryId,
+      if (cadence != null) 'cadence': cadence,
+      if (nextOccurrenceDate != null)
+        'next_occurrence_date': nextOccurrenceDate,
+      if (lastEmittedAt != null) 'last_emitted_at': lastEmittedAt,
+      if (skippedUntilDate != null) 'skipped_until_date': skippedUntilDate,
+      if (isActive != null) 'is_active': isActive,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecurringTransactionsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? householdId,
+    Value<String>? accountId,
+    Value<int>? amountCents,
+    Value<String>? currency,
+    Value<String>? description,
+    Value<String?>? merchant,
+    Value<String?>? categoryId,
+    Value<String>? cadence,
+    Value<DateTime>? nextOccurrenceDate,
+    Value<DateTime?>? lastEmittedAt,
+    Value<DateTime?>? skippedUntilDate,
+    Value<bool>? isActive,
+    Value<String?>? createdBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return RecurringTransactionsCacheCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      accountId: accountId ?? this.accountId,
+      amountCents: amountCents ?? this.amountCents,
+      currency: currency ?? this.currency,
+      description: description ?? this.description,
+      merchant: merchant ?? this.merchant,
+      categoryId: categoryId ?? this.categoryId,
+      cadence: cadence ?? this.cadence,
+      nextOccurrenceDate: nextOccurrenceDate ?? this.nextOccurrenceDate,
+      lastEmittedAt: lastEmittedAt ?? this.lastEmittedAt,
+      skippedUntilDate: skippedUntilDate ?? this.skippedUntilDate,
+      isActive: isActive ?? this.isActive,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (merchant.present) {
+      map['merchant'] = Variable<String>(merchant.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (cadence.present) {
+      map['cadence'] = Variable<String>(cadence.value);
+    }
+    if (nextOccurrenceDate.present) {
+      map['next_occurrence_date'] = Variable<DateTime>(
+        nextOccurrenceDate.value,
+      );
+    }
+    if (lastEmittedAt.present) {
+      map['last_emitted_at'] = Variable<DateTime>(lastEmittedAt.value);
+    }
+    if (skippedUntilDate.present) {
+      map['skipped_until_date'] = Variable<DateTime>(skippedUntilDate.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringTransactionsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('currency: $currency, ')
+          ..write('description: $description, ')
+          ..write('merchant: $merchant, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('cadence: $cadence, ')
+          ..write('nextOccurrenceDate: $nextOccurrenceDate, ')
+          ..write('lastEmittedAt: $lastEmittedAt, ')
+          ..write('skippedUntilDate: $skippedUntilDate, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TransactionTagsCacheTable extends TransactionTagsCache
+    with TableInfo<$TransactionTagsCacheTable, TransactionTagsCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionTagsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    name,
+    color,
+    createdAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_tags_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionTagsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TransactionTagsCacheRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionTagsCacheRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionTagsCacheTable createAlias(String alias) {
+    return $TransactionTagsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class TransactionTagsCacheRow extends DataClass
+    implements Insertable<TransactionTagsCacheRow> {
+  final String id;
+  final String householdId;
+  final String name;
+  final String? color;
+  final DateTime createdAt;
+  final DateTime cachedAt;
+  const TransactionTagsCacheRow({
+    required this.id,
+    required this.householdId,
+    required this.name,
+    this.color,
+    required this.createdAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['household_id'] = Variable<String>(householdId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || color != null) {
+      map['color'] = Variable<String>(color);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  TransactionTagsCacheCompanion toCompanion(bool nullToAbsent) {
+    return TransactionTagsCacheCompanion(
+      id: Value(id),
+      householdId: Value(householdId),
+      name: Value(name),
+      color: color == null && nullToAbsent
+          ? const Value.absent()
+          : Value(color),
+      createdAt: Value(createdAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory TransactionTagsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionTagsCacheRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String>(json['householdId']),
+      name: serializer.fromJson<String>(json['name']),
+      color: serializer.fromJson<String?>(json['color']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String>(householdId),
+      'name': serializer.toJson<String>(name),
+      'color': serializer.toJson<String?>(color),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  TransactionTagsCacheRow copyWith({
+    String? id,
+    String? householdId,
+    String? name,
+    Value<String?> color = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? cachedAt,
+  }) => TransactionTagsCacheRow(
+    id: id ?? this.id,
+    householdId: householdId ?? this.householdId,
+    name: name ?? this.name,
+    color: color.present ? color.value : this.color,
+    createdAt: createdAt ?? this.createdAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  TransactionTagsCacheRow copyWithCompanion(
+    TransactionTagsCacheCompanion data,
+  ) {
+    return TransactionTagsCacheRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      name: data.name.present ? data.name.value : this.name,
+      color: data.color.present ? data.color.value : this.color,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTagsCacheRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, householdId, name, color, createdAt, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionTagsCacheRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.name == this.name &&
+          other.color == this.color &&
+          other.createdAt == this.createdAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class TransactionTagsCacheCompanion
+    extends UpdateCompanion<TransactionTagsCacheRow> {
+  final Value<String> id;
+  final Value<String> householdId;
+  final Value<String> name;
+  final Value<String?> color;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const TransactionTagsCacheCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.color = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TransactionTagsCacheCompanion.insert({
+    required String id,
+    required String householdId,
+    required String name,
+    this.color = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       householdId = Value(householdId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<TransactionTagsCacheRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? name,
+    Expression<String>? color,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (name != null) 'name': name,
+      if (color != null) 'color': color,
+      if (createdAt != null) 'created_at': createdAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TransactionTagsCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? householdId,
+    Value<String>? name,
+    Value<String?>? color,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return TransactionTagsCacheCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      createdAt: createdAt ?? this.createdAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTagsCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TransactionTagAssignmentsCacheTable
+    extends TransactionTagAssignmentsCache
+    with
+        TableInfo<
+          $TransactionTagAssignmentsCacheTable,
+          TransactionTagAssignmentsCacheRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionTagAssignmentsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
+    'transaction_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<String> tagId = GeneratedColumn<String>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [transactionId, tagId, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_tag_assignments_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionTagAssignmentsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {transactionId, tagId};
+  @override
+  TransactionTagAssignmentsCacheRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionTagAssignmentsCacheRow(
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionTagAssignmentsCacheTable createAlias(String alias) {
+    return $TransactionTagAssignmentsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class TransactionTagAssignmentsCacheRow extends DataClass
+    implements Insertable<TransactionTagAssignmentsCacheRow> {
+  final String transactionId;
+  final String tagId;
+  final DateTime cachedAt;
+  const TransactionTagAssignmentsCacheRow({
+    required this.transactionId,
+    required this.tagId,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['transaction_id'] = Variable<String>(transactionId);
+    map['tag_id'] = Variable<String>(tagId);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  TransactionTagAssignmentsCacheCompanion toCompanion(bool nullToAbsent) {
+    return TransactionTagAssignmentsCacheCompanion(
+      transactionId: Value(transactionId),
+      tagId: Value(tagId),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory TransactionTagAssignmentsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionTagAssignmentsCacheRow(
+      transactionId: serializer.fromJson<String>(json['transactionId']),
+      tagId: serializer.fromJson<String>(json['tagId']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'transactionId': serializer.toJson<String>(transactionId),
+      'tagId': serializer.toJson<String>(tagId),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  TransactionTagAssignmentsCacheRow copyWith({
+    String? transactionId,
+    String? tagId,
+    DateTime? cachedAt,
+  }) => TransactionTagAssignmentsCacheRow(
+    transactionId: transactionId ?? this.transactionId,
+    tagId: tagId ?? this.tagId,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  TransactionTagAssignmentsCacheRow copyWithCompanion(
+    TransactionTagAssignmentsCacheCompanion data,
+  ) {
+    return TransactionTagAssignmentsCacheRow(
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTagAssignmentsCacheRow(')
+          ..write('transactionId: $transactionId, ')
+          ..write('tagId: $tagId, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(transactionId, tagId, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionTagAssignmentsCacheRow &&
+          other.transactionId == this.transactionId &&
+          other.tagId == this.tagId &&
+          other.cachedAt == this.cachedAt);
+}
+
+class TransactionTagAssignmentsCacheCompanion
+    extends UpdateCompanion<TransactionTagAssignmentsCacheRow> {
+  final Value<String> transactionId;
+  final Value<String> tagId;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const TransactionTagAssignmentsCacheCompanion({
+    this.transactionId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TransactionTagAssignmentsCacheCompanion.insert({
+    required String transactionId,
+    required String tagId,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : transactionId = Value(transactionId),
+       tagId = Value(tagId),
+       cachedAt = Value(cachedAt);
+  static Insertable<TransactionTagAssignmentsCacheRow> custom({
+    Expression<String>? transactionId,
+    Expression<String>? tagId,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (tagId != null) 'tag_id': tagId,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TransactionTagAssignmentsCacheCompanion copyWith({
+    Value<String>? transactionId,
+    Value<String>? tagId,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return TransactionTagAssignmentsCacheCompanion(
+      transactionId: transactionId ?? this.transactionId,
+      tagId: tagId ?? this.tagId,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<String>(transactionId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<String>(tagId.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTagAssignmentsCacheCompanion(')
+          ..write('transactionId: $transactionId, ')
+          ..write('tagId: $tagId, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReceiptLineItemTagAssignmentsCacheTable
+    extends ReceiptLineItemTagAssignmentsCache
+    with
+        TableInfo<
+          $ReceiptLineItemTagAssignmentsCacheTable,
+          ReceiptLineItemTagAssignmentsCacheRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceiptLineItemTagAssignmentsCacheTable(
+    this.attachedDatabase, [
+    this._alias,
+  ]);
+  static const VerificationMeta _lineItemIdMeta = const VerificationMeta(
+    'lineItemId',
+  );
+  @override
+  late final GeneratedColumn<String> lineItemId = GeneratedColumn<String>(
+    'line_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<String> tagId = GeneratedColumn<String>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [lineItemId, tagId, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receipt_line_item_tag_assignments_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReceiptLineItemTagAssignmentsCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('line_item_id')) {
+      context.handle(
+        _lineItemIdMeta,
+        lineItemId.isAcceptableOrUnknown(
+          data['line_item_id']!,
+          _lineItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lineItemIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {lineItemId, tagId};
+  @override
+  ReceiptLineItemTagAssignmentsCacheRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReceiptLineItemTagAssignmentsCacheRow(
+      lineItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}line_item_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReceiptLineItemTagAssignmentsCacheTable createAlias(String alias) {
+    return $ReceiptLineItemTagAssignmentsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class ReceiptLineItemTagAssignmentsCacheRow extends DataClass
+    implements Insertable<ReceiptLineItemTagAssignmentsCacheRow> {
+  final String lineItemId;
+  final String tagId;
+  final DateTime cachedAt;
+  const ReceiptLineItemTagAssignmentsCacheRow({
+    required this.lineItemId,
+    required this.tagId,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['line_item_id'] = Variable<String>(lineItemId);
+    map['tag_id'] = Variable<String>(tagId);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  ReceiptLineItemTagAssignmentsCacheCompanion toCompanion(bool nullToAbsent) {
+    return ReceiptLineItemTagAssignmentsCacheCompanion(
+      lineItemId: Value(lineItemId),
+      tagId: Value(tagId),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory ReceiptLineItemTagAssignmentsCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReceiptLineItemTagAssignmentsCacheRow(
+      lineItemId: serializer.fromJson<String>(json['lineItemId']),
+      tagId: serializer.fromJson<String>(json['tagId']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'lineItemId': serializer.toJson<String>(lineItemId),
+      'tagId': serializer.toJson<String>(tagId),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  ReceiptLineItemTagAssignmentsCacheRow copyWith({
+    String? lineItemId,
+    String? tagId,
+    DateTime? cachedAt,
+  }) => ReceiptLineItemTagAssignmentsCacheRow(
+    lineItemId: lineItemId ?? this.lineItemId,
+    tagId: tagId ?? this.tagId,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  ReceiptLineItemTagAssignmentsCacheRow copyWithCompanion(
+    ReceiptLineItemTagAssignmentsCacheCompanion data,
+  ) {
+    return ReceiptLineItemTagAssignmentsCacheRow(
+      lineItemId: data.lineItemId.present
+          ? data.lineItemId.value
+          : this.lineItemId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptLineItemTagAssignmentsCacheRow(')
+          ..write('lineItemId: $lineItemId, ')
+          ..write('tagId: $tagId, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(lineItemId, tagId, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReceiptLineItemTagAssignmentsCacheRow &&
+          other.lineItemId == this.lineItemId &&
+          other.tagId == this.tagId &&
+          other.cachedAt == this.cachedAt);
+}
+
+class ReceiptLineItemTagAssignmentsCacheCompanion
+    extends UpdateCompanion<ReceiptLineItemTagAssignmentsCacheRow> {
+  final Value<String> lineItemId;
+  final Value<String> tagId;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const ReceiptLineItemTagAssignmentsCacheCompanion({
+    this.lineItemId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReceiptLineItemTagAssignmentsCacheCompanion.insert({
+    required String lineItemId,
+    required String tagId,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : lineItemId = Value(lineItemId),
+       tagId = Value(tagId),
+       cachedAt = Value(cachedAt);
+  static Insertable<ReceiptLineItemTagAssignmentsCacheRow> custom({
+    Expression<String>? lineItemId,
+    Expression<String>? tagId,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (lineItemId != null) 'line_item_id': lineItemId,
+      if (tagId != null) 'tag_id': tagId,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReceiptLineItemTagAssignmentsCacheCompanion copyWith({
+    Value<String>? lineItemId,
+    Value<String>? tagId,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return ReceiptLineItemTagAssignmentsCacheCompanion(
+      lineItemId: lineItemId ?? this.lineItemId,
+      tagId: tagId ?? this.tagId,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (lineItemId.present) {
+      map['line_item_id'] = Variable<String>(lineItemId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<String>(tagId.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptLineItemTagAssignmentsCacheCompanion(')
+          ..write('lineItemId: $lineItemId, ')
+          ..write('tagId: $tagId, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5547,6 +8327,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReceiptsCacheTable receiptsCache = $ReceiptsCacheTable(this);
   late final $ReceiptLineItemsCacheTable receiptLineItemsCache =
       $ReceiptLineItemsCacheTable(this);
+  late final $HoldingsCacheTable holdingsCache = $HoldingsCacheTable(this);
+  late final $RecurringTransactionsCacheTable recurringTransactionsCache =
+      $RecurringTransactionsCacheTable(this);
+  late final $TransactionTagsCacheTable transactionTagsCache =
+      $TransactionTagsCacheTable(this);
+  late final $TransactionTagAssignmentsCacheTable
+  transactionTagAssignmentsCache = $TransactionTagAssignmentsCacheTable(this);
+  late final $ReceiptLineItemTagAssignmentsCacheTable
+  receiptLineItemTagAssignmentsCache = $ReceiptLineItemTagAssignmentsCacheTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5559,6 +8350,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     fxRatesCache,
     receiptsCache,
     receiptLineItemsCache,
+    holdingsCache,
+    recurringTransactionsCache,
+    transactionTagsCache,
+    transactionTagAssignmentsCache,
+    receiptLineItemTagAssignmentsCache,
   ];
 }
 
@@ -8165,6 +10961,1436 @@ typedef $$ReceiptLineItemsCacheTableProcessedTableManager =
       ReceiptLineItemsCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$HoldingsCacheTableCreateCompanionBuilder =
+    HoldingsCacheCompanion Function({
+      required String id,
+      required String householdId,
+      required String accountId,
+      required String symbol,
+      Value<String?> description,
+      required double quantity,
+      Value<int?> costBasis,
+      required int currentValue,
+      Value<String?> assetClass,
+      Value<DateTime?> lastPricedAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$HoldingsCacheTableUpdateCompanionBuilder =
+    HoldingsCacheCompanion Function({
+      Value<String> id,
+      Value<String> householdId,
+      Value<String> accountId,
+      Value<String> symbol,
+      Value<String?> description,
+      Value<double> quantity,
+      Value<int?> costBasis,
+      Value<int> currentValue,
+      Value<String?> assetClass,
+      Value<DateTime?> lastPricedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$HoldingsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $HoldingsCacheTable> {
+  $$HoldingsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get costBasis => $composableBuilder(
+    column: $table.costBasis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentValue => $composableBuilder(
+    column: $table.currentValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assetClass => $composableBuilder(
+    column: $table.assetClass,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastPricedAt => $composableBuilder(
+    column: $table.lastPricedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HoldingsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $HoldingsCacheTable> {
+  $$HoldingsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get costBasis => $composableBuilder(
+    column: $table.costBasis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentValue => $composableBuilder(
+    column: $table.currentValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assetClass => $composableBuilder(
+    column: $table.assetClass,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastPricedAt => $composableBuilder(
+    column: $table.lastPricedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HoldingsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HoldingsCacheTable> {
+  $$HoldingsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<int> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
+
+  GeneratedColumn<int> get currentValue => $composableBuilder(
+    column: $table.currentValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get assetClass => $composableBuilder(
+    column: $table.assetClass,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastPricedAt => $composableBuilder(
+    column: $table.lastPricedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$HoldingsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HoldingsCacheTable,
+          HoldingsCacheRow,
+          $$HoldingsCacheTableFilterComposer,
+          $$HoldingsCacheTableOrderingComposer,
+          $$HoldingsCacheTableAnnotationComposer,
+          $$HoldingsCacheTableCreateCompanionBuilder,
+          $$HoldingsCacheTableUpdateCompanionBuilder,
+          (
+            HoldingsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $HoldingsCacheTable,
+              HoldingsCacheRow
+            >,
+          ),
+          HoldingsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$HoldingsCacheTableTableManager(_$AppDatabase db, $HoldingsCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HoldingsCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HoldingsCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HoldingsCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> householdId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> symbol = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<double> quantity = const Value.absent(),
+                Value<int?> costBasis = const Value.absent(),
+                Value<int> currentValue = const Value.absent(),
+                Value<String?> assetClass = const Value.absent(),
+                Value<DateTime?> lastPricedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HoldingsCacheCompanion(
+                id: id,
+                householdId: householdId,
+                accountId: accountId,
+                symbol: symbol,
+                description: description,
+                quantity: quantity,
+                costBasis: costBasis,
+                currentValue: currentValue,
+                assetClass: assetClass,
+                lastPricedAt: lastPricedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String householdId,
+                required String accountId,
+                required String symbol,
+                Value<String?> description = const Value.absent(),
+                required double quantity,
+                Value<int?> costBasis = const Value.absent(),
+                required int currentValue,
+                Value<String?> assetClass = const Value.absent(),
+                Value<DateTime?> lastPricedAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => HoldingsCacheCompanion.insert(
+                id: id,
+                householdId: householdId,
+                accountId: accountId,
+                symbol: symbol,
+                description: description,
+                quantity: quantity,
+                costBasis: costBasis,
+                currentValue: currentValue,
+                assetClass: assetClass,
+                lastPricedAt: lastPricedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HoldingsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HoldingsCacheTable,
+      HoldingsCacheRow,
+      $$HoldingsCacheTableFilterComposer,
+      $$HoldingsCacheTableOrderingComposer,
+      $$HoldingsCacheTableAnnotationComposer,
+      $$HoldingsCacheTableCreateCompanionBuilder,
+      $$HoldingsCacheTableUpdateCompanionBuilder,
+      (
+        HoldingsCacheRow,
+        BaseReferences<_$AppDatabase, $HoldingsCacheTable, HoldingsCacheRow>,
+      ),
+      HoldingsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RecurringTransactionsCacheTableCreateCompanionBuilder =
+    RecurringTransactionsCacheCompanion Function({
+      required String id,
+      required String householdId,
+      required String accountId,
+      required int amountCents,
+      required String currency,
+      required String description,
+      Value<String?> merchant,
+      Value<String?> categoryId,
+      required String cadence,
+      required DateTime nextOccurrenceDate,
+      Value<DateTime?> lastEmittedAt,
+      Value<DateTime?> skippedUntilDate,
+      required bool isActive,
+      Value<String?> createdBy,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$RecurringTransactionsCacheTableUpdateCompanionBuilder =
+    RecurringTransactionsCacheCompanion Function({
+      Value<String> id,
+      Value<String> householdId,
+      Value<String> accountId,
+      Value<int> amountCents,
+      Value<String> currency,
+      Value<String> description,
+      Value<String?> merchant,
+      Value<String?> categoryId,
+      Value<String> cadence,
+      Value<DateTime> nextOccurrenceDate,
+      Value<DateTime?> lastEmittedAt,
+      Value<DateTime?> skippedUntilDate,
+      Value<bool> isActive,
+      Value<String?> createdBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$RecurringTransactionsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $RecurringTransactionsCacheTable> {
+  $$RecurringTransactionsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cadence => $composableBuilder(
+    column: $table.cadence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextOccurrenceDate => $composableBuilder(
+    column: $table.nextOccurrenceDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastEmittedAt => $composableBuilder(
+    column: $table.lastEmittedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get skippedUntilDate => $composableBuilder(
+    column: $table.skippedUntilDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecurringTransactionsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecurringTransactionsCacheTable> {
+  $$RecurringTransactionsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cadence => $composableBuilder(
+    column: $table.cadence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextOccurrenceDate => $composableBuilder(
+    column: $table.nextOccurrenceDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastEmittedAt => $composableBuilder(
+    column: $table.lastEmittedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get skippedUntilDate => $composableBuilder(
+    column: $table.skippedUntilDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecurringTransactionsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecurringTransactionsCacheTable> {
+  $$RecurringTransactionsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get merchant =>
+      $composableBuilder(column: $table.merchant, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cadence =>
+      $composableBuilder(column: $table.cadence, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextOccurrenceDate => $composableBuilder(
+    column: $table.nextOccurrenceDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastEmittedAt => $composableBuilder(
+    column: $table.lastEmittedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get skippedUntilDate => $composableBuilder(
+    column: $table.skippedUntilDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$RecurringTransactionsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecurringTransactionsCacheTable,
+          RecurringTransactionsCacheRow,
+          $$RecurringTransactionsCacheTableFilterComposer,
+          $$RecurringTransactionsCacheTableOrderingComposer,
+          $$RecurringTransactionsCacheTableAnnotationComposer,
+          $$RecurringTransactionsCacheTableCreateCompanionBuilder,
+          $$RecurringTransactionsCacheTableUpdateCompanionBuilder,
+          (
+            RecurringTransactionsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RecurringTransactionsCacheTable,
+              RecurringTransactionsCacheRow
+            >,
+          ),
+          RecurringTransactionsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$RecurringTransactionsCacheTableTableManager(
+    _$AppDatabase db,
+    $RecurringTransactionsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecurringTransactionsCacheTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RecurringTransactionsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RecurringTransactionsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> householdId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String?> merchant = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                Value<String> cadence = const Value.absent(),
+                Value<DateTime> nextOccurrenceDate = const Value.absent(),
+                Value<DateTime?> lastEmittedAt = const Value.absent(),
+                Value<DateTime?> skippedUntilDate = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RecurringTransactionsCacheCompanion(
+                id: id,
+                householdId: householdId,
+                accountId: accountId,
+                amountCents: amountCents,
+                currency: currency,
+                description: description,
+                merchant: merchant,
+                categoryId: categoryId,
+                cadence: cadence,
+                nextOccurrenceDate: nextOccurrenceDate,
+                lastEmittedAt: lastEmittedAt,
+                skippedUntilDate: skippedUntilDate,
+                isActive: isActive,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String householdId,
+                required String accountId,
+                required int amountCents,
+                required String currency,
+                required String description,
+                Value<String?> merchant = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                required String cadence,
+                required DateTime nextOccurrenceDate,
+                Value<DateTime?> lastEmittedAt = const Value.absent(),
+                Value<DateTime?> skippedUntilDate = const Value.absent(),
+                required bool isActive,
+                Value<String?> createdBy = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RecurringTransactionsCacheCompanion.insert(
+                id: id,
+                householdId: householdId,
+                accountId: accountId,
+                amountCents: amountCents,
+                currency: currency,
+                description: description,
+                merchant: merchant,
+                categoryId: categoryId,
+                cadence: cadence,
+                nextOccurrenceDate: nextOccurrenceDate,
+                lastEmittedAt: lastEmittedAt,
+                skippedUntilDate: skippedUntilDate,
+                isActive: isActive,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecurringTransactionsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecurringTransactionsCacheTable,
+      RecurringTransactionsCacheRow,
+      $$RecurringTransactionsCacheTableFilterComposer,
+      $$RecurringTransactionsCacheTableOrderingComposer,
+      $$RecurringTransactionsCacheTableAnnotationComposer,
+      $$RecurringTransactionsCacheTableCreateCompanionBuilder,
+      $$RecurringTransactionsCacheTableUpdateCompanionBuilder,
+      (
+        RecurringTransactionsCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $RecurringTransactionsCacheTable,
+          RecurringTransactionsCacheRow
+        >,
+      ),
+      RecurringTransactionsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$TransactionTagsCacheTableCreateCompanionBuilder =
+    TransactionTagsCacheCompanion Function({
+      required String id,
+      required String householdId,
+      required String name,
+      Value<String?> color,
+      required DateTime createdAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$TransactionTagsCacheTableUpdateCompanionBuilder =
+    TransactionTagsCacheCompanion Function({
+      Value<String> id,
+      Value<String> householdId,
+      Value<String> name,
+      Value<String?> color,
+      Value<DateTime> createdAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$TransactionTagsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionTagsCacheTable> {
+  $$TransactionTagsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TransactionTagsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionTagsCacheTable> {
+  $$TransactionTagsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TransactionTagsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionTagsCacheTable> {
+  $$TransactionTagsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$TransactionTagsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionTagsCacheTable,
+          TransactionTagsCacheRow,
+          $$TransactionTagsCacheTableFilterComposer,
+          $$TransactionTagsCacheTableOrderingComposer,
+          $$TransactionTagsCacheTableAnnotationComposer,
+          $$TransactionTagsCacheTableCreateCompanionBuilder,
+          $$TransactionTagsCacheTableUpdateCompanionBuilder,
+          (
+            TransactionTagsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $TransactionTagsCacheTable,
+              TransactionTagsCacheRow
+            >,
+          ),
+          TransactionTagsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$TransactionTagsCacheTableTableManager(
+    _$AppDatabase db,
+    $TransactionTagsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionTagsCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionTagsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TransactionTagsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> householdId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> color = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTagsCacheCompanion(
+                id: id,
+                householdId: householdId,
+                name: name,
+                color: color,
+                createdAt: createdAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String householdId,
+                required String name,
+                Value<String?> color = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTagsCacheCompanion.insert(
+                id: id,
+                householdId: householdId,
+                name: name,
+                color: color,
+                createdAt: createdAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TransactionTagsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionTagsCacheTable,
+      TransactionTagsCacheRow,
+      $$TransactionTagsCacheTableFilterComposer,
+      $$TransactionTagsCacheTableOrderingComposer,
+      $$TransactionTagsCacheTableAnnotationComposer,
+      $$TransactionTagsCacheTableCreateCompanionBuilder,
+      $$TransactionTagsCacheTableUpdateCompanionBuilder,
+      (
+        TransactionTagsCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionTagsCacheTable,
+          TransactionTagsCacheRow
+        >,
+      ),
+      TransactionTagsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$TransactionTagAssignmentsCacheTableCreateCompanionBuilder =
+    TransactionTagAssignmentsCacheCompanion Function({
+      required String transactionId,
+      required String tagId,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$TransactionTagAssignmentsCacheTableUpdateCompanionBuilder =
+    TransactionTagAssignmentsCacheCompanion Function({
+      Value<String> transactionId,
+      Value<String> tagId,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$TransactionTagAssignmentsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionTagAssignmentsCacheTable> {
+  $$TransactionTagAssignmentsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagId => $composableBuilder(
+    column: $table.tagId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TransactionTagAssignmentsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionTagAssignmentsCacheTable> {
+  $$TransactionTagAssignmentsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagId => $composableBuilder(
+    column: $table.tagId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TransactionTagAssignmentsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionTagAssignmentsCacheTable> {
+  $$TransactionTagAssignmentsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tagId =>
+      $composableBuilder(column: $table.tagId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$TransactionTagAssignmentsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionTagAssignmentsCacheTable,
+          TransactionTagAssignmentsCacheRow,
+          $$TransactionTagAssignmentsCacheTableFilterComposer,
+          $$TransactionTagAssignmentsCacheTableOrderingComposer,
+          $$TransactionTagAssignmentsCacheTableAnnotationComposer,
+          $$TransactionTagAssignmentsCacheTableCreateCompanionBuilder,
+          $$TransactionTagAssignmentsCacheTableUpdateCompanionBuilder,
+          (
+            TransactionTagAssignmentsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $TransactionTagAssignmentsCacheTable,
+              TransactionTagAssignmentsCacheRow
+            >,
+          ),
+          TransactionTagAssignmentsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$TransactionTagAssignmentsCacheTableTableManager(
+    _$AppDatabase db,
+    $TransactionTagAssignmentsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionTagAssignmentsCacheTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$TransactionTagAssignmentsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TransactionTagAssignmentsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> transactionId = const Value.absent(),
+                Value<String> tagId = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTagAssignmentsCacheCompanion(
+                transactionId: transactionId,
+                tagId: tagId,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String transactionId,
+                required String tagId,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTagAssignmentsCacheCompanion.insert(
+                transactionId: transactionId,
+                tagId: tagId,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TransactionTagAssignmentsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionTagAssignmentsCacheTable,
+      TransactionTagAssignmentsCacheRow,
+      $$TransactionTagAssignmentsCacheTableFilterComposer,
+      $$TransactionTagAssignmentsCacheTableOrderingComposer,
+      $$TransactionTagAssignmentsCacheTableAnnotationComposer,
+      $$TransactionTagAssignmentsCacheTableCreateCompanionBuilder,
+      $$TransactionTagAssignmentsCacheTableUpdateCompanionBuilder,
+      (
+        TransactionTagAssignmentsCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionTagAssignmentsCacheTable,
+          TransactionTagAssignmentsCacheRow
+        >,
+      ),
+      TransactionTagAssignmentsCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ReceiptLineItemTagAssignmentsCacheTableCreateCompanionBuilder =
+    ReceiptLineItemTagAssignmentsCacheCompanion Function({
+      required String lineItemId,
+      required String tagId,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$ReceiptLineItemTagAssignmentsCacheTableUpdateCompanionBuilder =
+    ReceiptLineItemTagAssignmentsCacheCompanion Function({
+      Value<String> lineItemId,
+      Value<String> tagId,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$ReceiptLineItemTagAssignmentsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemTagAssignmentsCacheTable> {
+  $$ReceiptLineItemTagAssignmentsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get lineItemId => $composableBuilder(
+    column: $table.lineItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagId => $composableBuilder(
+    column: $table.tagId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReceiptLineItemTagAssignmentsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemTagAssignmentsCacheTable> {
+  $$ReceiptLineItemTagAssignmentsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get lineItemId => $composableBuilder(
+    column: $table.lineItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagId => $composableBuilder(
+    column: $table.tagId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceiptLineItemTagAssignmentsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceiptLineItemTagAssignmentsCacheTable> {
+  $$ReceiptLineItemTagAssignmentsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get lineItemId => $composableBuilder(
+    column: $table.lineItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tagId =>
+      $composableBuilder(column: $table.tagId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$ReceiptLineItemTagAssignmentsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceiptLineItemTagAssignmentsCacheTable,
+          ReceiptLineItemTagAssignmentsCacheRow,
+          $$ReceiptLineItemTagAssignmentsCacheTableFilterComposer,
+          $$ReceiptLineItemTagAssignmentsCacheTableOrderingComposer,
+          $$ReceiptLineItemTagAssignmentsCacheTableAnnotationComposer,
+          $$ReceiptLineItemTagAssignmentsCacheTableCreateCompanionBuilder,
+          $$ReceiptLineItemTagAssignmentsCacheTableUpdateCompanionBuilder,
+          (
+            ReceiptLineItemTagAssignmentsCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReceiptLineItemTagAssignmentsCacheTable,
+              ReceiptLineItemTagAssignmentsCacheRow
+            >,
+          ),
+          ReceiptLineItemTagAssignmentsCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$ReceiptLineItemTagAssignmentsCacheTableTableManager(
+    _$AppDatabase db,
+    $ReceiptLineItemTagAssignmentsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceiptLineItemTagAssignmentsCacheTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ReceiptLineItemTagAssignmentsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ReceiptLineItemTagAssignmentsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> lineItemId = const Value.absent(),
+                Value<String> tagId = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptLineItemTagAssignmentsCacheCompanion(
+                lineItemId: lineItemId,
+                tagId: tagId,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String lineItemId,
+                required String tagId,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptLineItemTagAssignmentsCacheCompanion.insert(
+                lineItemId: lineItemId,
+                tagId: tagId,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReceiptLineItemTagAssignmentsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceiptLineItemTagAssignmentsCacheTable,
+      ReceiptLineItemTagAssignmentsCacheRow,
+      $$ReceiptLineItemTagAssignmentsCacheTableFilterComposer,
+      $$ReceiptLineItemTagAssignmentsCacheTableOrderingComposer,
+      $$ReceiptLineItemTagAssignmentsCacheTableAnnotationComposer,
+      $$ReceiptLineItemTagAssignmentsCacheTableCreateCompanionBuilder,
+      $$ReceiptLineItemTagAssignmentsCacheTableUpdateCompanionBuilder,
+      (
+        ReceiptLineItemTagAssignmentsCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ReceiptLineItemTagAssignmentsCacheTable,
+          ReceiptLineItemTagAssignmentsCacheRow
+        >,
+      ),
+      ReceiptLineItemTagAssignmentsCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8183,4 +12409,26 @@ class $AppDatabaseManager {
       $$ReceiptsCacheTableTableManager(_db, _db.receiptsCache);
   $$ReceiptLineItemsCacheTableTableManager get receiptLineItemsCache =>
       $$ReceiptLineItemsCacheTableTableManager(_db, _db.receiptLineItemsCache);
+  $$HoldingsCacheTableTableManager get holdingsCache =>
+      $$HoldingsCacheTableTableManager(_db, _db.holdingsCache);
+  $$RecurringTransactionsCacheTableTableManager
+  get recurringTransactionsCache =>
+      $$RecurringTransactionsCacheTableTableManager(
+        _db,
+        _db.recurringTransactionsCache,
+      );
+  $$TransactionTagsCacheTableTableManager get transactionTagsCache =>
+      $$TransactionTagsCacheTableTableManager(_db, _db.transactionTagsCache);
+  $$TransactionTagAssignmentsCacheTableTableManager
+  get transactionTagAssignmentsCache =>
+      $$TransactionTagAssignmentsCacheTableTableManager(
+        _db,
+        _db.transactionTagAssignmentsCache,
+      );
+  $$ReceiptLineItemTagAssignmentsCacheTableTableManager
+  get receiptLineItemTagAssignmentsCache =>
+      $$ReceiptLineItemTagAssignmentsCacheTableTableManager(
+        _db,
+        _db.receiptLineItemTagAssignmentsCache,
+      );
 }

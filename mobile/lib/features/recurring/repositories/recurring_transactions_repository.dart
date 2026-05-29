@@ -9,9 +9,17 @@
 // All writes go through PostgREST; RLS in migration 031 enforces
 // household scoping. No RPC is needed here yet — every operation
 // is a single-row CRUD.
+//
+// Audit L1 Phase 2d: cache-through on fetchAll. Writes update the
+// cache after the server returns the row. runScheduler is an RPC
+// that materialises transactions server-side; the offline behavior
+// is "schedule is deferred until online" — Phase 4 hard case.
 
+import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/recurring_transaction.dart';
 
@@ -21,23 +29,35 @@ part 'recurring_transactions_repository.g.dart';
 RecurringTransactionsRepository recurringTransactionsRepository(
   RecurringTransactionsRepositoryRef ref,
 ) {
-  return RecurringTransactionsRepository();
+  return RecurringTransactionsRepository(db: ref.watch(appDatabaseProvider));
 }
 
 class RecurringTransactionsRepository {
+  RecurringTransactionsRepository({AppDatabase? db}) : _db = db;
+  final AppDatabase? _db;
+
   /// All recurring rules for a household, ordered by next occurrence
   /// ascending — what's due soonest comes first. Includes inactive
   /// rules; callers that want only active ones filter in Dart so
   /// the "show inactive" toggle in a future UI doesn't need a
   /// separate fetch.
   Future<List<RecurringTransaction>> fetchAll(String householdId) async {
-    final data = await supabase
-        .from('recurring_transactions')
-        .select()
-        .eq('household_id', householdId)
-        .order('next_occurrence_date', ascending: true);
-    return data.map<RecurringTransaction>(RecurringTransaction.fromJson)
-        .toList();
+    try {
+      final data = await supabase
+          .from('recurring_transactions')
+          .select()
+          .eq('household_id', householdId)
+          .order('next_occurrence_date', ascending: true);
+      final rules = data
+          .map<RecurringTransaction>(RecurringTransaction.fromJson)
+          .toList();
+      await _refreshRecurringCacheForHousehold(householdId, rules);
+      return rules;
+    } catch (_) {
+      final cached = await _loadFromCache(householdId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Inserts a new rule and returns the persisted row (so the
@@ -71,7 +91,9 @@ class RecurringTransactionsRepository {
         })
         .select()
         .single();
-    return RecurringTransaction.fromJson(data);
+    final rule = RecurringTransaction.fromJson(data);
+    await _writeRecurringCacheRow(rule);
+    return rule;
   }
 
   /// Updates whichever fields the caller passed. Skipped-until-date
@@ -109,7 +131,9 @@ class RecurringTransactionsRepository {
         .eq('id', id)
         .select()
         .single();
-    return RecurringTransaction.fromJson(data);
+    final rule = RecurringTransaction.fromJson(data);
+    await _writeRecurringCacheRow(rule);
+    return rule;
   }
 
   /// Explicit clear for [skippedUntilDate] — see [update] for why
@@ -119,10 +143,24 @@ class RecurringTransactionsRepository {
         .from('recurring_transactions')
         .update({'skipped_until_date': null})
         .eq('id', id);
+    // The .update doesn't return the row; invalidate the cache
+    // row so the next fetchAll reads the cleared state.
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.deleteRecurring(id);
+      } catch (_) {/**/}
+    }
   }
 
   Future<void> delete(String id) async {
     await supabase.from('recurring_transactions').delete().eq('id', id);
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.deleteRecurring(id);
+      } catch (_) {/**/}
+    }
   }
 
   /// Runs the scheduler against every active rule in [householdId]
@@ -141,6 +179,12 @@ class RecurringTransactionsRepository {
   /// [today] defaults to the current UTC date so the call site
   /// doesn't have to think about local-time formatting; tests
   /// inject a fixed date.
+  ///
+  /// Network-only — the scheduler materialises rows server-side
+  /// and advances rule state; replicating that logic offline is a
+  /// Phase 4 hard case. When offline this throws as usual; the
+  /// dashboard's existing try/catch around its scheduler trigger
+  /// already handles that path.
   Future<int> runScheduler({
     required String householdId,
     DateTime? today,
@@ -155,4 +199,86 @@ class RecurringTransactionsRepository {
     );
     return result as int;
   }
+
+  // ── Cache helpers ──────────────────────────────────────────
+
+  Future<void> _refreshRecurringCacheForHousehold(
+    String householdId,
+    List<RecurringTransaction> rules,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceRecurringForHousehold(
+        householdId,
+        rules.map(_toCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<void> _writeRecurringCacheRow(RecurringTransaction r) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.upsertRecurring(_toCompanion(r));
+    } catch (_) {/**/}
+  }
+
+  Future<List<RecurringTransaction>?> _loadFromCache(String householdId) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadRecurringForHousehold(householdId);
+      if (rows.isEmpty) return null;
+      return rows.map(_fromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+RecurringTransactionsCacheCompanion _toCompanion(RecurringTransaction r) {
+  return RecurringTransactionsCacheCompanion(
+    id: Value(r.id),
+    householdId: Value(r.householdId),
+    accountId: Value(r.accountId),
+    amountCents: Value(r.amountCents),
+    currency: Value(r.currency),
+    description: Value(r.description),
+    merchant: Value(r.merchant),
+    categoryId: Value(r.categoryId),
+    cadence: Value(r.cadence.dbValue),
+    nextOccurrenceDate: Value(r.nextOccurrenceDate.toUtc()),
+    lastEmittedAt: Value(r.lastEmittedAt?.toUtc()),
+    skippedUntilDate: Value(r.skippedUntilDate?.toUtc()),
+    isActive: Value(r.isActive),
+    createdBy: Value(r.createdBy),
+    createdAt: Value(r.createdAt.toUtc()),
+    updatedAt: Value(r.updatedAt.toUtc()),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+RecurringTransaction _fromCacheRow(RecurringTransactionsCacheRow r) {
+  return RecurringTransaction(
+    id: r.id,
+    householdId: r.householdId,
+    accountId: r.accountId,
+    amountCents: r.amountCents,
+    currency: r.currency,
+    description: r.description,
+    merchant: r.merchant,
+    categoryId: r.categoryId,
+    cadence: RecurrenceCadence.values.firstWhere(
+      (c) => c.dbValue == r.cadence,
+      orElse: () => RecurrenceCadence.monthly,
+    ),
+    nextOccurrenceDate: r.nextOccurrenceDate,
+    lastEmittedAt: r.lastEmittedAt,
+    skippedUntilDate: r.skippedUntilDate,
+    isActive: r.isActive,
+    createdBy: r.createdBy,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  );
 }

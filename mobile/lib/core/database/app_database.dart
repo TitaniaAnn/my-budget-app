@@ -273,6 +273,98 @@ class ReceiptLineItemsCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Mirror of the Supabase `holdings` table (migration 027).
+@DataClassName('HoldingsCacheRow')
+class HoldingsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get symbol => text()();
+  TextColumn get description => text().nullable()();
+  RealColumn get quantity => real()();
+  IntColumn get costBasis => integer().nullable()();
+  IntColumn get currentValue => integer()();
+
+  /// Stores AssetClass dbValue verbatim ('us_equity', etc.).
+  /// Null is meaningful — "asset class not yet classified."
+  TextColumn get assetClass => text().nullable()();
+  DateTimeColumn get lastPricedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of the Supabase `recurring_transactions` table
+/// (migration 031). The scheduler emission path lands in the
+/// transactions cache (already mirrored), not here.
+@DataClassName('RecurringTransactionsCacheRow')
+class RecurringTransactionsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get accountId => text()();
+  IntColumn get amountCents => integer()();
+  TextColumn get currency => text()();
+  TextColumn get description => text()();
+  TextColumn get merchant => text().nullable()();
+  TextColumn get categoryId => text().nullable()();
+
+  /// Stores RecurrenceCadence dbValue ('weekly', 'monthly', etc.).
+  TextColumn get cadence => text()();
+  DateTimeColumn get nextOccurrenceDate => dateTime()();
+  DateTimeColumn get lastEmittedAt => dateTime().nullable()();
+  DateTimeColumn get skippedUntilDate => dateTime().nullable()();
+  BoolColumn get isActive => boolean()();
+  TextColumn get createdBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of the Supabase `transaction_tags` table (migration 020).
+/// The dictionary side — assignment tables are below.
+@DataClassName('TransactionTagsCacheRow')
+class TransactionTagsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get name => text()();
+  TextColumn get color => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of `transaction_tag_assignments`. Composite PK
+/// (transaction_id, tag_id) — at most one assignment per pair.
+@DataClassName('TransactionTagAssignmentsCacheRow')
+class TransactionTagAssignmentsCache extends Table {
+  TextColumn get transactionId => text()();
+  TextColumn get tagId => text()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {transactionId, tagId};
+}
+
+/// Mirror of `receipt_line_item_tag_assignments`. Composite PK
+/// (line_item_id, tag_id).
+@DataClassName('ReceiptLineItemTagAssignmentsCacheRow')
+class ReceiptLineItemTagAssignmentsCache extends Table {
+  TextColumn get lineItemId => text()();
+  TextColumn get tagId => text()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {lineItemId, tagId};
+}
+
 @DriftDatabase(
   tables: [
     AccountsCache,
@@ -282,6 +374,11 @@ class ReceiptLineItemsCache extends Table {
     FxRatesCache,
     ReceiptsCache,
     ReceiptLineItemsCache,
+    HoldingsCache,
+    RecurringTransactionsCache,
+    TransactionTagsCache,
+    TransactionTagAssignmentsCache,
+    ReceiptLineItemTagAssignmentsCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -310,7 +407,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -349,6 +446,15 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await m.createTable(receiptsCache);
         await m.createTable(receiptLineItemsCache);
+      }
+      // v5 → v6: Phase 2d. Holdings, recurring transactions, and
+      // the tags trio (dictionary + 2 assignment tables).
+      if (from < 6) {
+        await m.createTable(holdingsCache);
+        await m.createTable(recurringTransactionsCache);
+        await m.createTable(transactionTagsCache);
+        await m.createTable(transactionTagAssignmentsCache);
+        await m.createTable(receiptLineItemTagAssignmentsCache);
       }
     },
   );
@@ -749,6 +855,264 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.receiptId.equals(receiptId))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
+  }
+
+  // ── Holdings cache surface ──────────────────────────────────
+
+  Future<void> replaceHoldingsForHousehold(
+    String householdId,
+    List<HoldingsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        holdingsCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(holdingsCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertHolding(HoldingsCacheCompanion row) {
+    return into(holdingsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteHolding(String id) {
+    return (delete(holdingsCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// All cached holdings for a household, sorted symbol ASC
+  /// (case-insensitive via LOWER) to match the server contract.
+  Future<List<HoldingsCacheRow>> loadHoldingsForHousehold(String householdId) {
+    return (select(holdingsCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.asc(t.symbol)]))
+        .get();
+  }
+
+  /// All cached holdings inside one account, sorted symbol ASC.
+  Future<List<HoldingsCacheRow>> loadHoldingsForAccount(String accountId) {
+    return (select(holdingsCache)
+          ..where((t) => t.accountId.equals(accountId))
+          ..orderBy([(t) => OrderingTerm.asc(t.symbol)]))
+        .get();
+  }
+
+  // ── Recurring transactions cache surface ────────────────────
+
+  Future<void> replaceRecurringForHousehold(
+    String householdId,
+    List<RecurringTransactionsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        recurringTransactionsCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(
+            recurringTransactionsCache,
+            rows,
+            mode: InsertMode.replace,
+          );
+        });
+      }
+    });
+  }
+
+  Future<void> upsertRecurring(RecurringTransactionsCacheCompanion row) {
+    return into(
+      recurringTransactionsCache,
+    ).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteRecurring(String id) {
+    return (delete(
+      recurringTransactionsCache,
+    )..where((t) => t.id.equals(id))).go();
+  }
+
+  /// All cached recurring rules for a household, sorted by
+  /// next_occurrence_date ASC (matches the server contract).
+  Future<List<RecurringTransactionsCacheRow>> loadRecurringForHousehold(
+    String householdId,
+  ) {
+    return (select(recurringTransactionsCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.asc(t.nextOccurrenceDate)]))
+        .get();
+  }
+
+  // ── Tags dictionary cache surface ───────────────────────────
+
+  Future<void> replaceTagsForHousehold(
+    String householdId,
+    List<TransactionTagsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        transactionTagsCache,
+      )..where((t) => t.householdId.equals(householdId))).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(transactionTagsCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  Future<void> upsertTag(TransactionTagsCacheCompanion row) {
+    return into(transactionTagsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteTag(String id) {
+    return (delete(transactionTagsCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// All cached tags for a household, sorted name ASC. Matches
+  /// the server-side fetchTags contract.
+  Future<List<TransactionTagsCacheRow>> loadTagsForHousehold(
+    String householdId,
+  ) {
+    return (select(transactionTagsCache)
+          ..where((t) => t.householdId.equals(householdId))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  // ── Transaction tag assignments cache ──────────────────────
+  //
+  // Full-replace shape for fetchAllAssignments — the network
+  // call returns every assignment the caller can see, so we
+  // mirror by purging and re-inserting in one transaction.
+
+  Future<void> replaceAllTransactionTagAssignments(
+    List<TransactionTagAssignmentsCacheCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await delete(transactionTagAssignmentsCache).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(
+            transactionTagAssignmentsCache,
+            rows,
+            mode: InsertMode.replace,
+          );
+        });
+      }
+    });
+  }
+
+  /// Mirrors replaceAssignments(transactionId, tagIds): delete
+  /// every assignment for the transaction, then insert one row
+  /// per tag.
+  Future<void> replaceTransactionTagAssignments({
+    required String transactionId,
+    required List<String> tagIds,
+  }) async {
+    await transaction(() async {
+      await (delete(transactionTagAssignmentsCache)
+            ..where((t) => t.transactionId.equals(transactionId)))
+          .go();
+      if (tagIds.isNotEmpty) {
+        final now = DateTime.now().toUtc();
+        await batch((b) {
+          b.insertAll(
+            transactionTagAssignmentsCache,
+            tagIds.map(
+              (tagId) => TransactionTagAssignmentsCacheCompanion(
+                transactionId: Value(transactionId),
+                tagId: Value(tagId),
+                cachedAt: Value(now),
+              ),
+            ),
+            mode: InsertMode.replace,
+          );
+        });
+      }
+    });
+  }
+
+  /// Load all transaction tag assignments, returned as
+  /// `Map<transaction_id, Set<tag_id>>` to match the server-side
+  /// fetchAllAssignments contract.
+  Future<Map<String, Set<String>>> loadAllTransactionTagAssignments() async {
+    final rows = await select(transactionTagAssignmentsCache).get();
+    final result = <String, Set<String>>{};
+    for (final r in rows) {
+      (result[r.transactionId] ??= <String>{}).add(r.tagId);
+    }
+    return result;
+  }
+
+  /// Tag-filter shape: which transactions carry [tagId]?
+  Future<List<String>> loadTransactionIdsForTag(String tagId) async {
+    final rows = await (select(transactionTagAssignmentsCache)
+          ..where((t) => t.tagId.equals(tagId)))
+        .get();
+    return rows.map((r) => r.transactionId).toList();
+  }
+
+  /// Tag ids assigned to one transaction. Derived from the same
+  /// cache table; lets fetchAssignedTagIds(transactionId) fall
+  /// back to the cache without an extra query shape.
+  Future<List<String>> loadAssignedTagIds(String transactionId) async {
+    final rows = await (select(transactionTagAssignmentsCache)
+          ..where((t) => t.transactionId.equals(transactionId)))
+        .get();
+    return rows.map((r) => r.tagId).toList();
+  }
+
+  /// Delete every cached assignment for [transactionId]s. Used
+  /// when the server-side delete removes a whole transaction or
+  /// in a bulk-untag flow.
+  Future<int> deleteTransactionTagAssignmentsByTransactionIds(
+    List<String> transactionIds,
+  ) async {
+    if (transactionIds.isEmpty) return 0;
+    return (delete(transactionTagAssignmentsCache)
+          ..where((t) => t.transactionId.isIn(transactionIds)))
+        .go();
+  }
+
+  // ── Receipt line item tag assignments cache ────────────────
+
+  Future<void> replaceReceiptLineItemTagAssignments({
+    required String lineItemId,
+    required List<String> tagIds,
+  }) async {
+    await transaction(() async {
+      await (delete(receiptLineItemTagAssignmentsCache)
+            ..where((t) => t.lineItemId.equals(lineItemId)))
+          .go();
+      if (tagIds.isNotEmpty) {
+        final now = DateTime.now().toUtc();
+        await batch((b) {
+          b.insertAll(
+            receiptLineItemTagAssignmentsCache,
+            tagIds.map(
+              (tagId) => ReceiptLineItemTagAssignmentsCacheCompanion(
+                lineItemId: Value(lineItemId),
+                tagId: Value(tagId),
+                cachedAt: Value(now),
+              ),
+            ),
+            mode: InsertMode.replace,
+          );
+        });
+      }
+    });
+  }
+
+  Future<List<String>> loadAssignedTagIdsForLineItem(
+    String lineItemId,
+  ) async {
+    final rows = await (select(receiptLineItemTagAssignmentsCache)
+          ..where((t) => t.lineItemId.equals(lineItemId)))
+        .get();
+    return rows.map((r) => r.tagId).toList();
   }
 }
 

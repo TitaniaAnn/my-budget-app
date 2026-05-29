@@ -10,7 +10,18 @@
 // rely on migration 028's id-preserving save_receipt_line_items;
 // the original migration 018 would cascade-delete them on every
 // receipt edit, making line-item tags useless.
+//
+// Audit L1 Phase 2d: cache-through on fetchTags, fetchAllAssignments,
+// fetchTransactionIdsForTag, fetchAssignedTagIds, and
+// fetchAssignedTagIdsForLineItem. Replace-assignment paths mirror to
+// the cache; bulk addTagToMany / removeTagFromMany invalidate the
+// touched transaction-side assignments (next fetchAllAssignments
+// reconciles). tagUsageCounts and the receipt-line-item bulk fetch
+// stay network-only — neither is on the hot offline path.
+import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction_tag.dart';
 
@@ -20,10 +31,12 @@ part 'transaction_tags_repository.g.dart';
 TransactionTagsRepository transactionTagsRepository(
   TransactionTagsRepositoryRef ref,
 ) {
-  return TransactionTagsRepository();
+  return TransactionTagsRepository(db: ref.watch(appDatabaseProvider));
 }
 
 class TransactionTagsRepository {
+  TransactionTagsRepository({AppDatabase? db}) : _db = db;
+  final AppDatabase? _db;
   /// Returns every tag in [householdId], alphabetically by name. The
   /// dictionary is small (dozens of rows at most) so we don't bother
   /// paginating.
@@ -31,15 +44,23 @@ class TransactionTagsRepository {
   /// RLS scopes to the caller's household; passing the explicit
   /// householdId is belt-and-braces.
   Future<List<TransactionTag>> fetchTags(String householdId) async {
-    final data = await supabase
-        .from('transaction_tags')
-        .select()
-        .eq('household_id', householdId)
-        // postgrest's .order() defaults to DESCENDING — alphabetical
-        // ASC only happens when we say so explicitly. Without this the
-        // picker would render Z…A which is jarring on a long tag list.
-        .order('name', ascending: true);
-    return data.map<TransactionTag>(TransactionTag.fromJson).toList();
+    try {
+      final data = await supabase
+          .from('transaction_tags')
+          .select()
+          .eq('household_id', householdId)
+          // postgrest's .order() defaults to DESCENDING — alphabetical
+          // ASC only happens when we say so explicitly. Without this the
+          // picker would render Z…A which is jarring on a long tag list.
+          .order('name', ascending: true);
+      final tags = data.map<TransactionTag>(TransactionTag.fromJson).toList();
+      await _refreshTagsCache(householdId, tags);
+      return tags;
+    } catch (_) {
+      final cached = await _loadTagsFromCache(householdId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Creates a new tag and returns it. Trimmed [name] so a stray
@@ -59,7 +80,9 @@ class TransactionTagsRepository {
         })
         .select()
         .single();
-    return TransactionTag.fromJson(data);
+    final tag = TransactionTag.fromJson(data);
+    await _writeTagCacheRow(tag);
+    return tag;
   }
 
   /// Returns assignment counts per tag, keyed by tag_id. Each value
@@ -125,7 +148,9 @@ class TransactionTagsRepository {
         .eq('id', tagId)
         .select()
         .single();
-    return TransactionTag.fromJson(data);
+    final tag = TransactionTag.fromJson(data);
+    await _writeTagCacheRow(tag);
+    return tag;
   }
 
   /// Deletes a tag. The schema's `ON DELETE CASCADE` on both
@@ -133,6 +158,11 @@ class TransactionTagsRepository {
   /// manually — they vanish with the tag row.
   Future<void> deleteTag(String tagId) async {
     await supabase.from('transaction_tags').delete().eq('id', tagId);
+    await _deleteTagCacheRow(tagId);
+    // Server's ON DELETE CASCADE removes assignments too; mirror
+    // by clearing every cached assignment for this tag. Done as a
+    // separate cache write because the cache has no FK cascade.
+    await _deleteAssignmentsForTag(tagId);
   }
 
   /// Returns every (transaction_id, tag_id) pair the caller can see,
@@ -149,16 +179,23 @@ class TransactionTagsRepository {
   /// come back. No householdId parameter — the policy is the
   /// authority.
   Future<Map<String, Set<String>>> fetchAllAssignments() async {
-    final data = await supabase
-        .from('transaction_tag_assignments')
-        .select('transaction_id, tag_id');
-    final result = <String, Set<String>>{};
-    for (final row in data) {
-      final txId = row['transaction_id'] as String;
-      final tagId = row['tag_id'] as String;
-      (result[txId] ??= <String>{}).add(tagId);
+    try {
+      final data = await supabase
+          .from('transaction_tag_assignments')
+          .select('transaction_id, tag_id');
+      final result = <String, Set<String>>{};
+      for (final row in data) {
+        final txId = row['transaction_id'] as String;
+        final tagId = row['tag_id'] as String;
+        (result[txId] ??= <String>{}).add(tagId);
+      }
+      await _refreshAllTransactionAssignmentsCache(result);
+      return result;
+    } catch (_) {
+      final cached = await _loadAllAssignmentsFromCache();
+      if (cached != null) return cached;
+      rethrow;
     }
-    return result;
   }
 
   /// Returns the ids of every transaction in the household that
@@ -168,11 +205,19 @@ class TransactionTagsRepository {
   /// join because the assignment table is tiny and PostgREST's
   /// embed-with-filter ergonomics aren't worth the complexity here.
   Future<List<String>> fetchTransactionIdsForTag(String tagId) async {
-    final data = await supabase
-        .from('transaction_tag_assignments')
-        .select('transaction_id')
-        .eq('tag_id', tagId);
-    return data.map<String>((row) => row['transaction_id'] as String).toList();
+    try {
+      final data = await supabase
+          .from('transaction_tag_assignments')
+          .select('transaction_id')
+          .eq('tag_id', tagId);
+      return data
+          .map<String>((row) => row['transaction_id'] as String)
+          .toList();
+    } catch (_) {
+      final cached = await _loadTransactionIdsForTagFromCache(tagId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Returns the ids of tags currently assigned to [transactionId].
@@ -180,11 +225,17 @@ class TransactionTagsRepository {
   /// dictionary fetch which is cached separately, so we don't pay
   /// for the join every time.
   Future<List<String>> fetchAssignedTagIds(String transactionId) async {
-    final data = await supabase
-        .from('transaction_tag_assignments')
-        .select('tag_id')
-        .eq('transaction_id', transactionId);
-    return data.map<String>((row) => row['tag_id'] as String).toList();
+    try {
+      final data = await supabase
+          .from('transaction_tag_assignments')
+          .select('tag_id')
+          .eq('transaction_id', transactionId);
+      return data.map<String>((row) => row['tag_id'] as String).toList();
+    } catch (_) {
+      final cached = await _loadAssignedTagIdsFromCache(transactionId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Returns the ids of tags assigned to [lineItemId]. Mirrors
@@ -193,11 +244,17 @@ class TransactionTagsRepository {
   /// but this exists for completeness and for any future
   /// per-row consumer.
   Future<List<String>> fetchAssignedTagIdsForLineItem(String lineItemId) async {
-    final data = await supabase
-        .from('receipt_line_item_tag_assignments')
-        .select('tag_id')
-        .eq('line_item_id', lineItemId);
-    return data.map<String>((row) => row['tag_id'] as String).toList();
+    try {
+      final data = await supabase
+          .from('receipt_line_item_tag_assignments')
+          .select('tag_id')
+          .eq('line_item_id', lineItemId);
+      return data.map<String>((row) => row['tag_id'] as String).toList();
+    } catch (_) {
+      final cached = await _loadAssignedTagIdsForLineItemFromCache(lineItemId);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Bulk-fetches every tag assignment for line items belonging to
@@ -248,15 +305,30 @@ class TransactionTagsRepository {
         .delete()
         .eq('line_item_id', lineItemId);
 
-    if (tagIds.isEmpty) return;
+    if (tagIds.isNotEmpty) {
+      await supabase
+          .from('receipt_line_item_tag_assignments')
+          .insert(
+            tagIds
+                .map((id) => {'line_item_id': lineItemId, 'tag_id': id})
+                .toList(),
+          );
+    }
 
-    await supabase
-        .from('receipt_line_item_tag_assignments')
-        .insert(
-          tagIds
-              .map((id) => {'line_item_id': lineItemId, 'tag_id': id})
-              .toList(),
+    // Mirror the server-side replace into the cache. Drift wraps
+    // both legs in a transaction so a mid-write crash doesn't
+    // leave the cache half-updated. NB: the server-side two-leg
+    // shape is still non-atomic by design (documented in
+    // [replaceAssignments]).
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.replaceReceiptLineItemTagAssignments(
+          lineItemId: lineItemId,
+          tagIds: tagIds,
         );
+      } catch (_) {/**/}
+    }
   }
 
   /// Replaces the set of tags assigned to [transactionId] with
@@ -279,15 +351,25 @@ class TransactionTagsRepository {
         .delete()
         .eq('transaction_id', transactionId);
 
-    if (tagIds.isEmpty) return;
+    if (tagIds.isNotEmpty) {
+      await supabase
+          .from('transaction_tag_assignments')
+          .insert(
+            tagIds
+                .map((id) => {'transaction_id': transactionId, 'tag_id': id})
+                .toList(),
+          );
+    }
 
-    await supabase
-        .from('transaction_tag_assignments')
-        .insert(
-          tagIds
-              .map((id) => {'transaction_id': transactionId, 'tag_id': id})
-              .toList(),
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.replaceTransactionTagAssignments(
+          transactionId: transactionId,
+          tagIds: tagIds,
         );
+      } catch (_) {/**/}
+    }
   }
 
   /// Adds [tagId] to every transaction in [transactionIds] in a
@@ -332,5 +414,168 @@ class TransactionTagsRepository {
         .delete()
         .eq('tag_id', tagId)
         .inFilter('transaction_id', transactionIds);
+    // Invalidate the touched transaction-side assignments. The
+    // next fetchAllAssignments reconciles fully; we don't try to
+    // patch the cache in place because a row's other-tag set
+    // might have changed too.
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.deleteTransactionTagAssignmentsByTransactionIds(transactionIds);
+      } catch (_) {/**/}
+    }
   }
+
+  // ── Cache helpers ──────────────────────────────────────────
+
+  Future<void> _refreshTagsCache(
+    String householdId,
+    List<TransactionTag> tags,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceTagsForHousehold(
+        householdId,
+        tags.map(_tagToCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<void> _writeTagCacheRow(TransactionTag t) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.upsertTag(_tagToCompanion(t));
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteTagCacheRow(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.deleteTag(id);
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteAssignmentsForTag(String tagId) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      // Find every transaction that carried this tag, then drop
+      // those transactions' cached rows entirely. Mirrors the
+      // server-side ON DELETE CASCADE effect.
+      final txIds = await db.loadTransactionIdsForTag(tagId);
+      if (txIds.isNotEmpty) {
+        await db.deleteTransactionTagAssignmentsByTransactionIds(txIds);
+      }
+    } catch (_) {/**/}
+  }
+
+  Future<List<TransactionTag>?> _loadTagsFromCache(String householdId) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadTagsForHousehold(householdId);
+      if (rows.isEmpty) return null;
+      return rows.map(_tagFromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _refreshAllTransactionAssignmentsCache(
+    Map<String, Set<String>> assignments,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      final now = DateTime.now().toUtc();
+      final rows = <TransactionTagAssignmentsCacheCompanion>[
+        for (final entry in assignments.entries)
+          for (final tagId in entry.value)
+            TransactionTagAssignmentsCacheCompanion(
+              transactionId: Value(entry.key),
+              tagId: Value(tagId),
+              cachedAt: Value(now),
+            ),
+      ];
+      await db.replaceAllTransactionTagAssignments(rows);
+    } catch (_) {/**/}
+  }
+
+  Future<Map<String, Set<String>>?> _loadAllAssignmentsFromCache() async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final result = await db.loadAllTransactionTagAssignments();
+      if (result.isEmpty) return null;
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<String>?> _loadTransactionIdsForTagFromCache(
+    String tagId,
+  ) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final ids = await db.loadTransactionIdsForTag(tagId);
+      if (ids.isEmpty) return null;
+      return ids;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<String>?> _loadAssignedTagIdsFromCache(
+    String transactionId,
+  ) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final ids = await db.loadAssignedTagIds(transactionId);
+      if (ids.isEmpty) return null;
+      return ids;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<String>?> _loadAssignedTagIdsForLineItemFromCache(
+    String lineItemId,
+  ) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final ids = await db.loadAssignedTagIdsForLineItem(lineItemId);
+      if (ids.isEmpty) return null;
+      return ids;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+TransactionTagsCacheCompanion _tagToCompanion(TransactionTag t) {
+  return TransactionTagsCacheCompanion(
+    id: Value(t.id),
+    householdId: Value(t.householdId),
+    name: Value(t.name),
+    color: Value(t.color),
+    createdAt: Value(t.createdAt.toUtc()),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+TransactionTag _tagFromCacheRow(TransactionTagsCacheRow r) {
+  return TransactionTag(
+    id: r.id,
+    householdId: r.householdId,
+    name: r.name,
+    color: r.color,
+    createdAt: r.createdAt,
+  );
 }
