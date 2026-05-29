@@ -230,6 +230,38 @@ export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
 }
 
+/// In-memory JWK cache for Plaid webhook verification (code-
+/// review fix #5). Without it every webhook fires two Plaid
+/// round-trips (Plaid → us → Plaid for key → us), AND a forged-
+/// webhook spam attack would proxy through to Plaid's API
+/// quota. Plaid rotates webhook keys infrequently; a 24h TTL is
+/// safely conservative. Cache lives at module scope so it
+/// persists across requests within the same Edge Function
+/// instance (Deno keeps the worker warm between invocations).
+interface CachedJwk {
+  key: Record<string, unknown>;
+  cachedAt: number; // epoch ms
+}
+const _jwkCache = new Map<string, CachedJwk>();
+const _JWK_TTL_MS = 24 * 60 * 60 * 1000;
+
+/// Constant-time hex-string comparison. Plain `===` exits at
+/// the first mismatching byte, leaking match-prefix length via
+/// timing. Not exploitable against asymmetric-signed payloads
+/// (the body-hash claim is already authenticated by the JWT
+/// signature, so an attacker can't forge a matching JWT), but
+/// best-practice for any cryptographic compare. Returns true
+/// only when both strings have the same length AND every byte
+/// matches.
+function constantTimeStringEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 /// Verifies a Plaid webhook against the JWT in the
 /// `Plaid-Verification` header. Returns the parsed body on
 /// success; throws on any verification failure.
@@ -237,11 +269,13 @@ export function jsonError(status: number, message: string): Response {
 /// Verification steps per Plaid's docs:
 ///   1. Decode the JWT header to extract the `kid` (key id).
 ///   2. Fetch the corresponding JWK from Plaid's
-///      `/webhook_verification_key/get` endpoint.
+///      `/webhook_verification_key/get` endpoint (cached for
+///      24h — fix #5).
 ///   3. Verify the JWT signature with that JWK (ES256).
 ///   4. Verify the body's SHA-256 matches the JWT's
-///      `request_body_sha256` claim — this is what binds the
-///      signature to THIS request's body.
+///      `request_body_sha256` claim, using constant-time
+///      compare (fix #14) — this is what binds the signature
+///      to THIS request's body.
 ///   5. Verify the JWT's iat is within the last 5 minutes (replay
 ///      window).
 ///
@@ -262,27 +296,34 @@ export async function verifyPlaidWebhook(
   const kid = decodedHeader.kid;
   if (!kid) throw new Error("Plaid-Verification: JWT has no `kid`");
 
-  // Step 2: fetch the JWK from Plaid.
-  const keyResponse = await plaidPost<{
-    key: {
-      kty: string;
-      alg: string;
-      use: string;
-      kid: string;
-      crv?: string;
-      x?: string;
-      y?: string;
-      expired_at?: string | null;
-    };
-  }>("/webhook_verification_key/get", { key_id: kid });
+  // Step 2: fetch the JWK from Plaid — or read from cache. A
+  // cache hit older than _JWK_TTL_MS is treated as a miss; we
+  // re-fetch and overwrite. On rotation Plaid hands out a new
+  // kid, so each kid's cache entry has its own lifecycle and a
+  // rotation doesn't require flushing the cache (the old kid
+  // just stops being used).
+  let jwkRaw: Record<string, unknown>;
+  const cached = _jwkCache.get(kid);
+  if (cached && (Date.now() - cached.cachedAt) < _JWK_TTL_MS) {
+    jwkRaw = cached.key;
+  } else {
+    const keyResponse = await plaidPost<{
+      key: Record<string, unknown> & {
+        kty: string;
+        alg: string;
+        use: string;
+        kid: string;
+        expired_at?: string | null;
+      };
+    }>("/webhook_verification_key/get", { key_id: kid });
+    jwkRaw = keyResponse.key;
+    _jwkCache.set(kid, { key: jwkRaw, cachedAt: Date.now() });
+  }
 
   // Step 3 & 4: verify the JWT signature AND the body hash.
   // jose's jwtVerify checks signature + standard claims (iat, exp);
   // we still need to manually verify the body hash.
-  const publicKey = await jose.importJWK(
-    keyResponse.key as jose.JWK,
-    "ES256",
-  );
+  const publicKey = await jose.importJWK(jwkRaw as jose.JWK, "ES256");
   const { payload } = await jose.jwtVerify(
     verificationHeader,
     publicKey,
@@ -295,13 +336,13 @@ export async function verifyPlaidWebhook(
     throw new Error("Plaid-Verification: missing request_body_sha256 claim");
   }
 
-  // Compute SHA-256 of the raw body and compare.
+  // Compute SHA-256 of the raw body and constant-time compare.
   const bodyBytes = new TextEncoder().encode(rawBody);
   const bodyHashBuf = await crypto.subtle.digest("SHA-256", bodyBytes);
   const bodyHashHex = Array.from(new Uint8Array(bodyHashBuf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  if (bodyHashHex !== requestBodySha256) {
+  if (!constantTimeStringEquals(bodyHashHex, requestBodySha256)) {
     throw new Error(
       "Plaid-Verification: body sha256 mismatch (request was modified " +
         "between signature + arrival)",
@@ -319,4 +360,11 @@ export async function verifyPlaidWebhook(
         `(${ageSec}s old)`,
     );
   }
+}
+
+/// Test-only: clears the JWK cache. Lets a Deno test verify
+/// the cache-hit code path without spinning up a real Plaid
+/// fetch on every iteration.
+export function _resetJwkCacheForTesting(): void {
+  _jwkCache.clear();
 }
