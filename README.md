@@ -17,8 +17,10 @@ Multi-user household budgeting with roles, shared accounts, and the kind of corr
 - **Transactions** entered manually, imported from bank CSVs (with header heuristics and dedup), or attached to a receipt.
 - **Auto-categorization** of transactions via an on-device ML model (Platt-calibrated LogReg over char-ngram TF-IDF, ONNX) with per-class auto-apply thresholds. Predictions never leave the device. Below-threshold guesses surface in a "Review uncertain" Settings screen so the user's correction becomes ground-truth for the next retrain. The legacy keyword matcher stays as a cold-start / fall-through path.
 - **Receipts** uploaded to private Storage, line-itemized via OCR (Supabase Edge Function → Google Cloud Vision). The production Edge Function is deployed externally; this repo ships a stub at [`supabase/functions/process-receipt-ocr/`](supabase/functions/process-receipt-ocr/) that mirrors its output shape so the local stack can exercise the full flow without API keys.
-- **Budgets** with weekly / monthly / annual periods and live progress against actual spending.
+- **Automatic bank sync via Plaid.** Cursor-paged `/transactions/sync` against linked Items, with server-side dedup (greedy bipartite matching with backtracking — migration 061), reauth detection from webhooks, and user-state preservation on Plaid's "removed" array (rows with notes / receipts / user categories soft-archive instead of vanishing — migration 063).
+- **Budgets** with weekly / monthly / annual periods and live progress against actual spending. Multi-currency cap comparison via `BudgetWithSpending.capCents` (foreign caps convert through the household's display currency).
 - **Scenarios & goals** — what-if planning with iCal RRULE recurring events, parent-branching for alternatives, and `is_goal` overlay for target-date savings tracking. Projection runs forward from current net worth; historical net worth is reconstructed by walking transaction deltas backward.
+- **Offline-first** for read paths (drift-backed cache mirrors every server table, falls back transparently when the network fails) and write paths (an optimistic-cache + replay queue: every mutation that hits a transient failure lands in `pending_writes` and replays on reconnect). Settings → Sync surfaces queue depth + last-synced time + a manual sync trigger.
 
 ---
 
@@ -66,26 +68,38 @@ my-budget-app/
 │                                      parity (only on ML-pipeline changes)
 ├── mobile/                          — Flutter app
 │   ├── lib/
-│   │   ├── core/                    — supabase client, theme, router, shared utils
-│   │   └── features/                — feature modules (see below)
-│   │       ├── auth/
-│   │       ├── accounts/
-│   │       ├── transactions/
-│   │       ├── budget/
-│   │       ├── scenarios/
-│   │       ├── receipts/
-│   │       ├── dashboard/
-│   │       └── settings/
+│   │   ├── core/
+│   │   │   ├── supabase/             — supabase client
+│   │   │   ├── theme/, router/, providers/, utils/
+│   │   │   ├── connectivity/         — isOnlineProvider + reachability probe
+│   │   │   ├── database/             — drift offline cache (12 mirrored tables)
+│   │   │   └── sync/                 — pending_writes queue + auto-drain on
+│   │   │                                reconnect + sign-out cache wipe
+│   │   ├── features/                 — feature modules (see below)
+│   │   │   ├── auth/, accounts/, transactions/, budget/, scenarios/
+│   │   │   ├── receipts/, dashboard/, settings/
+│   │   │   ├── currency/             — FX rates + display-currency conversion
+│   │   │   ├── holdings/             — per-security positions
+│   │   │   ├── notifications/        — local alerts + FCM dispatcher prep
+│   │   │   ├── plaid/                — Plaid Link + sync orchestrator
+│   │   │   ├── recurring/            — rule-based scheduled transactions
+│   │   │   └── reports/              — monthly PDF report
+│   │   └── shared/widgets/           — app-wide reusable widgets
 │   ├── test/
-│   │   ├── ...                      — unit tests, run by default `flutter test`
-│   │   └── integration/             — hit a local Supabase stack (env-gated)
+│   │   ├── ...                       — unit tests, run by default `flutter test`
+│   │   └── integration/              — hit a local Supabase stack (env-gated)
 │   ├── pubspec.yaml
-│   └── CLAUDE.md                    — repo conventions for AI tooling
+│   └── CLAUDE.md                     — repo conventions for AI tooling
 ├── supabase/
 │   ├── functions/
-│   │   └── process-receipt-ocr/     — local stub mirroring the production
-│   │                                  Edge Function's output shape
-│   └── migrations/                  — numbered, idempotent, named after the bug they fix
+│   │   ├── process-receipt-ocr/      — local stub mirroring the production
+│   │   │                                Edge Function's output shape
+│   │   ├── send-notification/        — server-side budget-alert dispatcher
+│   │   ├── plaid-link-token-create/  — mints short-lived link tokens
+│   │   ├── plaid-public-token-exchange/ — exchanges + materialises accounts
+│   │   ├── plaid-transactions-sync/  — cursor-paged /transactions/sync
+│   │   └── plaid-webhook/            — JWT-verified webhook receiver
+│   └── migrations/                   — numbered, idempotent, named after the bug they fix
 ├── tools/
 │   └── categorizer/                 — Python pipeline that trains the on-device
 │                                      ML categorizer (TF-IDF + Platt-calibrated
@@ -99,9 +113,9 @@ Each feature folder follows the same shape: `models/` (Freezed immutables), `pro
 
 ## Tech stack
 
-**Mobile:** Flutter / Dart, Riverpod (codegen), GoRouter, Freezed, json_serializable, fl_chart, decimal, csv, flutter_secure_storage, local_auth, image_picker, onnxruntime.
+**Mobile:** Flutter / Dart, Riverpod (codegen), GoRouter, Freezed, json_serializable, fl_chart, decimal, csv, image_picker, onnxruntime, plaid_flutter, drift + sqlite3_flutter_libs (offline cache), connectivity_plus, cached_network_image, pdf + printing (monthly report PDF), flutter_local_notifications (client-side budget alerts), flutter_image_compress (receipt thumbnails).
 
-**Backend:** Supabase — PostgreSQL with RLS, GoTrue auth, Storage with bucket-level policies, Edge Functions (TypeScript) for OCR.
+**Backend:** Supabase — PostgreSQL with RLS, GoTrue auth, Storage with bucket-level policies, Edge Functions (TypeScript) for OCR (`process-receipt-ocr`), notifications (`send-notification`), and Plaid (`plaid-link-token-create`, `plaid-public-token-exchange`, `plaid-transactions-sync`, `plaid-webhook`).
 
 **ML tooling:** scikit-learn + skl2onnx + onnxruntime (Python) for offline training; the resulting model runs on-device via the Dart `onnxruntime` package.
 
@@ -289,6 +303,17 @@ The `supabase/migrations/` folder is a small case study in iterating on a live s
 | `021_get_category_spending_function.sql`    | Server-side `GROUP BY category_id, SUM(amount)` so the budget screen ships one row per category instead of every transaction in the range. RLS still applies — the RPC runs as the caller. |
 | `022_ml_model_confidence.sql`               | Basis-points INTEGER column for the model's top-class probability, plus a partial index on uncertain ML rows. Backs the active-learning Review surface; basis points keep the cents-everywhere INTEGER invariant intact. |
 | `023_fix_account_visibility_grants_rls_recursion.sql` | RLS recursion between `accounts` and `account_visibility_grants` (Postgres error 42P17). Same shape of bug as 004; fixed via a new `account_household_id()` `SECURITY DEFINER` helper that resolves the relationship without re-entering the user's RLS path. Surfaced by the integration suite. |
+| `030_transfers.sql`                         | Account-to-account transfers as two paired rows sharing a `transfer_id`. The `create_transfer` RPC is the only blessed write path; cash-flow rollups skip `transfer_id IS NOT NULL` so transfers don't pollute income/expense math. |
+| `031_recurring_transactions.sql` + `032_recurring_scheduler.sql` | Rules-not-rows: cadence + next_occurrence_date table + the `run_recurring_scheduler` RPC that materialises one transaction per missed cycle (multi-cycle catchup is intentional) and advances the rule. Fires fire-and-forget on dashboard load. |
+| `036_multi_currency_foundation.sql` + `037_category_spending_fx_aware.sql` + `038_budgets_currency.sql` | Per-account currency + per-household display currency + per-household FX rates + the `get_category_spending` overload that converts per row. Exclude-not-lie contract on missing rates. |
+| `045_create_transfer_arg_drop.sql`          | `create_transfer` derives `auth.uid()` and currency server-side instead of accepting them as args — no caller-supplied attribution forgery, no hardcoded USD. |
+| `054_plaid_items.sql` ... `063_plaid_preserve_user_state_on_remove.sql` | Plaid integration: items table + column-level access_token REVOKE + cursor sync + greedy dedup with backtracking + webhook replay protection (`dedup_hash` UNIQUE) + user-state-preserving removed-array. |
+| `060_plaid_webhook_events_replay_protection.sql` | `dedup_hash TEXT` + partial UNIQUE on `(plaid_item_id, dedup_hash)`. Plaid retries until 200; the webhook handler upserts with `ignoreDuplicates`, sees empty RETURNING on retry, exits without re-firing side-effects. |
+| `061_plaid_dedup_backtracking.sql`          | Replaces the two-stage ROW_NUMBER dedup (which dropped candidates without backtracking) with a greedy procedural matcher in PL/pgSQL using temp tables. Walks pairs in (date_distance, plaid_external_id, existing_id) order and claims each as it goes. |
+| `062_plaid_accounts_household_visibility.sql` | Adds a second `accounts` SELECT policy granting every household member read on Plaid-backed accounts. Without it, partners who didn't link the bank couldn't sync. |
+| `063_plaid_preserve_user_state_on_remove.sql` | Plaid removes often (pending → posted rewrites the transaction_id). Rows with user state (notes, receipt, transfer_id, user-assigned category) soft-archive instead of vanishing. Partner-leg `transfer_id` cleared when one leg is removed. |
+| `064_prune_plaid_webhook_events.sql`        | 90-day retention on the webhook audit table. Mirrors 040's `prune_notification_log` shape. |
+| `065_updated_at_triggers_audit.sql`         | Fills the `updated_at` column + trigger on budgets / categories / receipts / receipt_line_items so the optimistic-lock precondition the queue's replay uses is reliable across every caller-mutable table. |
 
 ---
 
