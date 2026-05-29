@@ -105,7 +105,13 @@ class PlaidRepository {
         'plaid-public-token-exchange returned no body',
       );
     }
-    return PlaidExchangeResult.fromJson(_camelize(data));
+    // Pass the snake_case shape straight through — the project's
+    // build.yaml has `json_serializable.field_rename: snake`, so
+    // the generated fromJson reads `json['plaid_item_id']` /
+    // `json['inserted_accounts']` etc. directly. A prior
+    // camelize-helper that pre-processed the keys was wrong
+    // (caught in code review) and broke every fromJson it touched.
+    return PlaidExchangeResult.fromJson(data);
   }
 
   /// Triggers `/transactions/sync` for one linked Item. The
@@ -123,7 +129,7 @@ class PlaidRepository {
         'plaid-transactions-sync returned no body',
       );
     }
-    return PlaidSyncResult.fromJson(_camelize(data));
+    return PlaidSyncResult.fromJson(data);
   }
 
   /// Lists active Plaid Items in the caller's household. Read
@@ -138,35 +144,9 @@ class PlaidRepository {
         .order('institution_name', ascending: true);
     return [
       for (final row in rows as List)
-        PlaidItem.fromJson(_camelize(row as Map<String, dynamic>)),
+        PlaidItem.fromJson(row as Map<String, dynamic>),
     ];
   }
-}
-
-/// Recursively rewrites snake_case keys to camelCase so freezed
-/// fromJson factories (which use the field's Dart name) match
-/// the Edge Function / Supabase row's snake_case shape without
-/// per-class @JsonKey annotations.
-Map<String, dynamic> _camelize(Map<String, dynamic> input) {
-  String toCamel(String snake) {
-    final parts = snake.split('_');
-    if (parts.length == 1) return snake;
-    return parts.first +
-        parts.skip(1).map((p) {
-          if (p.isEmpty) return '';
-          return p[0].toUpperCase() + p.substring(1);
-        }).join();
-  }
-
-  dynamic deep(dynamic v) {
-    if (v is Map<String, dynamic>) {
-      return {for (final e in v.entries) toCamel(e.key): deep(e.value)};
-    }
-    if (v is List) return [for (final e in v) deep(e)];
-    return v;
-  }
-
-  return deep(input) as Map<String, dynamic>;
 }
 
 class PlaidEdgeFunctionException implements Exception {
