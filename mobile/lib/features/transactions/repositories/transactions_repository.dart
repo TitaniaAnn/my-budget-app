@@ -1,7 +1,19 @@
 // Data access layer for transactions and categories.
 // Transactions are fetched with a join on categories so the UI gets
 // category name/color/icon in a single round-trip.
+//
+// Audit L1 Phase 2a: cache-through. fetchTransactions /
+// fetchTransactionsForDashboard / fetchCategories try the network
+// first; on any failure (offline, captive portal, surviving 5xx)
+// the local SQLite mirror returns whatever it last cached.
+// Mutating paths update the cache after a successful server
+// write. Less-critical reads (fetchByReceiptId, fetchUncertain)
+// stay network-only for Phase 2a — they're not on the hot
+// dashboard path.
+import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database_provider.dart';
 import '../../../core/error/error_mapper.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../models/transaction.dart';
@@ -14,10 +26,15 @@ part 'transactions_repository.g.dart';
 /// Provides a singleton [TransactionsRepository] instance via Riverpod.
 @riverpod
 TransactionsRepository transactionsRepository(TransactionsRepositoryRef ref) {
-  return TransactionsRepository();
+  return TransactionsRepository(db: ref.watch(appDatabaseProvider));
 }
 
 class TransactionsRepository {
+  /// [db] is nullable for the legacy zero-arg constructor used by
+  /// older tests. Production code goes through the Riverpod
+  /// provider, which always passes the singleton database.
+  TransactionsRepository({AppDatabase? db}) : _db = db;
+  final AppDatabase? _db;
   /// Fetches transactions for a household, optionally filtered by [accountId].
   ///
   /// Joins the categories table so [Transaction.category] is populated.
@@ -48,50 +65,73 @@ class TransactionsRepository {
       if (tagFilteredIds.isEmpty) return const [];
     }
 
-    var query = supabase
-        .from('transactions')
-        .select('*, category:categories(*)')
-        .eq('household_id', householdId);
+    try {
+      var query = supabase
+          .from('transactions')
+          .select('*, category:categories(*)')
+          .eq('household_id', householdId);
 
-    if (accountId != null) query = query.eq('account_id', accountId);
-    if (categoryId != null) query = query.eq('category_id', categoryId);
-    if (tagFilteredIds != null) {
-      query = query.inFilter('id', tagFilteredIds);
-    }
-    if (search != null && search.isNotEmpty) {
-      // Match either the raw description or the cleaned merchant column.
-      // The user's input goes into a SQL ILIKE pattern, so:
-      //   1. escape the LIKE wildcards `%` and `_` (and the escape char `\`)
-      //      so that "50%" matches the literal string, not "anything starting
-      //      with 50";
-      //   2. escape the PostgREST `or=` separator `,` so commas in the input
-      //      don't split the filter into two branches.
-      final term = search
-          .replaceAll(r'\', r'\\')
-          .replaceAll('%', r'\%')
-          .replaceAll('_', r'\_')
-          .replaceAll(',', r'\,');
-      query = query.or('description.ilike.%$term%,merchant.ilike.%$term%');
-    }
-    if (from != null) {
-      query = query.gte(
-        'transaction_date',
-        from.toIso8601String().substring(0, 10),
+      if (accountId != null) query = query.eq('account_id', accountId);
+      if (categoryId != null) query = query.eq('category_id', categoryId);
+      if (tagFilteredIds != null) {
+        query = query.inFilter('id', tagFilteredIds);
+      }
+      if (search != null && search.isNotEmpty) {
+        // Match either the raw description or the cleaned merchant column.
+        // The user's input goes into a SQL ILIKE pattern, so:
+        //   1. escape the LIKE wildcards `%` and `_` (and the escape char `\`)
+        //      so that "50%" matches the literal string, not "anything starting
+        //      with 50";
+        //   2. escape the PostgREST `or=` separator `,` so commas in the input
+        //      don't split the filter into two branches.
+        final term = search
+            .replaceAll(r'\', r'\\')
+            .replaceAll('%', r'\%')
+            .replaceAll('_', r'\_')
+            .replaceAll(',', r'\,');
+        query = query.or('description.ilike.%$term%,merchant.ilike.%$term%');
+      }
+      if (from != null) {
+        query = query.gte(
+          'transaction_date',
+          from.toIso8601String().substring(0, 10),
+        );
+      }
+      if (to != null) {
+        query = query.lte(
+          'transaction_date',
+          to.toIso8601String().substring(0, 10),
+        );
+      }
+
+      final data = await query
+          .order('transaction_date', ascending: false)
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      final transactions = data.map<Transaction>(Transaction.fromJson).toList();
+
+      // Refresh the cache from this response. We only cache rows
+      // for the requested household (the cache is per-household
+      // scoped on read). offset > 0 still writes through — a "Load
+      // more" page's results are just as worth caching as page 1.
+      await _writeTransactionsCache(transactions);
+      return transactions;
+    } catch (_) {
+      final cached = await _loadTransactionsFromCache(
+        householdId: householdId,
+        accountId: accountId,
+        categoryId: categoryId,
+        from: from,
+        to: to,
+        search: search,
+        idsFilter: tagFilteredIds,
+        limit: limit,
+        offset: offset,
       );
+      if (cached != null) return cached;
+      rethrow;
     }
-    if (to != null) {
-      query = query.lte(
-        'transaction_date',
-        to.toIso8601String().substring(0, 10),
-      );
-    }
-
-    final data = await query
-        .order('transaction_date', ascending: false)
-        .order('created_at', ascending: false)
-        .range(offset, offset + limit - 1);
-
-    return data.map<Transaction>(Transaction.fromJson).toList();
   }
 
   /// Creates a household-specific category and returns it.
@@ -116,7 +156,9 @@ class TransactionsRepository {
         })
         .select()
         .single();
-    return Category.fromJson(data);
+    final category = Category.fromJson(data);
+    await _writeCategoryCacheRow(category);
+    return category;
   }
 
   /// Deletes a household category. System categories (householdId=null) are
@@ -138,6 +180,7 @@ class TransactionsRepository {
       throw const CategoryHasBudgetsException();
     }
     await supabase.from('categories').delete().eq('id', categoryId);
+    await _deleteCategoryCacheRow(categoryId);
   }
 
   /// Fetches all categories (system + household-specific).
@@ -150,12 +193,20 @@ class TransactionsRepository {
   /// postgrest's .order() defaults to DESC, so the explicit
   /// `ascending: true` here is load-bearing.
   Future<List<Category>> fetchCategories() async {
-    final data = await supabase
-        .from('categories')
-        .select()
-        .order('sort_order', ascending: true)
-        .order('name', ascending: true);
-    return data.map<Category>(Category.fromJson).toList();
+    try {
+      final data = await supabase
+          .from('categories')
+          .select()
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true);
+      final categories = data.map<Category>(Category.fromJson).toList();
+      await _refreshCategoriesCache(categories);
+      return categories;
+    } catch (_) {
+      final cached = await _loadCategoriesFromCache();
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Inserts a single manually-entered transaction and returns it with
@@ -199,7 +250,9 @@ class TransactionsRepository {
         .select('*, category:categories(*)')
         .single();
 
-    return Transaction.fromJson(data);
+    final transaction = Transaction.fromJson(data);
+    await _writeTransactionsCache([transaction]);
+    return transaction;
   }
 
   /// Atomically records a transfer between two accounts in the same
@@ -337,15 +390,27 @@ class TransactionsRepository {
     required DateTime from,
     required DateTime to,
   }) async {
-    final data = await supabase
-        .from('transactions')
-        .select('*, category:categories(*)')
-        .eq('household_id', householdId)
-        .gte('transaction_date', from.toIso8601String().substring(0, 10))
-        .lte('transaction_date', to.toIso8601String().substring(0, 10))
-        .order('transaction_date', ascending: false);
+    try {
+      final data = await supabase
+          .from('transactions')
+          .select('*, category:categories(*)')
+          .eq('household_id', householdId)
+          .gte('transaction_date', from.toIso8601String().substring(0, 10))
+          .lte('transaction_date', to.toIso8601String().substring(0, 10))
+          .order('transaction_date', ascending: false);
 
-    return data.map<Transaction>(Transaction.fromJson).toList();
+      final transactions = data.map<Transaction>(Transaction.fromJson).toList();
+      await _writeTransactionsCache(transactions);
+      return transactions;
+    } catch (_) {
+      final cached = await _loadTransactionsFromCache(
+        householdId: householdId,
+        from: from,
+        to: to,
+      );
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Updates a manually-entered transaction.
@@ -402,11 +467,18 @@ class TransactionsRepository {
     if (expectedUpdatedAt != null && affected.isEmpty) {
       throw const ConcurrentUpdateException();
     }
+    // Drop the cached row so the next fetch re-reads it. The
+    // server-side .update() doesn't return the new row (just the
+    // id), so we can't write the updated values into the cache
+    // without an extra round-trip — invalidate-on-write is the
+    // right trade-off here.
+    await _deleteTransactionCacheRow(id);
   }
 
   /// Hard-deletes a transaction row.
   Future<void> deleteTransaction(String id) async {
     await supabase.from('transactions').delete().eq('id', id);
+    await _deleteTransactionCacheRow(id);
   }
 
   /// Assigns [categoryId] to every transaction in [transactionIds] as
@@ -449,6 +521,7 @@ class TransactionsRepository {
         .delete()
         .inFilter('id', transactionIds)
         .select('account_id');
+    await _deleteTransactionsCacheByIds(transactionIds);
     return {
       for (final r in (rows as List).cast<Map<String, dynamic>>())
         r['account_id'] as String,
@@ -705,6 +778,193 @@ class TransactionsRepository {
       reconciled: matches.length,
     );
   }
+
+  // ── Cache helpers ──────────────────────────────────────────
+  // All wrapped in try/catch — cache failures don't surface
+  // through the network-success path. Same opportunistic
+  // contract as AccountsRepository.
+
+  Future<void> _writeTransactionsCache(List<Transaction> transactions) async {
+    final db = _db;
+    if (db == null || transactions.isEmpty) return;
+    try {
+      await db.upsertTransactions(
+        transactions.map(_transactionToCompanion).toList(),
+      );
+    } catch (_) {
+      // Cache failure is non-fatal.
+    }
+  }
+
+  Future<void> _deleteTransactionCacheRow(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.deleteTransaction(id);
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteTransactionsCacheByIds(List<String> ids) async {
+    final db = _db;
+    if (db == null || ids.isEmpty) return;
+    try {
+      await db.deleteTransactionsByIds(ids);
+    } catch (_) {/**/}
+  }
+
+  Future<List<Transaction>?> _loadTransactionsFromCache({
+    required String householdId,
+    String? accountId,
+    String? categoryId,
+    DateTime? from,
+    DateTime? to,
+    String? search,
+    List<String>? idsFilter,
+    int limit = 1000,
+    int offset = 0,
+  }) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadTransactionsForHousehold(
+        householdId: householdId,
+        accountId: accountId,
+        categoryId: categoryId,
+        from: from,
+        to: to,
+        search: search,
+        idsFilter: idsFilter,
+        limit: limit,
+        offset: offset,
+      );
+      if (rows.isEmpty) return null;
+      return rows.map(_transactionFromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _refreshCategoriesCache(List<Category> categories) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.replaceCategories(
+        categories.map(_categoryToCompanion).toList(),
+      );
+    } catch (_) {/**/}
+  }
+
+  Future<void> _writeCategoryCacheRow(Category category) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.upsertCategory(_categoryToCompanion(category));
+    } catch (_) {/**/}
+  }
+
+  Future<void> _deleteCategoryCacheRow(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.deleteCategory(id);
+    } catch (_) {/**/}
+  }
+
+  Future<List<Category>?> _loadCategoriesFromCache() async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.loadCategories();
+      if (rows.isEmpty) return null;
+      return rows.map(_categoryFromCacheRow).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+// ── Transaction ↔ drift Companion mappers ─────────────────────
+
+TransactionsCacheCompanion _transactionToCompanion(Transaction t) {
+  return TransactionsCacheCompanion(
+    id: Value(t.id),
+    householdId: Value(t.householdId),
+    accountId: Value(t.accountId),
+    amount: Value(t.amount),
+    currency: Value(t.currency),
+    description: Value(t.description),
+    merchant: Value(t.merchant),
+    categoryId: Value(t.categoryId),
+    transactionDate: Value(t.transactionDate.toUtc()),
+    postedDate: Value(t.postedDate?.toUtc()),
+    pending: Value(t.pending),
+    source: Value(t.source),
+    enteredBy: Value(t.enteredBy),
+    receiptId: Value(t.receiptId),
+    rateId: Value(t.rateId),
+    notes: Value(t.notes),
+    externalId: Value(t.externalId),
+    transferId: Value(t.transferId),
+    mlModelConfidence: Value(t.mlModelConfidence),
+    createdAt: Value(t.createdAt.toUtc()),
+    updatedAt: Value(t.updatedAt.toUtc()),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+Transaction _transactionFromCacheRow(TransactionWithCategoryRow row) {
+  final r = row.transaction;
+  return Transaction(
+    id: r.id,
+    householdId: r.householdId,
+    accountId: r.accountId,
+    amount: r.amount,
+    currency: r.currency,
+    description: r.description,
+    merchant: r.merchant,
+    categoryId: r.categoryId,
+    transactionDate: r.transactionDate,
+    postedDate: r.postedDate,
+    pending: r.pending,
+    source: r.source,
+    enteredBy: r.enteredBy,
+    receiptId: r.receiptId,
+    rateId: r.rateId,
+    notes: r.notes,
+    externalId: r.externalId,
+    transferId: r.transferId,
+    mlModelConfidence: r.mlModelConfidence,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    category: row.category == null ? null : _categoryFromCacheRow(row.category!),
+  );
+}
+
+CategoriesCacheCompanion _categoryToCompanion(Category c) {
+  return CategoriesCacheCompanion(
+    id: Value(c.id),
+    householdId: Value(c.householdId),
+    name: Value(c.name),
+    parentId: Value(c.parentId),
+    icon: Value(c.icon),
+    color: Value(c.color),
+    isIncome: Value(c.isIncome),
+    sortOrder: Value(c.sortOrder),
+    cachedAt: Value(DateTime.now().toUtc()),
+  );
+}
+
+Category _categoryFromCacheRow(CategoriesCacheRow r) {
+  return Category(
+    id: r.id,
+    householdId: r.householdId,
+    name: r.name,
+    parentId: r.parentId,
+    icon: r.icon,
+    color: r.color,
+    isIncome: r.isIncome,
+    sortOrder: r.sortOrder,
+  );
 }
 
 /// Outcome of a [TransactionsRepository.bulkImport] call.

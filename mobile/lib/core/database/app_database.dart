@@ -88,7 +88,84 @@ class AccountsCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [AccountsCache])
+/// Mirror of the Supabase `categories` table.
+///
+/// System categories (seeded by migration 002) have `householdId
+/// IS NULL` and are visible to every user; household-specific
+/// categories have a non-null householdId. RLS already enforces
+/// visibility on the server side — the cache mirrors what the
+/// caller's `fetchCategories()` returned, which already filters
+/// to "categories I can see," so no household scoping is needed
+/// here.
+@DataClassName('CategoriesCacheRow')
+class CategoriesCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get name => text()();
+  TextColumn get parentId => text().nullable()();
+  TextColumn get icon => text().nullable()();
+  TextColumn get color => text().nullable()();
+  BoolColumn get isIncome => boolean()();
+  IntColumn get sortOrder => integer()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirror of the Supabase `transactions` table.
+///
+/// The cache is queried with the same shape as the server-side
+/// fetchTransactions (householdId required, account/category/
+/// date/search filters optional). Joins with [CategoriesCache]
+/// on read so the `category` field on Transaction can be
+/// populated for the UI.
+///
+/// One index — (household_id, transaction_date DESC) — matches
+/// the dashboard's hot query path. Other drill-down columns
+/// (account_id, category_id) are still queryable but pay the
+/// full-scan-within-household cost; acceptable for a per-install
+/// cache that's small (typically <50K rows).
+@DataClassName('TransactionsCacheRow')
+class TransactionsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text()();
+  TextColumn get accountId => text()();
+
+  /// Signed cents. Negative = expense, positive = income.
+  IntColumn get amount => integer()();
+  TextColumn get currency => text()();
+  TextColumn get description => text()();
+  TextColumn get merchant => text().nullable()();
+  TextColumn get categoryId => text().nullable()();
+
+  /// Stored as a UTC DateTime even though the server column is
+  /// DATE. Drift's dateTime() round-trips fine — the time
+  /// component is always 00:00 UTC.
+  DateTimeColumn get transactionDate => dateTime()();
+  DateTimeColumn get postedDate => dateTime().nullable()();
+  BoolColumn get pending => boolean()();
+
+  /// Stores the raw enum string ('manual', 'import', 'plaid',
+  /// 'recurring') verbatim. Repository maps to/from Transaction.
+  TextColumn get source => text()();
+
+  TextColumn get enteredBy => text().nullable()();
+  TextColumn get receiptId => text().nullable()();
+  TextColumn get rateId => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get externalId => text().nullable()();
+  TextColumn get transferId => text().nullable()();
+  IntColumn get mlModelConfidence => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [AccountsCache, CategoriesCache, TransactionsCache])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -98,7 +175,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.withExecutor(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -106,8 +183,13 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
     },
     onUpgrade: (m, from, to) async {
-      // No upgrades yet — schemaVersion 1 is the initial schema.
-      // When we bump to 2, add a `from < 2` branch here.
+      // v1 → v2: added CategoriesCache + TransactionsCache for
+      // Phase 2 of the offline cache rollout. The accounts cache
+      // table from v1 is unchanged.
+      if (from < 2) {
+        await m.createTable(categoriesCache);
+        await m.createTable(transactionsCache);
+      }
     },
   );
 
@@ -175,6 +257,159 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteAccount(String id) {
     return (delete(accountsCache)..where((t) => t.id.equals(id))).go();
   }
+
+  // ── Categories cache surface ────────────────────────────────
+
+  /// Replace every cached category row with [rows]. Categories
+  /// are loaded all-at-once (`fetchCategories()` has no filter
+  /// shape), so the cache is a single set rather than per-
+  /// household — system categories and every household's custom
+  /// categories live side-by-side, matching what the server
+  /// returns.
+  Future<void> replaceCategories(List<CategoriesCacheCompanion> rows) async {
+    await transaction(() async {
+      await delete(categoriesCache).go();
+      if (rows.isNotEmpty) {
+        await batch((b) {
+          b.insertAll(categoriesCache, rows, mode: InsertMode.replace);
+        });
+      }
+    });
+  }
+
+  /// Insert-or-replace a single category row. Called after a
+  /// server-side create.
+  Future<void> upsertCategory(CategoriesCacheCompanion row) {
+    return into(categoriesCache).insert(row, mode: InsertMode.replace);
+  }
+
+  Future<void> deleteCategory(String id) {
+    return (delete(categoriesCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Load every cached category ordered (sortOrder ASC, name
+  /// ASC) — matches the server-side fetchCategories contract.
+  Future<List<CategoriesCacheRow>> loadCategories() {
+    return (select(categoriesCache)..orderBy([
+          (t) => OrderingTerm.asc(t.sortOrder),
+          (t) => OrderingTerm.asc(t.name),
+        ]))
+        .get();
+  }
+
+  // ── Transactions cache surface ──────────────────────────────
+
+  /// Insert-or-replace a single transaction row. Called after a
+  /// server-side create/update returns the row.
+  Future<void> upsertTransaction(TransactionsCacheCompanion row) {
+    return into(transactionsCache).insert(row, mode: InsertMode.replace);
+  }
+
+  /// Bulk variant for the result of fetchTransactions. Wrapped in
+  /// a batch so a partial failure rolls back.
+  Future<void> upsertTransactions(
+    List<TransactionsCacheCompanion> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      b.insertAll(transactionsCache, rows, mode: InsertMode.replace);
+    });
+  }
+
+  Future<void> deleteTransaction(String id) {
+    return (delete(transactionsCache)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Delete a set of transactions by id — used to mirror the
+  /// server-side `delete().inFilter('id', ids)` of bulk-delete.
+  /// Returns the number of rows removed.
+  Future<int> deleteTransactionsByIds(List<String> ids) async {
+    if (ids.isEmpty) return 0;
+    return (delete(transactionsCache)..where((t) => t.id.isIn(ids))).go();
+  }
+
+  /// Filtered transactions read for the cache-fallback path.
+  ///
+  /// Mirrors fetchTransactions' filter shape with one omission:
+  /// the [search] term is applied as a SQLite LIKE (case-
+  /// insensitive for ASCII) over description OR merchant. No tag
+  /// filter — the tag-assignment tables are a Phase 2b mirror;
+  /// callers that pass tagFilteredIds via [idsFilter] get those
+  /// pre-filtered rows.
+  ///
+  /// Joins [CategoriesCache] LEFT OUTER so the result rows carry
+  /// the joined Category for the Transaction model to populate.
+  Future<List<TransactionWithCategoryRow>> loadTransactionsForHousehold({
+    required String householdId,
+    String? accountId,
+    String? categoryId,
+    DateTime? from,
+    DateTime? to,
+    String? search,
+    List<String>? idsFilter,
+    int limit = 1000,
+    int offset = 0,
+  }) async {
+    // Optimisation: an empty idsFilter (set by a tag with no
+    // assignments) short-circuits to an empty result without
+    // touching the table. Matches the server-side early-return.
+    if (idsFilter != null && idsFilter.isEmpty) {
+      return const [];
+    }
+
+    final query = select(transactionsCache).join([
+      leftOuterJoin(
+        categoriesCache,
+        categoriesCache.id.equalsExp(transactionsCache.categoryId),
+      ),
+    ]);
+
+    final tx = transactionsCache;
+    query.where(tx.householdId.equals(householdId));
+    if (accountId != null) query.where(tx.accountId.equals(accountId));
+    if (categoryId != null) query.where(tx.categoryId.equals(categoryId));
+    if (from != null) query.where(tx.transactionDate.isBiggerOrEqualValue(from));
+    if (to != null) query.where(tx.transactionDate.isSmallerOrEqualValue(to));
+    if (idsFilter != null) query.where(tx.id.isIn(idsFilter));
+    if (search != null && search.isNotEmpty) {
+      // SQLite LIKE is case-insensitive for ASCII by default —
+      // no `.ilike()` needed. We do NOT escape `%`/`_` here: a
+      // proper ESCAPE clause would require dropping to a raw
+      // expression, and the cost of an over-broad cache result
+      // on an unusual search input is small (a few extra rows
+      // returned offline). The server-side query handles escape
+      // correctly when online.
+      final term = '%$search%';
+      query.where(tx.description.like(term) | tx.merchant.like(term));
+    }
+
+    query.orderBy([
+      OrderingTerm.desc(tx.transactionDate),
+      OrderingTerm.desc(tx.createdAt),
+    ]);
+    query.limit(limit, offset: offset);
+
+    final result = await query.get();
+    return result.map((row) {
+      return TransactionWithCategoryRow(
+        transaction: row.readTable(transactionsCache),
+        category: row.readTableOrNull(categoriesCache),
+      );
+    }).toList();
+  }
+}
+
+/// Single row of the transactions-with-joined-category query.
+/// Keeps the join result types out of the consuming repository's
+/// signature; the repo maps this into the Transaction freezed
+/// model with the category embedded.
+class TransactionWithCategoryRow {
+  const TransactionWithCategoryRow({
+    required this.transaction,
+    required this.category,
+  });
+  final TransactionsCacheRow transaction;
+  final CategoriesCacheRow? category;
 }
 
 LazyDatabase _openConnection() {

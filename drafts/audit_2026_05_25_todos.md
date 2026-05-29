@@ -444,14 +444,10 @@ Mechanical sed pass.
 
 ## LATER (medium-term, document but defer)
 
-7 of 8 closed this pass. L1 (offline) deferred — too large for an
-audit-cleanup commit (covers connectivity_plus, local SQLite cache,
-sync-on-reconnect, per-screen offline states). The architecture
-needed to support it (single-direction Riverpod data flow + repository
-layer) is already in place; the implementation is a separate feature
-project.
+7 of 8 closed in the audit pass. L1 (offline) graduated into its
+own phased feature project (still in progress).
 
-- **[L1 — deferred] No offline behavior at all.** No `connectivity_plus`, no local cache, no SQLite. Empty/error states on every screen when offline. Categorizer works offline (ONNX local); nothing else does.
+- **[L1 — Phase 1 done, Phases 2–5 pending] Offline behavior.** Phase 1 shipped 2026-05-28: `drift` + `sqlite3_flutter_libs` + `connectivity_plus` added; `AppDatabase` mirrors `accounts` as the first cache-through table; `isOnlineProvider` (keepAlive Notifier) feeds the offline banner in `MainScaffold` and triggers `invalidateLedger` on the false→true reconnect edge; `AccountsRepository` is cache-through (network → cache write → return; on failure, return cached rows). Remaining phases: **2** mirror the rest of the read surface (transactions, budgets, receipts, holdings, recurring, tags, fx_rates) with cursor-based pull sync; **3** offline write queue (`pending_writes` table + replay on reconnect); **4** hard cases (receipts/storage uploads deferred, recurring scheduler offline lag, FX-aware spending math ported to Dart); **5** polish (per-screen offline states, "last synced" timestamps, manual sync trigger). Categorizer continues to work offline (ONNX local).
 - **[x] L2 — `AppLifecycleState` observer.** `MyBudgetApp` now extends `WidgetsBindingObserver`; tracks `_pausedAt` on background, invalidates the ledger providers on resume when away ≥ 1 minute.
 - **[x] L3 — Retry-on-transient-failure.** Added `lib/core/utils/retry.dart` → `retryTransient(body)` with 200ms→800ms exponential backoff. Recognises `SocketException` / `TimeoutException` / `ClientException` / `PostgrestException` codes in the PGRST5xx range; auth/RLS/CHECK violations bubble through immediately. Wired into the dashboard's parallel-fetch tuple. 7 new tests.
 - **[x] L4 — Notification deep-links.** `NotificationService.show` now passes the dedup tag as the payload; `ensureInitialized` wires `onDidReceiveNotificationResponse` to forward it to a top-level `notificationTapCallback`. `main.dart` sets the callback to a namespace-router map (`budget_over:*` → /budget, `large_tx:*` → /transactions).
