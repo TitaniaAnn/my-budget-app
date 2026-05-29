@@ -302,6 +302,7 @@ serve(async (req) => {
   let totalRemoved = 0;
   let totalMerged = 0;
   const accountsSynced: string[] = [];
+  const failedAccountIds: string[] = [];
 
   for (const [_plaidAccountId, bucket] of byAccount) {
     if (
@@ -326,6 +327,7 @@ serve(async (req) => {
           bucket.internalAccountId,
         rpcErr,
       );
+      failedAccountIds.push(bucket.internalAccountId);
       continue;
     }
     const r = rpcResult as {
@@ -341,15 +343,32 @@ serve(async (req) => {
     accountsSynced.push(bucket.internalAccountId);
   }
 
-  // Persist the new cursor + clear any prior sync error. The
-  // success path uses the service role because plaid_items has
-  // no client-facing UPDATE policy.
+  // Code-review fix (review item #2): gate cursor persistence on
+  // every per-account RPC succeeding. Pre-fix, a failing RPC for
+  // account B would still advance the cursor — next sync would
+  // start past B's deltas and B's transactions would be silently
+  // missing forever.
+  //
+  // Two persistence paths now:
+  //   * All RPCs succeeded → save new cursor, clear last_sync_error.
+  //   * One or more failed → keep the OLD cursor so the next sync
+  //     re-fetches the same deltas. Stamp a PARTIAL_FAILURE error
+  //     code so the dashboard surfaces "sync stalled — will retry."
+  //     A repeated failure on the same account means the user
+  //     sees the error on every dashboard load until either the
+  //     underlying issue clears or they unlink the account.
+  //
+  // last_sync_at updates either way so "we tried" is observable.
+  const allSucceeded = failedAccountIds.length === 0;
   await serviceClient
     .from("plaid_items")
     .update({
-      sync_cursor: cursor,
+      // Only advance the cursor on full success. On partial
+      // failure, keep the existing value (read from itemRow at
+      // the top of the function) so the next sync re-pulls.
+      sync_cursor: allSucceeded ? cursor : itemRow.sync_cursor,
       last_sync_at: new Date().toISOString(),
-      last_sync_error: null,
+      last_sync_error: allSucceeded ? null : "PARTIAL_FAILURE",
     })
     .eq("id", itemRow.id);
 
@@ -359,6 +378,10 @@ serve(async (req) => {
     removed: totalRemoved,
     merged: totalMerged,
     accounts_synced: accountsSynced,
+    failed_account_ids: failedAccountIds,
     requires_reauth: false,
+    // Surfaces in the mobile orchestrator's PlaidSyncSummary so
+    // a UI banner can show "1 account didn't sync — retry."
+    partial_failure: !allSucceeded,
   });
 });

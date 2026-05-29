@@ -70,6 +70,12 @@ class PlaidSkippedAccount with _$PlaidSkippedAccount {
 /// Response shape from `plaid-transactions-sync`. The
 /// orchestrator uses `requiresReauth` to surface the re-auth
 /// prompt and the counts for the post-sync toast.
+///
+/// [partialFailure] is set when at least one per-account RPC
+/// inside the Edge Function errored. The cursor stays at the
+/// old value in that case so the next sync re-fetches; the
+/// failed account ids are surfaced in [failedAccountIds] so the
+/// UI can call them out specifically.
 @freezed
 class PlaidSyncResult with _$PlaidSyncResult {
   const factory PlaidSyncResult({
@@ -78,7 +84,9 @@ class PlaidSyncResult with _$PlaidSyncResult {
     @Default(0) int removed,
     @Default(0) int merged,
     @Default([]) List<String> accountsSynced,
+    @Default([]) List<String> failedAccountIds,
     @Default(false) bool requiresReauth,
+    @Default(false) bool partialFailure,
     String? errorCode,
   }) = _PlaidSyncResult;
 

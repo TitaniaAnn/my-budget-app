@@ -959,7 +959,9 @@ mixin _$PlaidSyncResult {
   int get removed => throw _privateConstructorUsedError;
   int get merged => throw _privateConstructorUsedError;
   List<String> get accountsSynced => throw _privateConstructorUsedError;
+  List<String> get failedAccountIds => throw _privateConstructorUsedError;
   bool get requiresReauth => throw _privateConstructorUsedError;
+  bool get partialFailure => throw _privateConstructorUsedError;
   String? get errorCode => throw _privateConstructorUsedError;
 
   /// Serializes this PlaidSyncResult to a JSON map.
@@ -985,7 +987,9 @@ abstract class $PlaidSyncResultCopyWith<$Res> {
     int removed,
     int merged,
     List<String> accountsSynced,
+    List<String> failedAccountIds,
     bool requiresReauth,
+    bool partialFailure,
     String? errorCode,
   });
 }
@@ -1010,7 +1014,9 @@ class _$PlaidSyncResultCopyWithImpl<$Res, $Val extends PlaidSyncResult>
     Object? removed = null,
     Object? merged = null,
     Object? accountsSynced = null,
+    Object? failedAccountIds = null,
     Object? requiresReauth = null,
+    Object? partialFailure = null,
     Object? errorCode = freezed,
   }) {
     return _then(
@@ -1035,9 +1041,17 @@ class _$PlaidSyncResultCopyWithImpl<$Res, $Val extends PlaidSyncResult>
                 ? _value.accountsSynced
                 : accountsSynced // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            failedAccountIds: null == failedAccountIds
+                ? _value.failedAccountIds
+                : failedAccountIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             requiresReauth: null == requiresReauth
                 ? _value.requiresReauth
                 : requiresReauth // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            partialFailure: null == partialFailure
+                ? _value.partialFailure
+                : partialFailure // ignore: cast_nullable_to_non_nullable
                       as bool,
             errorCode: freezed == errorCode
                 ? _value.errorCode
@@ -1064,7 +1078,9 @@ abstract class _$$PlaidSyncResultImplCopyWith<$Res>
     int removed,
     int merged,
     List<String> accountsSynced,
+    List<String> failedAccountIds,
     bool requiresReauth,
+    bool partialFailure,
     String? errorCode,
   });
 }
@@ -1088,7 +1104,9 @@ class __$$PlaidSyncResultImplCopyWithImpl<$Res>
     Object? removed = null,
     Object? merged = null,
     Object? accountsSynced = null,
+    Object? failedAccountIds = null,
     Object? requiresReauth = null,
+    Object? partialFailure = null,
     Object? errorCode = freezed,
   }) {
     return _then(
@@ -1113,9 +1131,17 @@ class __$$PlaidSyncResultImplCopyWithImpl<$Res>
             ? _value._accountsSynced
             : accountsSynced // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        failedAccountIds: null == failedAccountIds
+            ? _value._failedAccountIds
+            : failedAccountIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         requiresReauth: null == requiresReauth
             ? _value.requiresReauth
             : requiresReauth // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        partialFailure: null == partialFailure
+            ? _value.partialFailure
+            : partialFailure // ignore: cast_nullable_to_non_nullable
                   as bool,
         errorCode: freezed == errorCode
             ? _value.errorCode
@@ -1135,9 +1161,12 @@ class _$PlaidSyncResultImpl implements _PlaidSyncResult {
     this.removed = 0,
     this.merged = 0,
     final List<String> accountsSynced = const [],
+    final List<String> failedAccountIds = const [],
     this.requiresReauth = false,
+    this.partialFailure = false,
     this.errorCode,
-  }) : _accountsSynced = accountsSynced;
+  }) : _accountsSynced = accountsSynced,
+       _failedAccountIds = failedAccountIds;
 
   factory _$PlaidSyncResultImpl.fromJson(Map<String, dynamic> json) =>
       _$$PlaidSyncResultImplFromJson(json);
@@ -1163,15 +1192,28 @@ class _$PlaidSyncResultImpl implements _PlaidSyncResult {
     return EqualUnmodifiableListView(_accountsSynced);
   }
 
+  final List<String> _failedAccountIds;
+  @override
+  @JsonKey()
+  List<String> get failedAccountIds {
+    if (_failedAccountIds is EqualUnmodifiableListView)
+      return _failedAccountIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_failedAccountIds);
+  }
+
   @override
   @JsonKey()
   final bool requiresReauth;
+  @override
+  @JsonKey()
+  final bool partialFailure;
   @override
   final String? errorCode;
 
   @override
   String toString() {
-    return 'PlaidSyncResult(added: $added, modified: $modified, removed: $removed, merged: $merged, accountsSynced: $accountsSynced, requiresReauth: $requiresReauth, errorCode: $errorCode)';
+    return 'PlaidSyncResult(added: $added, modified: $modified, removed: $removed, merged: $merged, accountsSynced: $accountsSynced, failedAccountIds: $failedAccountIds, requiresReauth: $requiresReauth, partialFailure: $partialFailure, errorCode: $errorCode)';
   }
 
   @override
@@ -1188,8 +1230,14 @@ class _$PlaidSyncResultImpl implements _PlaidSyncResult {
               other._accountsSynced,
               _accountsSynced,
             ) &&
+            const DeepCollectionEquality().equals(
+              other._failedAccountIds,
+              _failedAccountIds,
+            ) &&
             (identical(other.requiresReauth, requiresReauth) ||
                 other.requiresReauth == requiresReauth) &&
+            (identical(other.partialFailure, partialFailure) ||
+                other.partialFailure == partialFailure) &&
             (identical(other.errorCode, errorCode) ||
                 other.errorCode == errorCode));
   }
@@ -1203,7 +1251,9 @@ class _$PlaidSyncResultImpl implements _PlaidSyncResult {
     removed,
     merged,
     const DeepCollectionEquality().hash(_accountsSynced),
+    const DeepCollectionEquality().hash(_failedAccountIds),
     requiresReauth,
+    partialFailure,
     errorCode,
   );
 
@@ -1231,7 +1281,9 @@ abstract class _PlaidSyncResult implements PlaidSyncResult {
     final int removed,
     final int merged,
     final List<String> accountsSynced,
+    final List<String> failedAccountIds,
     final bool requiresReauth,
+    final bool partialFailure,
     final String? errorCode,
   }) = _$PlaidSyncResultImpl;
 
@@ -1249,7 +1301,11 @@ abstract class _PlaidSyncResult implements PlaidSyncResult {
   @override
   List<String> get accountsSynced;
   @override
+  List<String> get failedAccountIds;
+  @override
   bool get requiresReauth;
+  @override
+  bool get partialFailure;
   @override
   String? get errorCode;
 

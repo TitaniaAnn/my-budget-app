@@ -85,7 +85,39 @@ void main() {
       expect(summary.failedItems.length, 1);
       expect(summary.failedItems.single.id, 'b');
       expect(repo.syncCallsFor, ['a', 'b', 'c']);
+      expect(summary.hasUnhealthyItems, isTrue);
     });
+
+    test(
+      'partial_failure on one item lands it in itemsWithPartialFailure '
+      '(distinct from failedItems/reauth)',
+      () async {
+        // Code-review fix #2: the Edge Function holds the cursor
+        // on per-account RPC failure and returns partial_failure
+        // true. The orchestrator surfaces these as a distinct
+        // bucket so the UI can say "1 account in $institution
+        // didn't update — we'll retry next time" instead of the
+        // generic "couldn't sync" treatment for hard failures.
+        final repo = _StubRepo(
+          items: [item('a'), item('b')],
+          syncResults: {
+            'a': const PlaidSyncResult(added: 5),
+            'b': const PlaidSyncResult(
+              added: 0,
+              partialFailure: true,
+              failedAccountIds: ['acct-xyz'],
+            ),
+          },
+        );
+        final summary =
+            await PlaidSyncOrchestrator(repository: repo).syncAll();
+        expect(summary.itemsWithPartialFailure.length, 1);
+        expect(summary.itemsWithPartialFailure.single.id, 'b');
+        expect(summary.failedItems, isEmpty);
+        expect(summary.itemsRequiringReauth, isEmpty);
+        expect(summary.hasUnhealthyItems, isTrue);
+      },
+    );
   });
 
   group('PlaidItem.requiresReauth', () {

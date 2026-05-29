@@ -24,6 +24,7 @@ class PlaidSyncSummary {
     required this.totalMerged,
     required this.itemsRequiringReauth,
     required this.failedItems,
+    required this.itemsWithPartialFailure,
   });
 
   /// Items the orchestrator touched (whether or not the sync
@@ -46,8 +47,27 @@ class PlaidSyncSummary {
   /// load" banner.
   final List<PlaidItem> failedItems;
 
+  /// Items whose sync returned `partial_failure: true` — at
+  /// least one per-account RPC errored inside the Edge Function
+  /// but the rest succeeded. The Edge Function held the cursor
+  /// at the old value so the next sync retries automatically;
+  /// the orchestrator surfaces these distinctly from
+  /// [failedItems] (which threw completely) so the UI can say
+  /// "1 account in $institution didn't update — we'll retry
+  /// next time."
+  final List<PlaidItem> itemsWithPartialFailure;
+
   bool get hasChanges =>
       totalAdded + totalModified + totalRemoved + totalMerged > 0;
+
+  /// True when ANY item needs attention (re-auth OR full
+  /// failure OR partial failure). Drives whether the caller
+  /// should invalidate the sync-trigger keepAlive provider to
+  /// force a retry on the next dashboard load.
+  bool get hasUnhealthyItems =>
+      itemsRequiringReauth.isNotEmpty ||
+      failedItems.isNotEmpty ||
+      itemsWithPartialFailure.isNotEmpty;
 }
 
 class PlaidSyncOrchestrator {
@@ -69,6 +89,7 @@ class PlaidSyncOrchestrator {
     var totalMerged = 0;
     final reauth = <PlaidItem>[];
     final failed = <PlaidItem>[];
+    final partial = <PlaidItem>[];
 
     for (final item in items) {
       try {
@@ -78,6 +99,7 @@ class PlaidSyncOrchestrator {
         totalRemoved += result.removed;
         totalMerged += result.merged;
         if (result.requiresReauth) reauth.add(item);
+        if (result.partialFailure) partial.add(item);
       } catch (_) {
         // Don't let one bad Item kill the rest of the batch.
         // The thrown error is already logged in the Edge
@@ -92,6 +114,7 @@ class PlaidSyncOrchestrator {
       totalModified: totalModified,
       totalRemoved: totalRemoved,
       totalMerged: totalMerged,
+      itemsWithPartialFailure: partial,
       itemsRequiringReauth: reauth,
       failedItems: failed,
     );

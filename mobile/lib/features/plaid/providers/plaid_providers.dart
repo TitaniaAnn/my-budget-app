@@ -23,6 +23,8 @@
 //                         dashboard's own data fetch on the
 //                         Plaid round-trip.
 
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/plaid_item.dart';
@@ -50,6 +52,15 @@ PlaidSyncOrchestrator plaidSyncOrchestrator(PlaidSyncOrchestratorRef ref) {
 /// Returns the [PlaidSyncSummary] so callers can show a
 /// post-sync toast or banner; null when there are no items
 /// (don't bother dispatching).
+///
+/// When the summary reports unhealthy items (re-auth needed,
+/// hard failure, or partial-failure on the cursor-gated path
+/// — review fix #2), this provider self-invalidates after a
+/// short delay so the NEXT dashboard load re-attempts the sync.
+/// Without this, a transient partial-failure (RLS hiccup, pool
+/// exhaustion) would stay cached for the rest of the app
+/// session and the cursor-held deltas would only retry on a
+/// full app restart.
 @Riverpod(keepAlive: true)
 Future<PlaidSyncSummary?> plaidSyncTrigger(PlaidSyncTriggerRef ref) async {
   final orchestrator = ref.watch(plaidSyncOrchestratorProvider);
@@ -62,6 +73,21 @@ Future<PlaidSyncSummary?> plaidSyncTrigger(PlaidSyncTriggerRef ref) async {
   // avoid coupling Plaid to every ledger surface.
   if (summary.items.isNotEmpty) {
     ref.invalidate(plaidItemsProvider);
+  }
+  // Self-invalidate the keepAlive cache when an item is
+  // unhealthy so a follow-up dashboard load gets a fresh sync
+  // attempt instead of returning the cached partial-failure
+  // summary. Done out-of-band via Timer so this resolves
+  // first; otherwise the listener that just consumed `summary`
+  // would re-fire immediately and the user would see the
+  // sync spinner ping-pong.
+  if (summary.hasUnhealthyItems) {
+    // Riverpod's Ref doesn't expose a `mounted` flag the way
+    // WidgetRef does. Use onDispose to cancel the timer when the
+    // provider gets invalidated some other way (e.g. user
+    // pull-to-refresh) so we don't double-invalidate.
+    final timer = Timer(const Duration(seconds: 30), ref.invalidateSelf);
+    ref.onDispose(timer.cancel);
   }
   return summary.items.isEmpty ? null : summary;
 }

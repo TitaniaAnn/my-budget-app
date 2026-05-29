@@ -97,7 +97,13 @@ _$PlaidSyncResultImpl _$$PlaidSyncResultImplFromJson(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  failedAccountIds:
+      (json['failed_account_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   requiresReauth: json['requires_reauth'] as bool? ?? false,
+  partialFailure: json['partial_failure'] as bool? ?? false,
   errorCode: json['error_code'] as String?,
 );
 
@@ -109,6 +115,8 @@ Map<String, dynamic> _$$PlaidSyncResultImplToJson(
   'removed': instance.removed,
   'merged': instance.merged,
   'accounts_synced': instance.accountsSynced,
+  'failed_account_ids': instance.failedAccountIds,
   'requires_reauth': instance.requiresReauth,
+  'partial_failure': instance.partialFailure,
   'error_code': instance.errorCode,
 };
