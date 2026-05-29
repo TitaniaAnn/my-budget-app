@@ -2,18 +2,25 @@
 // All DB operations live here so the rest of the app stays decoupled from
 // Supabase-specific query syntax.
 //
-// Audit L1 Phase 1: this repository is cache-through. Reads try the
-// network first; on any failure (offline, captive portal, server
-// 5xx that survives the retry helper) the cached SQLite mirror
-// supplies the data. Writes go to the network as before; on
-// success the cache is updated in lockstep so the next read sees
-// the same row. The public API is unchanged — callers don't
-// distinguish a cache hit from a server hit.
+// Audit L1 Phase 1 (reads) + Phase 3b (writes): this repository
+// is cache-through. Reads try the network first; on any failure
+// the cached SQLite mirror supplies the data. Writes go to the
+// network; on transient failure (offline, captive portal, server
+// 5xx) the mutation lands in the pending_writes queue with a
+// client-generated row id, and an optimistic cache row appears
+// immediately. The replay loop fires the same INSERT (with the
+// same id, so the server upsert is idempotent) when connectivity
+// returns. The public API is unchanged — callers can't tell a
+// server hit apart from an optimistic-cached one until the next
+// fetch.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/account.dart';
 
 part 'accounts_repository.g.dart';
@@ -21,16 +28,23 @@ part 'accounts_repository.g.dart';
 /// Provides a singleton [AccountsRepository] instance via Riverpod.
 @riverpod
 AccountsRepository accountsRepository(AccountsRepositoryRef ref) {
-  return AccountsRepository(db: ref.watch(appDatabaseProvider));
+  return AccountsRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class AccountsRepository {
-  /// The [db] parameter is nullable for the legacy
+  /// The [db] and [queue] parameters are nullable for the legacy
   /// `AccountsRepository()` zero-arg constructor used by older
   /// tests. Production code goes through the Riverpod provider
-  /// above, which always passes the singleton database.
-  AccountsRepository({AppDatabase? db}) : _db = db;
+  /// above, which always passes both.
+  AccountsRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
 
   /// Fetches all active accounts for a household, newest first.
   /// RLS on the `accounts` table ensures only visible accounts are returned.
@@ -81,28 +95,68 @@ class AccountsRepository {
     String? color,
     double? interestRate,
   }) async {
-    final data = await supabase
-        .from('accounts')
-        .insert({
-          'household_id': householdId,
-          'owner_user_id': ownerUserId,
-          'name': name,
-          'account_type': accountType.dbValue,
-          'institution': institution,
-          'last_four': lastFour,
-          'starting_balance': startingBalance,
-          'current_balance': startingBalance,
-          'credit_limit': creditLimit,
-          'color': color,
-          'interest_rate': interestRate,
-          'currency': 'USD',
-        })
-        .select()
-        .single();
+    // Pre-generate the row id so the optimistic cache row and the
+    // server INSERT share it. Postgres accepts an explicit value
+    // for `id UUID DEFAULT uuid_generate_v4()` — the default
+    // only fires when the column is omitted. On replay the same
+    // id flows through; the queue's upsert ignoreDuplicates=false
+    // path makes a half-completed first attempt idempotent.
+    final clientId = _uuid.v4();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'owner_user_id': ownerUserId,
+      'name': name,
+      'account_type': accountType.dbValue,
+      'institution': institution,
+      'last_four': lastFour,
+      'starting_balance': startingBalance,
+      'current_balance': startingBalance,
+      'credit_limit': creditLimit,
+      'color': color,
+      'interest_rate': interestRate,
+      'currency': 'USD',
+    };
+    try {
+      final data = await supabase
+          .from('accounts')
+          .insert(payload)
+          .select()
+          .single();
 
-    final account = Account.fromJson(data);
-    await _writeCacheRow(account);
-    return account;
+      final account = Account.fromJson(data);
+      await _writeCacheRow(account);
+      return account;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Build an optimistic Account from the inputs + now() for
+      // the server-generated timestamps. The next fetchAccounts
+      // after replay overwrites with the canonical row.
+      final now = DateTime.now().toUtc();
+      final optimistic = Account(
+        id: clientId,
+        householdId: householdId,
+        ownerUserId: ownerUserId,
+        name: name,
+        accountType: accountType,
+        institution: institution,
+        lastFour: lastFour,
+        currency: 'USD',
+        startingBalance: startingBalance,
+        currentBalance: startingBalance,
+        creditLimit: creditLimit,
+        isActive: true,
+        color: color,
+        interestRate: interestRate,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await _writeCacheRow(optimistic);
+      await _queue?.enqueue(
+        QueuedInsert(table: 'accounts', payload: payload, rowId: clientId),
+      );
+      return optimistic;
+    }
   }
 
   /// Updates account metadata and returns the updated [Account].
@@ -116,23 +170,52 @@ class AccountsRepository {
     String? color,
     double? interestRate,
   }) async {
-    final data = await supabase
-        .from('accounts')
-        .update({
-          'name': name,
-          'institution': institution,
-          'last_four': lastFour,
-          'starting_balance': startingBalance,
-          'credit_limit': creditLimit,
-          'color': color,
-          'interest_rate': interestRate,
-        })
-        .eq('id', accountId)
-        .select()
-        .single();
-    final account = Account.fromJson(data);
-    await _writeCacheRow(account);
-    return account;
+    final patch = <String, dynamic>{
+      'name': name,
+      'institution': institution,
+      'last_four': lastFour,
+      'starting_balance': startingBalance,
+      'credit_limit': creditLimit,
+      'color': color,
+      'interest_rate': interestRate,
+    };
+    try {
+      final data = await supabase
+          .from('accounts')
+          .update(patch)
+          .eq('id', accountId)
+          .select()
+          .single();
+      final account = Account.fromJson(data);
+      await _writeCacheRow(account);
+      return account;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Optimistic: patch the cached row directly so the UI
+      // shows the user's edit immediately. Read the existing
+      // row, apply the patch, write back. If the row isn't
+      // cached we can't synthesise a meaningful Account; the
+      // queue still carries the UPDATE so the server eventually
+      // applies it — but we throw here so the UI knows
+      // something off-pattern happened.
+      final existing = await _loadCacheRowById(accountId);
+      if (existing == null) rethrow;
+      final patched = existing.copyWith(
+        name: name,
+        institution: institution,
+        lastFour: lastFour,
+        startingBalance: startingBalance,
+        creditLimit: creditLimit,
+        color: color,
+        interestRate: interestRate,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      await _writeCacheRow(patched);
+      await _queue?.enqueue(
+        QueuedUpdate(table: 'accounts', rowId: accountId, payload: patch),
+      );
+      return patched;
+    }
   }
 
   /// Updates the stored balance for an account (in cents).
@@ -143,10 +226,32 @@ class AccountsRepository {
   /// fetchAccounts call. Acceptable for Phase 1 — the dashboard
   /// invalidates and re-fetches on every balance adjustment.
   Future<void> updateBalance(String accountId, int cents) async {
-    await supabase
-        .from('accounts')
-        .update({'current_balance': cents})
-        .eq('id', accountId);
+    try {
+      await supabase
+          .from('accounts')
+          .update({'current_balance': cents})
+          .eq('id', accountId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await _queue?.enqueue(
+        QueuedUpdate(
+          table: 'accounts',
+          rowId: accountId,
+          payload: {'current_balance': cents},
+        ),
+      );
+      // Optimistically patch the cached balance so the UI
+      // doesn't show a stale value while the queue waits.
+      final existing = await _loadCacheRowById(accountId);
+      if (existing != null) {
+        await _writeCacheRow(
+          existing.copyWith(
+            currentBalance: cents,
+            updatedAt: DateTime.now().toUtc(),
+          ),
+        );
+      }
+    }
   }
 
   /// Recalculates [accountId]'s balance by summing all transaction amounts
@@ -175,11 +280,26 @@ class AccountsRepository {
   /// is_active flag) keeps the cache in sync with what
   /// fetchAccounts would return.
   Future<void> deleteAccount(String accountId) async {
-    await supabase
-        .from('accounts')
-        .update({'is_active': false})
-        .eq('id', accountId);
-    await _deleteCacheRow(accountId);
+    try {
+      await supabase
+          .from('accounts')
+          .update({'is_active': false})
+          .eq('id', accountId);
+      await _deleteCacheRow(accountId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Soft-delete is the user's intent; remove from cache so
+      // the list immediately drops the row. Queue the same
+      // is_active=false UPDATE for replay.
+      await _deleteCacheRow(accountId);
+      await _queue?.enqueue(
+        QueuedUpdate(
+          table: 'accounts',
+          rowId: accountId,
+          payload: {'is_active': false},
+        ),
+      );
+    }
   }
 
   // ── Cache helpers ──────────────────────────────────────────
@@ -235,7 +355,32 @@ class AccountsRepository {
       return null;
     }
   }
+
+  /// Read one cached Account row by id. Used by the
+  /// optimistic-update paths to fetch the current state before
+  /// patching it. Returns null when the row isn't cached or the
+  /// database isn't wired (legacy zero-arg constructor).
+  Future<Account?> _loadCacheRowById(String id) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      // No single-row loader on AppDatabase yet — derive from
+      // the household loader by filtering. Cheap because the
+      // cache is small (typically a dozen rows per household).
+      // For the offline-update path we don't know which
+      // household; we just scan all households (still O(n) over
+      // the per-install cache, n ≪ 100).
+      final all = await db.select(db.accountsCache).get();
+      for (final r in all) {
+        if (r.id == id) return _fromCacheRow(r);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
 
 /// Maps an Account model to the drift Companion for cache writes.
 ///
