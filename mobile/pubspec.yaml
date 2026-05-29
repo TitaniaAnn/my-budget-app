@@ -20,9 +20,13 @@ dependencies:
   # Navigation
   go_router: ^14.8.1
 
-  # Secure storage & biometrics
-  flutter_secure_storage: ^9.2.4
-  local_auth: ^2.3.0
+  # Audit 2026-05-26 M1: removed unused `flutter_secure_storage`
+  # and `local_auth`. Neither was imported anywhere in lib/.
+  # They were shipping ~2-3MB of native code per ABI + pulling
+  # OS framework deps. If biometric unlock / secure-storage of
+  # the Plaid access_token (audit M2 follow-up) gets prioritised,
+  # re-add then. iOS NSFaceIDUsageDescription stays pre-declared
+  # in Info.plist so re-wiring doesn't need another plist patch.
 
   # Camera & file picking
   image_picker: ^1.1.2

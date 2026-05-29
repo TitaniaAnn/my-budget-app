@@ -131,10 +131,34 @@ serve(async (req) => {
   if (body.item_id) {
     const { data: itemRow } = await supabase
       .from("plaid_items")
-      .select("id, household_id")
+      .select("id, household_id, environment")
       .eq("plaid_item_id", body.item_id)
       .maybeSingle();
     if (itemRow) {
+      // Audit 2026-05-26 M5: environment cross-check. The
+      // plaid-webhook function has a single PLAID_WEBHOOK_URL
+      // env var across sandbox + production; a webhook signed
+      // for a sandbox item should never be routed to the prod
+      // function (or vice versa). If the item's environment
+      // doesn't match this function's PLAID_ENV, we LOG the
+      // mismatch (still flowing through the audit table) but
+      // skip the routing side-effects. 200-no-routing keeps
+      // Plaid from retrying.
+      const itemEnv = itemRow.environment as string;
+      const functionEnv = Deno.env.get("PLAID_ENV") ?? "sandbox";
+      if (itemEnv !== functionEnv) {
+        console.warn(
+          `[plaid-webhook] environment mismatch — item env=${itemEnv}, ` +
+            `function env=${functionEnv}; skipping routing for ` +
+            `item ${body.item_id}`,
+        );
+        return Response.json({
+          received: true,
+          environment_mismatch: true,
+          item_environment: itemEnv,
+          function_environment: functionEnv,
+        });
+      }
       internalItemId = itemRow.id as string;
       householdId = itemRow.household_id as string;
     }

@@ -75,7 +75,9 @@ class PlaidLinkLauncher {
   /// launch's outcome; their `_busy` flags release together. The
   /// alternative — rejecting the second call — would surface a
   /// confusing error from what is almost always a double-tap.
-  Future<PlaidLinkOutcome>? _pending;
+  // Audit 2026-05-26 M8: see _moduleGlobalPending below — the
+  // instance-local field was the original review-#6 fix; the
+  // module-global widens it to any pair of launchers.
 
   /// Mints a token via the Edge Function, hands it to the
   /// platform Link UI, and resolves with the first
@@ -88,16 +90,18 @@ class PlaidLinkLauncher {
   /// success in this mode; the caller should re-trigger sync
   /// instead.
   Future<PlaidLinkOutcome> launch({String? updateModeForItemId}) {
-    final pending = _pending;
+    final pending = _moduleGlobalPending;
     if (pending != null) return pending;
     final future = _runLaunch(updateModeForItemId: updateModeForItemId);
-    _pending = future;
+    _moduleGlobalPending = future;
     // Clear the guard on completion regardless of outcome so the
     // next launch starts fresh. whenComplete() runs after the
     // future resolves but the value/error propagates unchanged
     // to the caller.
     future.whenComplete(() {
-      if (identical(_pending, future)) _pending = null;
+      if (identical(_moduleGlobalPending, future)) {
+        _moduleGlobalPending = null;
+      }
     });
     return future;
   }
@@ -175,3 +179,19 @@ class PlaidLinkLauncher {
     return completer.future;
   }
 }
+
+/// Audit 2026-05-26 M8: module-global in-flight tracker. Lives
+/// outside [PlaidLinkLauncher] so two launcher instances in
+/// different provider scopes (Connect Bank screen + ReauthBanner)
+/// can't both be in flight simultaneously. plaid_flutter's
+/// PlaidLink.onSuccess / onExit are STATIC broadcast streams —
+/// every subscriber receives every event — so two overlapping
+/// launches would cross-fire AND the second launch's onSuccess
+/// could arrive paired with the first launch's link_token.
+///
+/// On a second call while one is pending we return the same
+/// future rather than throwing. Both callers get the original
+/// launch's outcome; their `_busy` flags release together. The
+/// alternative — rejecting the second call — would surface a
+/// confusing error from what is almost always a double-tap.
+Future<PlaidLinkOutcome>? _moduleGlobalPending;

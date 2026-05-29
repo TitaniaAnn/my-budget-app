@@ -302,7 +302,12 @@ class ReceiptsRepository {
     int? amountCents,
     String? categoryId,
   }) async {
-    await supabase
+    // Audit 2026-05-26 X1: return the modified row + patch the
+    // cache. Pre-fix the cache kept the old ocr_confidence_bp
+    // value indefinitely, so the receipt detail kept showing
+    // the "needs review" chip on rows the user already
+    // confirmed.
+    final data = await supabase
         .from('receipt_line_items')
         .update({
           'ocr_confidence_bp': null,
@@ -310,12 +315,16 @@ class ReceiptsRepository {
           'amount': ?amountCents,
           'category_id': ?categoryId,
         })
-        .eq('id', lineItemId);
-    // The server doesn't return the modified row, so we can't
-    // upsert into the cache directly. The "uncertain review"
-    // surface only cares whether ocr_confidence_bp is non-null,
-    // which is a server-only filter — the next fetchLineItems
-    // for the parent receipt reconciles. Skip cache writes here.
+        .eq('id', lineItemId)
+        .select()
+        .single();
+    final updated = ReceiptLineItem.fromJson(data);
+    final db = _db;
+    if (db != null) {
+      try {
+        await db.upsertLineItem(_lineItemToCompanion(updated));
+      } catch (_) {/**/}
+    }
   }
 
   /// Generates a short-lived signed URL for displaying a private receipt image.

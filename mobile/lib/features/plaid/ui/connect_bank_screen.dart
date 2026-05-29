@@ -73,12 +73,27 @@ class _ConnectBankScreenState extends ConsumerState<ConnectBankScreen> {
           ref.invalidate(plaidItemsProvider);
           invalidateLedger(ref);
 
+          // Audit 2026-05-26 M6: surface skipped accounts. The
+          // exchange function returns `skipped_accounts` for
+          // every account whose Plaid type/subtype didn't map
+          // to our account_type enum (annuity, crypto, etc.).
+          // The prior "Linked N accounts" message silently
+          // omitted them — user with 4 visible accounts in
+          // their bank saw "Linked 3" with no signal about the
+          // 4th.
+          final inserted = result.insertedAccounts.length;
+          final skipped = result.skippedAccounts.length;
+          final institutionName = metadata.institution!.name;
           setState(() {
             _busy = false;
-            _status =
-                'Linked ${result.insertedAccounts.length} account'
-                "${result.insertedAccounts.length == 1 ? "" : "s"} "
-                'from ${metadata.institution!.name}.';
+            _status = skipped == 0
+                ? 'Linked $inserted account'
+                      '${inserted == 1 ? "" : "s"} from $institutionName.'
+                : 'Linked $inserted account'
+                      '${inserted == 1 ? "" : "s"} from $institutionName. '
+                      '$skipped account${skipped == 1 ? "" : "s"} '
+                      'skipped — unsupported type. Tap Settings → '
+                      'Add account to add manually.';
           });
       }
     } catch (e) {
