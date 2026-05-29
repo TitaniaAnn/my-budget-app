@@ -81,14 +81,31 @@ class QueuedInsert extends QueuedOp {
 }
 
 class QueuedUpdate extends QueuedOp {
+  /// [expectedUpdatedAt] (audit 2026-05-26 H5) carries the
+  /// optimistic-lock precondition from the online write path
+  /// through to replay. Without it, a phone offline at 9am
+  /// would queue an UPDATE; phone B updates the same row at
+  /// 10am with different values; phone A reconnects at 11am
+  /// and the queue replay clobbers B's edit silently. With it,
+  /// the replay's .eq('updated_at', expectedUpdatedAt) misses
+  /// (server's updated_at trigger refreshed it on B's write),
+  /// the UPDATE matches zero rows, we surface it as a conflict
+  /// instead of silently overwriting.
+  ///
+  /// Encoded as ISO-8601 UTC in the payload at enqueue time;
+  /// passed to the replay's eq filter at drain time. Null
+  /// means "no precondition" — caller explicitly opted out
+  /// (e.g. a fresh create where last-write-wins is safe).
   const QueuedUpdate({
     required this.table,
     required this.rowId,
     required this.payload,
+    this.expectedUpdatedAt,
   });
   final String table;
   final String rowId;
   final Map<String, dynamic> payload;
+  final DateTime? expectedUpdatedAt;
 }
 
 class QueuedDelete extends QueuedOp {
@@ -154,13 +171,29 @@ class PendingWritesQueue {
           payloadJson: Value(jsonEncode(payload)),
           createdAt: Value(now),
         ),
-      QueuedUpdate(:final table, :final rowId, :final payload) =>
+      QueuedUpdate(
+        :final table,
+        :final rowId,
+        :final payload,
+        :final expectedUpdatedAt,
+      ) =>
         PendingWritesCompanion(
           id: Value(id),
           opType: const Value('update'),
           targetTable: Value(table),
           rowId: Value(rowId),
-          payloadJson: Value(jsonEncode(payload)),
+          // Wrap the payload with the optional precondition so
+          // the replay (a different process from enqueue) can
+          // read both off one column. Schema-less envelope by
+          // design — drift's payload_json is opaque text.
+          payloadJson: Value(
+            jsonEncode({
+              'payload': payload,
+              if (expectedUpdatedAt != null)
+                'expected_updated_at': expectedUpdatedAt.toUtc()
+                    .toIso8601String(),
+            }),
+          ),
           createdAt: Value(now),
         ),
       QueuedDelete(:final table, :final rowId) => PendingWritesCompanion(
@@ -277,10 +310,40 @@ class PendingWritesQueue {
                 ignoreDuplicates: false,
               );
         case 'update':
-          await supabase
+          // Audit H5: unwrap the envelope ({payload, optional
+          // expected_updated_at}) and apply the optimistic-lock
+          // filter if present. Zero-rows-affected with a
+          // precondition means a concurrent write beat ours —
+          // mark the row failed so it stops thrashing and
+          // surfaces as "conflict" in the queue.
+          final decoded = jsonDecode(row.payloadJson) as Map<String, dynamic>;
+          final updatePayload =
+              decoded['payload'] as Map<String, dynamic>;
+          final expectedUpdatedAt =
+              decoded['expected_updated_at'] as String?;
+          var updateBuilder = supabase
               .from(row.targetTable!)
-              .update(jsonDecode(row.payloadJson) as Map<String, dynamic>)
+              .update(updatePayload)
               .eq('id', row.rowId!);
+          if (expectedUpdatedAt != null) {
+            updateBuilder = updateBuilder.eq(
+              'updated_at',
+              expectedUpdatedAt,
+            );
+          }
+          final affected = await updateBuilder.select('id') as List;
+          if (expectedUpdatedAt != null && affected.isEmpty) {
+            await db.markPendingWriteFailed(
+              id: row.id,
+              error:
+                  'CONFLICT: row updated_at changed between enqueue '
+                  'and replay (concurrent write from another device)',
+            );
+            // Treat as permanent so it counts up against
+            // _maxAttempts and parks. A future iteration moves
+            // these to a typed conflicts table per the audit.
+            return _ReplayOutcome.permanentFailure;
+          }
         case 'delete':
           await supabase
               .from(row.targetTable!)

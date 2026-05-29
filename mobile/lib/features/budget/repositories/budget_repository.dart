@@ -102,7 +102,7 @@ class BudgetRepository {
         for (final row in data as List)
           row['category_id'] as String: (row['net_cents'] as num).toInt(),
       };
-    } catch (_) {
+    } catch (e) {
       final fromCache = await _computeSpendingFromCache(
         householdId: householdId,
         from: from,
@@ -111,9 +111,19 @@ class BudgetRepository {
         displayCurrency: displayCurrency,
       );
       if (fromCache != null) return fromCache;
-      // Cache miss — surface the zero map so the UI shows
-      // "no spending data" rather than throwing.
-      return const {};
+      // Audit 2026-05-26 H6: cache miss AND network failure
+      // means we genuinely don't know what the spending is for
+      // this period. The prior `return const {}` was actively
+      // misleading — every budget showed $0 spent (green across
+      // the board) and the budget-alerts engine fed a false
+      // "you're under budget" signal to notifications. Throw a
+      // typed exception so the budget screen can render
+      // "spending unavailable while offline" instead.
+      throw OfflineSpendingUnavailableException(
+        from: from,
+        to: to,
+        cause: e,
+      );
     }
   }
 
@@ -371,4 +381,31 @@ Budget _budgetFromCacheRow(BudgetsCacheRow r) {
     endDate: r.endDate,
     createdBy: r.createdBy,
   );
+}
+
+/// Audit 2026-05-26 H6 — thrown by fetchSpendingByCategory when
+/// the network call fails AND the cache has nothing for the
+/// requested window. Callers (budget_provider, dashboard) should
+/// catch this specifically and render "spending unavailable
+/// while offline" rather than treating zero spend as fact.
+class OfflineSpendingUnavailableException implements Exception {
+  const OfflineSpendingUnavailableException({
+    required this.from,
+    required this.to,
+    required this.cause,
+  });
+
+  /// The date range the caller asked about, unchanged.
+  final DateTime from;
+  final DateTime to;
+
+  /// The original network error. Useful for telemetry; the user-
+  /// facing message just says "offline".
+  final Object cause;
+
+  @override
+  String toString() =>
+      'OfflineSpendingUnavailableException: no cached spending for '
+      '${from.toIso8601String().substring(0, 10)} → '
+      '${to.toIso8601String().substring(0, 10)} (cause: $cause)';
 }

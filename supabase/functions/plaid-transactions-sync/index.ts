@@ -210,12 +210,23 @@ serve(async (req) => {
       // A webhook that landed during this sync may have set a
       // more authoritative error; only overwrite if no one
       // else changed last_sync_error in the meantime.
+      //
+      // Audit 2026-05-26 H7: never downgrade a reauth code. If
+      // the captured value was already a reauth code AND the
+      // new error code isn't, omit last_sync_error from the
+      // patch. The cursor + last_sync_at still update.
+      const isDowngrade = lastSyncErrorAtStart !== null &&
+        REAUTH_ERROR_CODES.has(lastSyncErrorAtStart) &&
+        !REAUTH_ERROR_CODES.has(errorCode);
+      const errPayload: Record<string, unknown> = {
+        last_sync_at: new Date().toISOString(),
+      };
+      if (!isDowngrade) {
+        errPayload.last_sync_error = errorCode;
+      }
       let plaidErrUpdate = serviceClient
         .from("plaid_items")
-        .update({
-          last_sync_error: errorCode,
-          last_sync_at: new Date().toISOString(),
-        })
+        .update(errPayload)
         .eq("id", itemRow.id);
       plaidErrUpdate = lastSyncErrorAtStart === null
         ? plaidErrUpdate.is("last_sync_error", null)
@@ -393,13 +404,34 @@ serve(async (req) => {
   // matches zero rows and our UPDATE no-ops. The next sync
   // attempt re-reads the (now webhook-set) state and acts on
   // it.
+  // Audit 2026-05-26 H7: never DOWNGRADE a reauth code.
+  // Scenario: a webhook fired BEFORE this function's line-125
+  // read and set last_sync_error=ITEM_LOGIN_REQUIRED. We
+  // captured that as lastSyncErrorAtStart. Our Plaid sync may
+  // still 200 (the user re-authed in the meantime, or the call
+  // raced past the bad state). Without this guard, the success
+  // path would clear the reauth code via
+  // `.eq('last_sync_error', 'ITEM_LOGIN_REQUIRED')` matching —
+  // wiping the reauth state until the next sync re-fetches it.
+  // Solution: omit last_sync_error from the patch when the
+  // captured value was a reauth code AND the new value (null
+  // on success, 'PARTIAL_FAILURE' on partial) is not. Cursor
+  // and last_sync_at still update.
+  const newErrValue = allSucceeded ? null : "PARTIAL_FAILURE";
+  const isReauthDowngrade = lastSyncErrorAtStart !== null &&
+    REAUTH_ERROR_CODES.has(lastSyncErrorAtStart) &&
+    (newErrValue === null ||
+      !REAUTH_ERROR_CODES.has(newErrValue));
+  const updatePayload: Record<string, unknown> = {
+    sync_cursor: allSucceeded ? cursor : itemRow.sync_cursor,
+    last_sync_at: new Date().toISOString(),
+  };
+  if (!isReauthDowngrade) {
+    updatePayload.last_sync_error = newErrValue;
+  }
   let updateQuery = serviceClient
     .from("plaid_items")
-    .update({
-      sync_cursor: allSucceeded ? cursor : itemRow.sync_cursor,
-      last_sync_at: new Date().toISOString(),
-      last_sync_error: allSucceeded ? null : "PARTIAL_FAILURE",
-    })
+    .update(updatePayload)
     .eq("id", itemRow.id);
   // PostgREST: .eq(col, null) becomes "col IS NULL" which
   // matches the IS-NOT-DISTINCT semantics for null-vs-null.
