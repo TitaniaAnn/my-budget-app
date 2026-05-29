@@ -264,6 +264,178 @@ void main() {
       expect(result['removed'], 0);
     }, skip: reason);
 
+    // ── Audit 2026-05-26 C4: user-state preservation ────────
+    test(
+      'removed: rows with user notes are soft-archived (kept, '
+      'external_id cleared, source=import)',
+      () async {
+        // Plaid adds the row, user adds a note, Plaid removes it.
+        await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-noted',
+              'amount_cents': -500,
+              'description': 'lunch',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+        await harness.client
+            .from('transactions')
+            .update({'notes': 'reimburse from work'})
+            .eq('external_id', 'plaid-tx-noted');
+
+        final result = await invokeRpc(removed: ['plaid-tx-noted']);
+        // Hard-delete count is 0; archived count is 1.
+        expect(result['removed'], 0);
+        expect(result['archived'], 1);
+
+        // Row survives with the user's note intact and Plaid
+        // attribution stripped.
+        final rows = (await harness.client
+                .from('transactions')
+                .select('id, external_id, source, notes')
+                .eq('account_id', harness.accountId))
+            as List;
+        expect(rows.length, 1);
+        expect(rows[0]['external_id'], isNull);
+        expect(rows[0]['source'], 'import');
+        expect(rows[0]['notes'], 'reimburse from work');
+      },
+      skip: reason,
+    );
+
+    test(
+      'removed: rows with category_assigned_by=user are soft-archived',
+      () async {
+        await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-user-cat',
+              'amount_cents': -500,
+              'description': 'misc',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+        // User assigns category — flips category_assigned_by to 'user'.
+        // Use a system category to avoid a household setup dance.
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+        await harness.client
+            .from('transactions')
+            .update({
+              'category_id': groceriesId,
+              'category_assigned_by': 'user',
+            })
+            .eq('external_id', 'plaid-tx-user-cat');
+
+        final result = await invokeRpc(removed: ['plaid-tx-user-cat']);
+        expect(result['removed'], 0);
+        expect(result['archived'], 1);
+
+        final rows = (await harness.client
+                .from('transactions')
+                .select('external_id, source, category_id')
+                .eq('account_id', harness.accountId))
+            as List;
+        expect(rows.length, 1);
+        expect(rows[0]['external_id'], isNull);
+        expect(rows[0]['source'], 'import');
+        expect(rows[0]['category_id'], groceriesId);
+      },
+      skip: reason,
+    );
+
+    test(
+      'removed: rows with no user state are hard-deleted (matches '
+      'historical behavior)',
+      () async {
+        // Same shape as the existing "removed deletes by external_id"
+        // test — sanity-pin that the new branching didn't regress
+        // the common case.
+        await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-clean',
+              'amount_cents': -100,
+              'description': 'clean row',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+        final result = await invokeRpc(removed: ['plaid-tx-clean']);
+        expect(result['removed'], 1);
+        expect(result['archived'], 0);
+
+        final rows = (await harness.client
+                .from('transactions')
+                .select('id')
+                .eq('account_id', harness.accountId))
+            as List;
+        expect(rows.length, 0);
+      },
+      skip: reason,
+    );
+
+    test(
+      'removed: transfer leg removal clears transfer_id on the partner',
+      () async {
+        // Set up a transfer: insert two transactions sharing a
+        // transfer_id, where one is Plaid-managed and the other
+        // is the surviving manual leg.
+        final transferId = 'cccccccc-1111-1111-1111-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(12, '0').substring(0, 12)}';
+        await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-xfer-leg',
+              'amount_cents': -10000,
+              'description': 'transfer out',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+        // Add the partner leg manually.
+        final partnerInsert = await harness.client
+            .from('transactions')
+            .insert({
+              'household_id': harness.householdId,
+              'account_id': harness.accountId,
+              'entered_by': harness.userId,
+              'amount': 10000,
+              'currency': 'USD',
+              'description': 'transfer in',
+              'transaction_date': '2026-05-10',
+              'source': 'manual',
+              'transfer_id': transferId,
+            })
+            .select('id')
+            .single();
+        final partnerId = partnerInsert['id'] as String;
+        // Pair the Plaid leg to the same transfer.
+        await harness.client
+            .from('transactions')
+            .update({'transfer_id': transferId})
+            .eq('external_id', 'plaid-tx-xfer-leg');
+
+        // Plaid removes the paired leg.
+        final result = await invokeRpc(removed: ['plaid-tx-xfer-leg']);
+        // The Plaid leg has transfer_id set → counts as user state
+        // → archived (not deleted).
+        expect(result['removed'], 0);
+        expect(result['archived'], 1);
+
+        // The partner's transfer_id has been cleared so it stops
+        // being filtered out of cash-flow rollups.
+        final partner = await harness.client
+            .from('transactions')
+            .select('transfer_id')
+            .eq('id', partnerId)
+            .single();
+        expect(partner['transfer_id'], isNull);
+      },
+      skip: reason,
+    );
+
     test('recalculates the account balance on every call', () async {
       // Start with a known account balance, add inflows, confirm
       // the trigger / recalculate_account_balance ran.
