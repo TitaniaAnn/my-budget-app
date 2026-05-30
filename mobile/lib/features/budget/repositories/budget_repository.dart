@@ -4,14 +4,19 @@
 //
 // Audit L1 Phase 2b (budget reads cache-through) + Phase 4a
 // (fetchSpendingByCategory falls back to a pure-Dart port of
-// the SQL function when offline). The numbers match the SQL
-// function's contract; see services/spending_calculator.dart
+// the SQL function when offline) + Phase 3c (writes through
+// the offline queue on transient failure). The numbers match
+// the SQL function's contract; see services/spending_calculator.dart
 // for the algorithm + multi-currency rules.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/atomic_write.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../../receipts/models/receipt_line_item.dart';
 import '../../transactions/models/transaction.dart';
 import '../models/budget.dart';
@@ -21,12 +26,19 @@ part 'budget_repository.g.dart';
 
 @riverpod
 BudgetRepository budgetRepository(BudgetRepositoryRef ref) {
-  return BudgetRepository(db: ref.watch(appDatabaseProvider));
+  return BudgetRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class BudgetRepository {
-  BudgetRepository({AppDatabase? db}) : _db = db;
+  BudgetRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
 
   /// Fetches all budgets for [householdId] joined with their category row.
   Future<List<Budget>> fetchBudgets(String householdId) async {
@@ -143,25 +155,51 @@ class BudgetRepository {
     String currency = 'USD',
     DateTime? startDate,
   }) async {
-    final data = await supabase
-        .from('budgets')
-        .insert({
-          'household_id': householdId,
-          'category_id': categoryId,
-          'amount': amountCents,
-          'currency': currency,
-          'period': period.dbValue,
-          'start_date': (startDate ?? DateTime.now())
-              .toIso8601String()
-              .substring(0, 10),
-          'created_by': createdBy,
-        })
-        .select()
-        .single();
-
-    final budget = Budget.fromJson(data);
-    await _writeBudgetCacheRow(budget);
-    return budget;
+    final clientId = _uuid.v4();
+    final effectiveStart = startDate ?? DateTime.now();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'category_id': categoryId,
+      'amount': amountCents,
+      'currency': currency,
+      'period': period.dbValue,
+      'start_date': effectiveStart.toIso8601String().substring(0, 10),
+      'created_by': createdBy,
+    };
+    try {
+      final data = await supabase
+          .from('budgets')
+          .insert(payload)
+          .select()
+          .single();
+      final budget = Budget.fromJson(data);
+      await _writeBudgetCacheRow(budget);
+      return budget;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final optimistic = Budget(
+        id: clientId,
+        householdId: householdId,
+        categoryId: categoryId,
+        amount: amountCents,
+        currency: currency,
+        period: period,
+        startDate: effectiveStart,
+        createdBy: createdBy,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeBudgetCacheRow(optimistic),
+        queueOp: QueuedInsert(
+          table: 'budgets',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Updates the amount, currency, and/or period of an existing budget.
@@ -171,26 +209,61 @@ class BudgetRepository {
     String? currency,
     BudgetPeriod? period,
   }) async {
-    final data = await supabase
-        .from('budgets')
-        .update({
-          'amount': ?amountCents,
-          'currency': ?currency,
-          'period': ?period?.dbValue,
-        })
-        .eq('id', budgetId)
-        .select()
-        .single();
-
-    final budget = Budget.fromJson(data);
-    await _writeBudgetCacheRow(budget);
-    return budget;
+    final patch = <String, dynamic>{
+      'amount': ?amountCents,
+      'currency': ?currency,
+      'period': ?period?.dbValue,
+    };
+    try {
+      final data = await supabase
+          .from('budgets')
+          .update(patch)
+          .eq('id', budgetId)
+          .select()
+          .single();
+      final budget = Budget.fromJson(data);
+      await _writeBudgetCacheRow(budget);
+      return budget;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Optimistic patch on the cached row. If the row isn't
+      // cached we can't synthesise a meaningful Budget; rethrow
+      // so the UI surfaces the failure.
+      final existing = await _loadBudgetCacheRowById(budgetId);
+      if (existing == null) rethrow;
+      final patched = existing.copyWith(
+        amount: amountCents ?? existing.amount,
+        currency: currency ?? existing.currency,
+        period: period ?? existing.period,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeBudgetCacheRow(patched),
+        queueOp: QueuedUpdate(
+          table: 'budgets',
+          rowId: budgetId,
+          payload: patch,
+        ),
+      );
+      return patched;
+    }
   }
 
   /// Deletes a budget by ID.
   Future<void> deleteBudget(String budgetId) async {
-    await supabase.from('budgets').delete().eq('id', budgetId);
-    await _deleteBudgetCacheRow(budgetId);
+    try {
+      await supabase.from('budgets').delete().eq('id', budgetId);
+      await _deleteBudgetCacheRow(budgetId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _deleteBudgetCacheRow(budgetId),
+        queueOp: QueuedDelete(table: 'budgets', rowId: budgetId),
+      );
+    }
   }
 
   // ── Cache helpers ──────────────────────────────────────────
@@ -223,6 +296,25 @@ class BudgetRepository {
     try {
       await db.deleteBudget(id);
     } catch (_) {/**/}
+  }
+
+  /// Phase 3c: read-by-id helper for the optimistic-update
+  /// path. Drift's `loadBudgetsForHousehold` is the only loader
+  /// the database exposes today; we don't know the household
+  /// from a budget id alone, so scan the per-install cache (it's
+  /// small — typically <20 rows per install).
+  Future<Budget?> _loadBudgetCacheRowById(String id) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.select(db.budgetsCache).get();
+      for (final r in rows) {
+        if (r.id == id) return _budgetFromCacheRow(r);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Budget>?> _loadBudgetsFromCache(String householdId) async {

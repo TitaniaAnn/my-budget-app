@@ -10,12 +10,27 @@
 // write. Less-critical reads (fetchByReceiptId, fetchUncertain)
 // stay network-only for Phase 2a — they're not on the hot
 // dashboard path.
+//
+// Audit L1 Phase 3c: writes now go through the queue. Each
+// write tries the network first; on transient failure
+// (SocketException / TimeoutException / PGRST5xx) the call
+// optimistically writes to the cache + enqueues the mutation
+// for replay via the shared `atomicCacheAndEnqueue` helper.
+// Non-transient errors (RLS, CHECK, auth) rethrow unchanged.
+// RPCs that materialise multiple rows server-side
+// (createTransfer, bulkImport, save_receipt_line_items) stay
+// network-only — replicating their atomicity offline isn't
+// safe.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/error/error_mapper.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/atomic_write.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/transaction.dart';
 import '../models/category.dart';
 import '../services/categorizer.dart';
@@ -26,15 +41,23 @@ part 'transactions_repository.g.dart';
 /// Provides a singleton [TransactionsRepository] instance via Riverpod.
 @riverpod
 TransactionsRepository transactionsRepository(TransactionsRepositoryRef ref) {
-  return TransactionsRepository(db: ref.watch(appDatabaseProvider));
+  return TransactionsRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class TransactionsRepository {
-  /// [db] is nullable for the legacy zero-arg constructor used by
-  /// older tests. Production code goes through the Riverpod
-  /// provider, which always passes the singleton database.
-  TransactionsRepository({AppDatabase? db}) : _db = db;
+  /// [db] and [queue] are nullable for the legacy zero-arg
+  /// constructor used by older tests. Production code goes
+  /// through the Riverpod provider above, which always passes
+  /// both.
+  TransactionsRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
   /// Fetches transactions for a household, optionally filtered by [accountId].
   ///
   /// Joins the categories table so [Transaction.category] is populated.
@@ -143,22 +166,50 @@ class TransactionsRepository {
     String? icon,
     String? color,
   }) async {
-    final data = await supabase
-        .from('categories')
-        .insert({
-          'household_id': householdId,
-          'name': name,
-          'is_income': isIncome,
-          'parent_id': parentId,
-          'icon': icon,
-          'color': color,
-          'sort_order': 500,
-        })
-        .select()
-        .single();
-    final category = Category.fromJson(data);
-    await _writeCategoryCacheRow(category);
-    return category;
+    final clientId = _uuid.v4();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'name': name,
+      'is_income': isIncome,
+      'parent_id': parentId,
+      'icon': icon,
+      'color': color,
+      'sort_order': 500,
+    };
+    try {
+      final data = await supabase
+          .from('categories')
+          .insert(payload)
+          .select()
+          .single();
+      final category = Category.fromJson(data);
+      await _writeCategoryCacheRow(category);
+      return category;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final optimistic = Category(
+        id: clientId,
+        householdId: householdId,
+        name: name,
+        parentId: parentId,
+        icon: icon,
+        color: color,
+        isIncome: isIncome,
+        sortOrder: 500,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeCategoryCacheRow(optimistic),
+        queueOp: QueuedInsert(
+          table: 'categories',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Deletes a household category. System categories (householdId=null) are
@@ -171,6 +222,11 @@ class TransactionsRepository {
   /// here so the user sees "remove the budget first" instead of a
   /// raw Postgrest 23503.
   Future<void> deleteCategory(String categoryId) async {
+    // The CategoryHasBudgetsException pre-check is intentionally
+    // NOT enqueued for offline replay — it depends on a fresh
+    // SELECT against budgets, and silently dropping a delete
+    // because of stale cache would surprise the user. Caller
+    // must be online for this branch.
     final budgetRows = await supabase
         .from('budgets')
         .select('id')
@@ -179,8 +235,18 @@ class TransactionsRepository {
     if ((budgetRows as List).isNotEmpty) {
       throw const CategoryHasBudgetsException();
     }
-    await supabase.from('categories').delete().eq('id', categoryId);
-    await _deleteCategoryCacheRow(categoryId);
+    try {
+      await supabase.from('categories').delete().eq('id', categoryId);
+      await _deleteCategoryCacheRow(categoryId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _deleteCategoryCacheRow(categoryId),
+        queueOp: QueuedDelete(table: 'categories', rowId: categoryId),
+      );
+    }
   }
 
   /// Fetches all categories (system + household-specific).
@@ -226,33 +292,78 @@ class TransactionsRepository {
     String? rateId,
     String? notes,
   }) async {
-    final data = await supabase
-        .from('transactions')
-        .insert({
-          'household_id': householdId,
-          'account_id': accountId,
-          'entered_by': enteredBy,
-          'amount': amount,
-          'currency': 'USD',
-          'description': description,
-          'merchant': merchant,
-          'category_id': categoryId,
-          'rate_id': rateId,
-          'transaction_date': transactionDate.toIso8601String().substring(
-            0,
-            10,
-          ),
-          'source': 'manual',
-          if (categoryId != null) 'category_assigned_by': 'user',
-          if (categoryId != null)
-            'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .select('*, category:categories(*)')
-        .single();
-
-    final transaction = Transaction.fromJson(data);
-    await _writeTransactionsCache([transaction]);
-    return transaction;
+    // Phase 3c: pre-generate the row id so the optimistic cache
+    // row and the server INSERT share it. Postgres' uuid_generate_v4()
+    // DEFAULT only fires when the column is omitted, so an
+    // explicit value is accepted. On replay the same id flows
+    // through; the queue's upsert(onConflict:'id') makes a
+    // half-completed first attempt idempotent.
+    final clientId = _uuid.v4();
+    final dateStr = transactionDate.toIso8601String().substring(0, 10);
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'account_id': accountId,
+      'entered_by': enteredBy,
+      'amount': amount,
+      'currency': 'USD',
+      'description': description,
+      'merchant': merchant,
+      'category_id': categoryId,
+      'rate_id': rateId,
+      'notes': notes,
+      'transaction_date': dateStr,
+      'source': 'manual',
+      if (categoryId != null) 'category_assigned_by': 'user',
+      if (categoryId != null) 'category_assigned_at': nowIso,
+    };
+    try {
+      final data = await supabase
+          .from('transactions')
+          .insert(payload)
+          .select('*, category:categories(*)')
+          .single();
+      final transaction = Transaction.fromJson(data);
+      await _writeTransactionsCache([transaction]);
+      return transaction;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Build an optimistic Transaction from inputs. The category
+      // join can't be optimistically loaded here (we don't have
+      // a categories cache lookup in scope); next fetchTransactions
+      // call after replay populates it.
+      final now = DateTime.now().toUtc();
+      final optimistic = Transaction(
+        id: clientId,
+        householdId: householdId,
+        accountId: accountId,
+        amount: amount,
+        currency: 'USD',
+        description: description,
+        merchant: merchant,
+        categoryId: categoryId,
+        transactionDate: transactionDate,
+        pending: false,
+        source: 'manual',
+        enteredBy: enteredBy,
+        rateId: rateId,
+        notes: notes,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeTransactionsCache([optimistic]),
+        queueOp: QueuedInsert(
+          table: 'transactions',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Atomically records a transfer between two accounts in the same
@@ -439,46 +550,75 @@ class TransactionsRepository {
     String? notes,
     DateTime? expectedUpdatedAt,
   }) async {
-    var builder = supabase
-        .from('transactions')
-        .update({
-          'amount': amount,
-          'description': description,
-          'merchant': merchant,
-          'category_id': categoryId,
-          'rate_id': rateId,
-          'transaction_date': transactionDate.toIso8601String().substring(
-            0,
-            10,
-          ),
-          'notes': notes,
-          if (categoryId != null) 'category_assigned_by': 'user',
-          if (categoryId != null)
-            'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', id);
-    if (expectedUpdatedAt != null) {
-      builder = builder.eq(
-        'updated_at',
-        expectedUpdatedAt.toUtc().toIso8601String(),
+    final patch = <String, dynamic>{
+      'amount': amount,
+      'description': description,
+      'merchant': merchant,
+      'category_id': categoryId,
+      'rate_id': rateId,
+      'transaction_date': transactionDate.toIso8601String().substring(0, 10),
+      'notes': notes,
+      if (categoryId != null) 'category_assigned_by': 'user',
+      if (categoryId != null)
+        'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    try {
+      var builder = supabase
+          .from('transactions')
+          .update(patch)
+          .eq('id', id);
+      if (expectedUpdatedAt != null) {
+        builder = builder.eq(
+          'updated_at',
+          expectedUpdatedAt.toUtc().toIso8601String(),
+        );
+      }
+      final affected = await builder.select('id') as List;
+      if (expectedUpdatedAt != null && affected.isEmpty) {
+        throw const ConcurrentUpdateException();
+      }
+      // Drop the cached row so the next fetch re-reads it. The
+      // server-side .update() doesn't return the new row (just the
+      // id), so we can't write the updated values into the cache
+      // without an extra round-trip — invalidate-on-write is the
+      // right trade-off here.
+      await _deleteTransactionCacheRow(id);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Phase 3c: drop the cache + enqueue the UPDATE. H5's
+      // expectedUpdatedAt envelope rides along so a cross-device
+      // race doesn't silently overwrite the other side.
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _deleteTransactionCacheRow(id),
+        queueOp: QueuedUpdate(
+          table: 'transactions',
+          rowId: id,
+          payload: patch,
+          expectedUpdatedAt: expectedUpdatedAt,
+        ),
       );
     }
-    final affected = await builder.select('id') as List;
-    if (expectedUpdatedAt != null && affected.isEmpty) {
-      throw const ConcurrentUpdateException();
-    }
-    // Drop the cached row so the next fetch re-reads it. The
-    // server-side .update() doesn't return the new row (just the
-    // id), so we can't write the updated values into the cache
-    // without an extra round-trip — invalidate-on-write is the
-    // right trade-off here.
-    await _deleteTransactionCacheRow(id);
   }
 
   /// Hard-deletes a transaction row.
   Future<void> deleteTransaction(String id) async {
-    await supabase.from('transactions').delete().eq('id', id);
-    await _deleteTransactionCacheRow(id);
+    try {
+      await supabase.from('transactions').delete().eq('id', id);
+      await _deleteTransactionCacheRow(id);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Phase 3c: same delete on the cache side so the UI
+      // immediately reflects the removal; queue the server
+      // DELETE for replay.
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _deleteTransactionCacheRow(id),
+        queueOp: QueuedDelete(table: 'transactions', rowId: id),
+      );
+    }
   }
 
   /// Assigns [categoryId] to every transaction in [transactionIds] as
