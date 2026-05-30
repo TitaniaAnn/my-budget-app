@@ -105,6 +105,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign Out'**
   String get settingsSignOut;
+
+  /// Section header for the locale picker on the Settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get settingsSectionRegion;
+
+  /// Title for the language-and-region picker tile on the Settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Language & region'**
+  String get settingsLocaleTileTitle;
+
+  /// Title for the locale-selection dialog opened from the Settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Language & region'**
+  String get settingsLocaleDialogTitle;
 }
 
 class _AppLocalizationsDelegate

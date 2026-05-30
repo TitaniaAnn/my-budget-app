@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/providers/user_locale_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/sync/last_synced_provider.dart';
 import '../../../core/sync/sync_coordinator.dart';
@@ -114,6 +115,10 @@ class SettingsScreen extends ConsumerWidget {
           // ── Appearance ─────────────────────────────────────────────────
           _SectionHeader('Appearance'),
           _ThemeTile(current: themeMode),
+
+          // ── Region (Audit 2026-05-26 I2) ───────────────────────────────
+          _SectionHeader(AppLocalizations.of(context).settingsSectionRegion),
+          const _LocaleTile(),
 
           // ── Categorisations ────────────────────────────────────────────
           _SectionHeader('Categorisations'),
@@ -824,6 +829,61 @@ class _ThemeTile extends ConsumerWidget {
     ThemeMode.light => Icons.light_mode,
     ThemeMode.dark => Icons.dark_mode,
   };
+}
+
+/// Settings → Region tile (Audit 2026-05-26 I2). Picks the user
+/// locale that drives MaterialApp.locale + every formatCurrency /
+/// DateFormat site that reads ref.watch(userLocaleProvider).
+///
+/// v1 ships en-only AppLocalizations so the picker is limited to
+/// en_US / en_GB / en_CA — same language, different
+/// number/date conventions. Adding a new language entails adding
+/// the .arb file AND widening [supportedLocales] in
+/// user_locale_provider.dart.
+class _LocaleTile extends ConsumerWidget {
+  const _LocaleTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.watch(userLocaleProvider);
+    final currentLabel = supportedLocales
+        .firstWhere(
+          (l) => l.tag == current,
+          orElse: () => supportedLocales.first,
+        )
+        .label;
+    return ListTile(
+      leading: const Icon(Icons.language_outlined),
+      title: Text(l10n.settingsLocaleTileTitle),
+      subtitle: Text(currentLabel),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () async {
+        final picked = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) {
+            return RadioGroup<String>(
+              groupValue: current,
+              onChanged: (value) => Navigator.of(dialogContext).pop(value),
+              child: SimpleDialog(
+                title: Text(l10n.settingsLocaleDialogTitle),
+                children: [
+                  for (final option in supportedLocales)
+                    RadioListTile<String>(
+                      title: Text(option.label),
+                      value: option.tag,
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+        if (picked != null && picked != current) {
+          await ref.read(userLocaleProvider.notifier).set(picked);
+        }
+      },
+    );
+  }
 }
 
 /// Settings → Sync section (Phase 5c). Shows the "last synced"

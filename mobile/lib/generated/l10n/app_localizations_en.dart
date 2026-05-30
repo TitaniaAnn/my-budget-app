@@ -13,4 +13,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSignOut => 'Sign Out';
+
+  @override
+  String get settingsSectionRegion => 'Region';
+
+  @override
+  String get settingsLocaleTileTitle => 'Language & region';
+
+  @override
+  String get settingsLocaleDialogTitle => 'Language & region';
 }

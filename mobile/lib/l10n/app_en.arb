@@ -8,5 +8,20 @@
   "settingsSignOut": "Sign Out",
   "@settingsSignOut": {
     "description": "Label for the sign-out tile on the Settings screen."
+  },
+
+  "settingsSectionRegion": "Region",
+  "@settingsSectionRegion": {
+    "description": "Section header for the locale picker on the Settings screen."
+  },
+
+  "settingsLocaleTileTitle": "Language & region",
+  "@settingsLocaleTileTitle": {
+    "description": "Title for the language-and-region picker tile on the Settings screen."
+  },
+
+  "settingsLocaleDialogTitle": "Language & region",
+  "@settingsLocaleDialogTitle": {
+    "description": "Title for the locale-selection dialog opened from the Settings screen."
   }
 }

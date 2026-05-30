@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/connectivity/connectivity_provider.dart';
 import 'core/providers/ledger_invalidation.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/providers/user_locale_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/pending_writes_queue.dart';
 import 'core/sync/sign_out_cache_clear.dart';
@@ -177,6 +178,13 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeNotifierProvider);
+    // Audit 2026-05-26 I2: locale comes from userLocaleProvider so
+    // the Settings picker controls MaterialApp.locale + every site
+    // that reads ref.watch(userLocaleProvider) for formatting. Null
+    // fallback hands routing back to the system locale, which the
+    // localizations delegates resolve via supportedLocales.
+    final localeTag = ref.watch(userLocaleProvider);
+    final appLocale = parseLocaleTag(localeTag);
 
     // Audit L1 Phase 1: when the device transitions from offline
     // back to online, immediately re-fetch the ledger so the
@@ -246,6 +254,7 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
       // a new locale = adding `lib/l10n/app_<locale>.arb` and
       // re-running `flutter gen-l10n` — no other code change
       // beyond strings.
+      locale: appLocale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     );
