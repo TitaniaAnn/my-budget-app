@@ -1,5 +1,8 @@
 // Settings screen — profile, household, appearance, and account actions.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/household_provider.dart';
@@ -241,6 +244,18 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _changePassword(context, ref, user?.email ?? ''),
           ),
           const Divider(),
+          // Audit 2026-05-26 M3: GDPR Right to Access. Migration
+          // 067's export_my_data RPC returns one JSON blob with
+          // every row the user can see across their household(s).
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Export my data'),
+            subtitle: const Text(
+              'Download a JSON copy of everything in your household',
+            ),
+            onTap: () => _exportMyData(context),
+          ),
+          const Divider(),
           ListTile(
             leading: Icon(Icons.logout, color: context.cs.error),
             title: Text('Sign Out', style: TextStyle(color: context.cs.error)),
@@ -250,17 +265,19 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
           const Divider(),
+          // Audit 2026-05-26 M3 supersedes the audit_2026_05_25 C3
+          // honest-but-empty placeholder. The real cascade-delete
+          // edge function (delete-my-account) plus migration 067's
+          // delete_my_household RPC together remove the household
+          // (cascades wire the rest) AND the auth.users row.
           ListTile(
-            leading: Icon(Icons.logout_outlined, color: context.cs.error),
+            leading: Icon(Icons.delete_forever_outlined, color: context.cs.error),
             title: Text(
-              // Honest label: this flow signs the user out and asks
-              // them to follow up out-of-band for actual deletion.
-              // Audit C3: the prior "Delete Account" wording was a
-              // GDPR/CCPA exposure because the data was NOT being
-              // deleted. Replace with a real cascade-delete RPC when
-              // implementing the L-effort follow-up.
-              'Sign Out & Request Deletion',
+              'Delete my account',
               style: TextStyle(color: context.cs.error),
+            ),
+            subtitle: const Text(
+              'Permanently delete your household + every record',
             ),
             onTap: () => _confirmDeleteAccount(context, ref),
           ),
@@ -560,43 +577,118 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  /// Audit 2026-05-26 M3 — GDPR Right to Access (Art. 15).
+  /// Calls the `export_my_data` RPC, encodes the JSONB return
+  /// as a pretty-printed string, opens a copy-friendly dialog
+  /// so the user can paste the export wherever they want it.
+  Future<void> _exportMyData(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final data = await supabase.rpc<dynamic>('export_my_data');
+      if (!context.mounted) return;
+      final pretty = const JsonEncoder.withIndent('  ').convert(data);
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Your data'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                pretty,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: pretty));
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Copied to clipboard')),
+                );
+              },
+              child: const Text('Copy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
+  }
+
   Future<void> _confirmDeleteAccount(
     BuildContext context,
     WidgetRef ref,
   ) async {
-    // Audit C3: the prior dialog claimed "This permanently deletes
-    // your account and all household data" while the body just
-    // called signOut(). That's a GDPR/CCPA exposure for any EU/CA
-    // user — the data was NOT being deleted. Until the real
-    // cascade-delete Edge Function ships, the dialog must be
-    // honest about what actually happens.
+    // Audit 2026-05-26 M3 — GDPR Right to Erasure (Art. 17).
+    // Supersedes the audit_2026_05_25 C3 honest-but-empty
+    // placeholder. The delete-my-account edge function calls
+    // migration 067's delete_my_household RPC (cascades the
+    // entire data graph) AND auth.admin.deleteUser to remove
+    // the auth.users row itself.
+    //
+    // Caller MUST be the household owner; the RPC raises 42501
+    // otherwise and the edge function surfaces 403. Members
+    // who aren't owners need to leave the household separately.
+    final householdId = await ref.read(householdIdProvider.future);
+    if (householdId == null || !context.mounted) return;
+
     final confirmed = await confirmDestructive(
       context,
-      title: 'Sign out and request deletion?',
+      title: 'Delete your account?',
       message:
-          "This app can't delete accounts automatically yet — "
-          'tapping confirm will sign you out. Your data still lives '
-          'in the backend afterwards. To fully remove it, the '
-          'household owner needs to delete the records directly '
-          '(or contact the project maintainer to request deletion).',
+          'This permanently deletes:\n\n'
+          ' • your household and every account, transaction,\n'
+          '   receipt, budget, holding, scenario, and tag\n'
+          ' • every linked bank (Plaid items) on this household\n'
+          " • your sign-in credentials\n\n"
+          "Members of the household who aren't you are removed\n"
+          "from this household but their auth accounts stay.\n\n"
+          "This cannot be undone.",
     );
-    if (confirmed) {
-      // Supabase doesn't expose a delete-user endpoint from the
-      // client SDK. The truthful action here is sign-out, paired
-      // with a snackbar that does NOT claim deletion happened.
-      await supabase.auth.signOut();
-      if (context.mounted) {
+    if (!confirmed || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final resp = await supabase.functions.invoke(
+        'delete-my-account',
+        body: {'householdId': householdId},
+      );
+      if (resp.data is Map &&
+          (resp.data as Map)['auth_user_deleted'] == true) {
+        // Both halves succeeded. Sign out locally; auth.admin
+        // already invalidated the session server-side.
+        await supabase.auth.signOut();
+        if (!context.mounted) return;
         context.go('/login');
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
-            content: Text(
-              'Signed out. Your data still exists in the backend — '
-              'contact the project maintainer to delete it.',
-            ),
-            duration: Duration(seconds: 6),
+            content: Text('Account deleted.'),
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Unexpected response: ${resp.data}'),
           ),
         );
       }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Deletion failed: $e')),
+      );
     }
   }
 }
