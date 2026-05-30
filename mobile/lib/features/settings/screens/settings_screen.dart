@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/providers/household_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
@@ -258,7 +259,14 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           ListTile(
             leading: Icon(Icons.logout, color: context.cs.error),
-            title: Text('Sign Out', style: TextStyle(color: context.cs.error)),
+            // Audit 2026-05-26 I1: canonical proof-of-concept
+            // migration to AppLocalizations. Adding a new locale =
+            // adding `lib/l10n/app_<locale>.arb`, regenerating, no
+            // code touch beyond strings here.
+            title: Text(
+              AppLocalizations.of(context).settingsSignOut,
+              style: TextStyle(color: context.cs.error),
+            ),
             onTap: () async {
               await supabase.auth.signOut();
               if (context.mounted) context.go('/login');

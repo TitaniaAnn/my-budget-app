@@ -1,0 +1,12 @@
+{
+  "@@locale": "en",
+  "appTitle": "MyBudget",
+  "@appTitle": {
+    "description": "The application title shown in the OS app switcher."
+  },
+
+  "settingsSignOut": "Sign Out",
+  "@settingsSignOut": {
+    "description": "Label for the sign-out tile on the Settings screen."
+  }
+}

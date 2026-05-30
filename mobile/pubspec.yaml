@@ -10,6 +10,17 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Audit 2026-05-26 I1: localization infrastructure. The
+  # delegate generates lib/l10n/app_localizations.dart from
+  # the .arb files via `flutter gen-l10n` (also fires on
+  # `flutter run` when l10n.yaml is present). Even if no
+  # locale beyond en_US ships in v1, threading
+  # `AppLocalizations.of(context)` everywhere now keeps a
+  # future translator from having to refactor 178 inline
+  # `Text('...')` calls.
+  flutter_localizations:
+    sdk: flutter
+
   # Supabase
   supabase_flutter: ^2.8.4
 
@@ -99,6 +110,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Audit 2026-05-26 I1: generate AppLocalizations from
+  # lib/l10n/*.arb on every `flutter run` / `flutter build`.
+  # The companion l10n.yaml configures the template arb,
+  # output class name, and output file location.
+  generate: true
   assets:
     - assets/images/
     # ML category model — produced by tools/categorizer/train.py.

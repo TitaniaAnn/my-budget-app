@@ -1,0 +1,20 @@
+# Audit 2026-05-26 I1: flutter gen-l10n configuration.
+#
+# Source: lib/l10n/app_*.arb files (one per locale).
+# Output: lib/generated/l10n/app_localizations*.dart — committed
+# alongside the rest of the generated code (.g.dart / .freezed.dart)
+# so CI doesn't need to run gen-l10n. Re-run by hand after
+# adding strings:
+#
+#   flutter gen-l10n
+#
+# The generated AppLocalizations class is hooked into the
+# router-level MaterialApp via localizationsDelegates +
+# supportedLocales in lib/main.dart.
+
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+output-dir: lib/generated/l10n
+nullable-getter: false

@@ -12,6 +12,7 @@ import 'core/router/app_router.dart';
 import 'core/sync/pending_writes_queue.dart';
 import 'core/sync/sign_out_cache_clear.dart';
 import 'core/sync/storage_upload_queue.dart';
+import 'generated/l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notifications/services/notification_service.dart';
 
@@ -239,6 +240,14 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
       themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      // Audit 2026-05-26 I1: wire AppLocalizations + the
+      // Flutter framework's own delegates (Material, Widgets,
+      // Cupertino). supportedLocales is en-only for v1; adding
+      // a new locale = adding `lib/l10n/app_<locale>.arb` and
+      // re-running `flutter gen-l10n` — no other code change
+      // beyond strings.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }
