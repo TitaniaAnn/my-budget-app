@@ -18,11 +18,23 @@
 // touched transaction-side assignments (next fetchAllAssignments
 // reconciles). tagUsageCounts and the receipt-line-item bulk fetch
 // stay network-only — neither is on the hot offline path.
+//
+// Audit L1 Phase 3c: createTag / updateTag / deleteTag flow through
+// the pending_writes queue on transient failure. The two
+// replace-assignments paths and the addTagToMany / removeTagFromMany
+// bulk paths stay direct-network: their "replace set" semantics
+// don't map cleanly onto QueuedInsert/Update/Delete's per-row shape,
+// and the assignment tables have no `updated_at` column for H5
+// optimistic-lock anyway. Documented gap.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/atomic_write.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/transaction_tag.dart';
 
 part 'transaction_tags_repository.g.dart';
@@ -31,12 +43,19 @@ part 'transaction_tags_repository.g.dart';
 TransactionTagsRepository transactionTagsRepository(
   TransactionTagsRepositoryRef ref,
 ) {
-  return TransactionTagsRepository(db: ref.watch(appDatabaseProvider));
+  return TransactionTagsRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class TransactionTagsRepository {
-  TransactionTagsRepository({AppDatabase? db}) : _db = db;
+  TransactionTagsRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
   /// Returns every tag in [householdId], alphabetically by name. The
   /// dictionary is small (dozens of rows at most) so we don't bother
   /// paginating.
@@ -71,18 +90,44 @@ class TransactionTagsRepository {
     required String name,
     String? color,
   }) async {
-    final data = await supabase
-        .from('transaction_tags')
-        .insert({
-          'household_id': householdId,
-          'name': name.trim(),
-          'color': color,
-        })
-        .select()
-        .single();
-    final tag = TransactionTag.fromJson(data);
-    await _writeTagCacheRow(tag);
-    return tag;
+    final clientId = _uuid.v4();
+    final trimmedName = name.trim();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'name': trimmedName,
+      'color': color,
+    };
+    try {
+      final data = await supabase
+          .from('transaction_tags')
+          .insert(payload)
+          .select()
+          .single();
+      final tag = TransactionTag.fromJson(data);
+      await _writeTagCacheRow(tag);
+      return tag;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final optimistic = TransactionTag(
+        id: clientId,
+        householdId: householdId,
+        name: trimmedName,
+        color: color,
+        createdAt: DateTime.now().toUtc(),
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeTagCacheRow(optimistic),
+        queueOp: QueuedInsert(
+          table: 'transaction_tags',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Returns assignment counts per tag, keyed by tag_id. Each value
@@ -142,27 +187,61 @@ class TransactionTagsRepository {
     if (name != null) patch['name'] = name.trim();
     if (color != null) patch['color'] = color;
 
-    final data = await supabase
-        .from('transaction_tags')
-        .update(patch)
-        .eq('id', tagId)
-        .select()
-        .single();
-    final tag = TransactionTag.fromJson(data);
-    await _writeTagCacheRow(tag);
-    return tag;
+    try {
+      final data = await supabase
+          .from('transaction_tags')
+          .update(patch)
+          .eq('id', tagId)
+          .select()
+          .single();
+      final tag = TransactionTag.fromJson(data);
+      await _writeTagCacheRow(tag);
+      return tag;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final existing = await _loadTagCacheRowById(tagId);
+      if (existing == null) rethrow;
+      final patched = existing.copyWith(
+        name: name?.trim() ?? existing.name,
+        color: color ?? existing.color,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeTagCacheRow(patched),
+        queueOp: QueuedUpdate(
+          table: 'transaction_tags',
+          rowId: tagId,
+          payload: patch,
+        ),
+      );
+      return patched;
+    }
   }
 
   /// Deletes a tag. The schema's `ON DELETE CASCADE` on both
   /// assignment tables means we don't have to clean up assignments
   /// manually — they vanish with the tag row.
   Future<void> deleteTag(String tagId) async {
-    await supabase.from('transaction_tags').delete().eq('id', tagId);
-    await _deleteTagCacheRow(tagId);
-    // Server's ON DELETE CASCADE removes assignments too; mirror
-    // by clearing every cached assignment for this tag. Done as a
-    // separate cache write because the cache has no FK cascade.
-    await _deleteAssignmentsForTag(tagId);
+    try {
+      await supabase.from('transaction_tags').delete().eq('id', tagId);
+      await _deleteTagCacheRow(tagId);
+      // Server's ON DELETE CASCADE removes assignments too; mirror
+      // by clearing every cached assignment for this tag. Done as a
+      // separate cache write because the cache has no FK cascade.
+      await _deleteAssignmentsForTag(tagId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () async {
+          await _deleteTagCacheRow(tagId);
+          await _deleteAssignmentsForTag(tagId);
+        },
+        queueOp: QueuedDelete(table: 'transaction_tags', rowId: tagId),
+      );
+    }
   }
 
   /// Returns every (transaction_id, tag_id) pair the caller can see,
@@ -470,6 +549,23 @@ class TransactionTagsRepository {
         await db.deleteTransactionTagAssignmentsByTransactionIds(txIds);
       }
     } catch (_) {/**/}
+  }
+
+  /// Phase 3c: read-by-id for the optimistic-update path. Scans
+  /// the per-install cache (small — tag dictionaries are dozens of
+  /// rows at most).
+  Future<TransactionTag?> _loadTagCacheRowById(String id) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.select(db.transactionTagsCache).get();
+      for (final r in rows) {
+        if (r.id == id) return _tagFromCacheRow(r);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<TransactionTag>?> _loadTagsFromCache(String householdId) async {

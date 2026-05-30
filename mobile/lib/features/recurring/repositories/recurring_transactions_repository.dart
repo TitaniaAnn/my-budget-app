@@ -10,17 +10,22 @@
 // household scoping. No RPC is needed here yet — every operation
 // is a single-row CRUD.
 //
-// Audit L1 Phase 2d: cache-through on fetchAll. Writes update the
-// cache after the server returns the row. runScheduler is an RPC
-// that materialises transactions server-side; the offline behavior
-// is "schedule is deferred until online" — Phase 4 hard case.
+// Audit L1 Phase 2d: cache-through on fetchAll. Phase 3c: writes
+// go through the queue on transient failure. runScheduler is an
+// RPC that materialises transactions server-side; the offline
+// behavior is "schedule is deferred until online" — Phase 4
+// hard case.
 
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/atomic_write.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/recurring_transaction.dart';
 
 part 'recurring_transactions_repository.g.dart';
@@ -29,12 +34,21 @@ part 'recurring_transactions_repository.g.dart';
 RecurringTransactionsRepository recurringTransactionsRepository(
   RecurringTransactionsRepositoryRef ref,
 ) {
-  return RecurringTransactionsRepository(db: ref.watch(appDatabaseProvider));
+  return RecurringTransactionsRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class RecurringTransactionsRepository {
-  RecurringTransactionsRepository({AppDatabase? db}) : _db = db;
+  RecurringTransactionsRepository({
+    AppDatabase? db,
+    PendingWritesQueue? queue,
+  }) : _db = db,
+       _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
 
   /// All recurring rules for a household, ordered by next occurrence
   /// ascending — what's due soonest comes first. Includes inactive
@@ -73,27 +87,61 @@ class RecurringTransactionsRepository {
     String? merchant,
     String? categoryId,
   }) async {
-    final data = await supabase
-        .from('recurring_transactions')
-        .insert({
-          'household_id': householdId,
-          'account_id': accountId,
-          'amount_cents': amountCents,
-          'currency': 'USD',
-          'description': description,
-          'merchant': merchant,
-          'category_id': categoryId,
-          'cadence': cadence.dbValue,
-          'next_occurrence_date': nextOccurrenceDate
-              .toIso8601String()
-              .substring(0, 10),
-          'created_by': createdBy,
-        })
-        .select()
-        .single();
-    final rule = RecurringTransaction.fromJson(data);
-    await _writeRecurringCacheRow(rule);
-    return rule;
+    final clientId = _uuid.v4();
+    final dateStr = nextOccurrenceDate.toIso8601String().substring(0, 10);
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'account_id': accountId,
+      'amount_cents': amountCents,
+      'currency': 'USD',
+      'description': description,
+      'merchant': merchant,
+      'category_id': categoryId,
+      'cadence': cadence.dbValue,
+      'next_occurrence_date': dateStr,
+      'created_by': createdBy,
+    };
+    try {
+      final data = await supabase
+          .from('recurring_transactions')
+          .insert(payload)
+          .select()
+          .single();
+      final rule = RecurringTransaction.fromJson(data);
+      await _writeRecurringCacheRow(rule);
+      return rule;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final now = DateTime.now().toUtc();
+      final optimistic = RecurringTransaction(
+        id: clientId,
+        householdId: householdId,
+        accountId: accountId,
+        amountCents: amountCents,
+        currency: 'USD',
+        description: description,
+        merchant: merchant,
+        categoryId: categoryId,
+        cadence: cadence,
+        nextOccurrenceDate: nextOccurrenceDate,
+        isActive: true,
+        createdBy: createdBy,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeRecurringCacheRow(optimistic),
+        queueOp: QueuedInsert(
+          table: 'recurring_transactions',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Updates whichever fields the caller passed. Skipped-until-date
@@ -112,54 +160,119 @@ class RecurringTransactionsRepository {
     DateTime? skippedUntilDate,
     bool? isActive,
   }) async {
-    final data = await supabase
-        .from('recurring_transactions')
-        .update({
-          'amount_cents': ?amountCents,
-          'description': ?description,
-          'merchant': ?merchant,
-          'category_id': ?categoryId,
-          'cadence': ?cadence?.dbValue,
-          'next_occurrence_date': ?nextOccurrenceDate
-              ?.toIso8601String()
-              .substring(0, 10),
-          'skipped_until_date': ?skippedUntilDate
-              ?.toIso8601String()
-              .substring(0, 10),
-          'is_active': ?isActive,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-    final rule = RecurringTransaction.fromJson(data);
-    await _writeRecurringCacheRow(rule);
-    return rule;
+    final patch = <String, dynamic>{
+      'amount_cents': ?amountCents,
+      'description': ?description,
+      'merchant': ?merchant,
+      'category_id': ?categoryId,
+      'cadence': ?cadence?.dbValue,
+      'next_occurrence_date': ?nextOccurrenceDate
+          ?.toIso8601String()
+          .substring(0, 10),
+      'skipped_until_date': ?skippedUntilDate
+          ?.toIso8601String()
+          .substring(0, 10),
+      'is_active': ?isActive,
+    };
+    try {
+      final data = await supabase
+          .from('recurring_transactions')
+          .update(patch)
+          .eq('id', id)
+          .select()
+          .single();
+      final rule = RecurringTransaction.fromJson(data);
+      await _writeRecurringCacheRow(rule);
+      return rule;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Phase 3c: invalidate the cached row + enqueue. We don't
+      // synthesise an optimistic RecurringTransaction because
+      // the caller's response shape (the returned rule) is
+      // already expected to be re-fetched after the next
+      // fetchAll. Throw the original transient error so the UI
+      // surfaces it; the queue still carries the UPDATE.
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () async {
+          final db = _db;
+          if (db == null) return;
+          try {
+            await db.deleteRecurring(id);
+          } catch (_) {/**/}
+        },
+        queueOp: QueuedUpdate(
+          table: 'recurring_transactions',
+          rowId: id,
+          payload: patch,
+        ),
+      );
+      rethrow;
+    }
   }
 
   /// Explicit clear for [skippedUntilDate] — see [update] for why
   /// passing null in the general update path doesn't do this.
   Future<void> clearSkippedUntil(String id) async {
-    await supabase
-        .from('recurring_transactions')
-        .update({'skipped_until_date': null})
-        .eq('id', id);
-    // The .update doesn't return the row; invalidate the cache
-    // row so the next fetchAll reads the cleared state.
-    final db = _db;
-    if (db != null) {
-      try {
-        await db.deleteRecurring(id);
-      } catch (_) {/**/}
+    try {
+      await supabase
+          .from('recurring_transactions')
+          .update({'skipped_until_date': null})
+          .eq('id', id);
+      final db = _db;
+      if (db != null) {
+        try {
+          await db.deleteRecurring(id);
+        } catch (_) {/**/}
+      }
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () async {
+          final db = _db;
+          if (db == null) return;
+          try {
+            await db.deleteRecurring(id);
+          } catch (_) {/**/}
+        },
+        queueOp: QueuedUpdate(
+          table: 'recurring_transactions',
+          rowId: id,
+          payload: const {'skipped_until_date': null},
+        ),
+      );
     }
   }
 
   Future<void> delete(String id) async {
-    await supabase.from('recurring_transactions').delete().eq('id', id);
-    final db = _db;
-    if (db != null) {
-      try {
-        await db.deleteRecurring(id);
-      } catch (_) {/**/}
+    try {
+      await supabase.from('recurring_transactions').delete().eq('id', id);
+      final db = _db;
+      if (db != null) {
+        try {
+          await db.deleteRecurring(id);
+        } catch (_) {/**/}
+      }
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () async {
+          final db = _db;
+          if (db == null) return;
+          try {
+            await db.deleteRecurring(id);
+          } catch (_) {/**/}
+        },
+        queueOp: QueuedDelete(
+          table: 'recurring_transactions',
+          rowId: id,
+        ),
+      );
     }
   }
 

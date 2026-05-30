@@ -5,25 +5,37 @@
 // they need the wider rollup for the dashboard's allocation donut.
 //
 // Audit L1 Phase 2d: cache-through on the read paths
-// (fetchForAccount, fetchForHousehold). Writes update the cache
-// after the server returns the row.
+// (fetchForAccount, fetchForHousehold). Audit L1 Phase 3c:
+// writes go through the queue on transient failure via the
+// shared atomicCacheAndEnqueue helper.
 import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/atomic_write.dart';
+import '../../../core/sync/pending_writes_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/holding.dart';
 
 part 'holdings_repository.g.dart';
 
 @riverpod
 HoldingsRepository holdingsRepository(HoldingsRepositoryRef ref) {
-  return HoldingsRepository(db: ref.watch(appDatabaseProvider));
+  return HoldingsRepository(
+    db: ref.watch(appDatabaseProvider),
+    queue: ref.watch(pendingWritesQueueProvider),
+  );
 }
 
 class HoldingsRepository {
-  HoldingsRepository({AppDatabase? db}) : _db = db;
+  HoldingsRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
+  final PendingWritesQueue? _queue;
+  final _uuid = const Uuid();
 
   /// Every holding inside [accountId], symbol-sorted (case-
   /// insensitive A→Z). Powers the per-account holdings list.
@@ -92,24 +104,58 @@ class HoldingsRepository {
     AssetClass? assetClass,
     DateTime? lastPricedAt,
   }) async {
-    final data = await supabase
-        .from('holdings')
-        .insert({
-          'household_id': householdId,
-          'account_id': accountId,
-          'symbol': symbol.trim(),
-          'description': description,
-          'quantity': quantity,
-          'cost_basis': costBasis,
-          'current_value': currentValue,
-          'asset_class': assetClass?.dbValue,
-          'last_priced_at': lastPricedAt?.toUtc().toIso8601String(),
-        })
-        .select()
-        .single();
-    final holding = Holding.fromJson(data);
-    await _writeHoldingsCache([holding]);
-    return holding;
+    final clientId = _uuid.v4();
+    final trimmedSymbol = symbol.trim();
+    final payload = <String, dynamic>{
+      'id': clientId,
+      'household_id': householdId,
+      'account_id': accountId,
+      'symbol': trimmedSymbol,
+      'description': description,
+      'quantity': quantity,
+      'cost_basis': costBasis,
+      'current_value': currentValue,
+      'asset_class': assetClass?.dbValue,
+      'last_priced_at': lastPricedAt?.toUtc().toIso8601String(),
+    };
+    try {
+      final data = await supabase
+          .from('holdings')
+          .insert(payload)
+          .select()
+          .single();
+      final holding = Holding.fromJson(data);
+      await _writeHoldingsCache([holding]);
+      return holding;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      final now = DateTime.now().toUtc();
+      final optimistic = Holding(
+        id: clientId,
+        householdId: householdId,
+        accountId: accountId,
+        symbol: trimmedSymbol,
+        description: description,
+        quantity: quantity,
+        costBasis: costBasis,
+        currentValue: currentValue,
+        assetClass: assetClass,
+        lastPricedAt: lastPricedAt,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeHoldingsCache([optimistic]),
+        queueOp: QueuedInsert(
+          table: 'holdings',
+          payload: payload,
+          rowId: clientId,
+        ),
+      );
+      return optimistic;
+    }
   }
 
   /// Updates an existing holding. All fields are mutable — symbol
@@ -140,22 +186,63 @@ class HoldingsRepository {
     }
     if (assetClass != null) patch['asset_class'] = assetClass.dbValue;
 
-    final data = await supabase
-        .from('holdings')
-        .update(patch)
-        .eq('id', holdingId)
-        .select()
-        .single();
-    final holding = Holding.fromJson(data);
-    await _writeHoldingsCache([holding]);
-    return holding;
+    try {
+      final data = await supabase
+          .from('holdings')
+          .update(patch)
+          .eq('id', holdingId)
+          .select()
+          .single();
+      final holding = Holding.fromJson(data);
+      await _writeHoldingsCache([holding]);
+      return holding;
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      // Optimistic patch on the cached row. If the row isn't
+      // cached we can't synthesise a meaningful Holding; rethrow.
+      final existing = await _loadHoldingCacheRowById(holdingId);
+      if (existing == null) rethrow;
+      final patched = existing.copyWith(
+        symbol: symbol?.trim() ?? existing.symbol,
+        description: description ?? existing.description,
+        quantity: quantity ?? existing.quantity,
+        costBasis: costBasis ?? existing.costBasis,
+        currentValue: currentValue ?? existing.currentValue,
+        assetClass: assetClass ?? existing.assetClass,
+        lastPricedAt: currentValue != null
+            ? DateTime.now().toUtc()
+            : existing.lastPricedAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _writeHoldingsCache([patched]),
+        queueOp: QueuedUpdate(
+          table: 'holdings',
+          rowId: holdingId,
+          payload: patch,
+        ),
+      );
+      return patched;
+    }
   }
 
   /// Removes a holding. The trade itself (a sale) lives in the
   /// transactions table; this just clears the position record.
   Future<void> deleteHolding(String holdingId) async {
-    await supabase.from('holdings').delete().eq('id', holdingId);
-    await _deleteHoldingCacheRow(holdingId);
+    try {
+      await supabase.from('holdings').delete().eq('id', holdingId);
+      await _deleteHoldingCacheRow(holdingId);
+    } catch (e) {
+      if (!isTransientWriteError(e)) rethrow;
+      await atomicCacheAndEnqueue(
+        db: _db,
+        queue: _queue,
+        write: () => _deleteHoldingCacheRow(holdingId),
+        queueOp: QueuedDelete(table: 'holdings', rowId: holdingId),
+      );
+    }
   }
 
   // ── Cache helpers ──────────────────────────────────────────
@@ -190,6 +277,22 @@ class HoldingsRepository {
     try {
       await db.deleteHolding(id);
     } catch (_) {/**/}
+  }
+
+  /// Phase 3c: read-by-id for the optimistic-update path. Scans
+  /// the per-install cache (small — typically <50 holdings).
+  Future<Holding?> _loadHoldingCacheRowById(String id) async {
+    final db = _db;
+    if (db == null) return null;
+    try {
+      final rows = await db.select(db.holdingsCache).get();
+      for (final r in rows) {
+        if (r.id == id) return _fromCacheRow(r);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Holding>?> _loadFromCacheForHousehold(String householdId) async {
