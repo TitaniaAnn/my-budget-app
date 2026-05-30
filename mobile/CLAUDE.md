@@ -86,6 +86,33 @@ The app requires a `.env.json` file at the project root (not committed):
 
 Android release signing requires `android/app/key.properties` (not committed). The build script stashes a placeholder version of this file when present so unsigned debug builds still work.
 
+## Test infrastructure
+
+Audit 2026-05-26 T1 / T2 / T3 added three shared surfaces under
+`test/` that newer tests should reach for instead of rebuilding
+the same scaffolding:
+
+- **`test/_factories/factories.dart`** — `aTransaction(...)`,
+  `anAccount(...)`, `aReceipt(...)`, etc. Each factory has
+  deterministic defaults and named-param overrides for what the
+  test actually cares about. Use forward; existing tests can
+  migrate opportunistically.
+- **`test/_goldens/`** — golden-test proof-of-concept covering
+  the currency formatter. Goldens are host-sensitive (font
+  anti-aliasing differs across Linux / macOS / Windows), so
+  the committed PNGs were generated on the dev's host and CI
+  should pin a platform before adding more. Workflow:
+  - generate / refresh PNGs: `flutter test --update-goldens test/_goldens/`
+  - normal check (CI does this on every run): `flutter test test/_goldens/`
+  - the test files live next to the PNGs they snapshot
+- **`test/integration/pending_writes_drain_test.dart`** — the
+  queue's `_replayOne` dispatcher branches (insert / update with
+  H5 precondition / delete / rpc / permanent failure) hit
+  end-to-end against the local Supabase stack. Same harness
+  gate as the other integration tests: only runs when
+  `SUPABASE_TEST_URL` + `SUPABASE_TEST_ANON_KEY` are passed via
+  `--dart-define`.
+
 ## Code generation
 
 After modifying any file with `@freezed`, `@riverpod`, or `@JsonSerializable` annotations, re-run `build_runner` to regenerate the associated `.freezed.dart` / `.g.dart` files. The generated files ARE committed to the repo — CI doesn't regenerate them, so a missed run will surface as a "redirected constructor has incompatible parameters" error or missing-symbol failures rather than a clean regeneration on the next build.
