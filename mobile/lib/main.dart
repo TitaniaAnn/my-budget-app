@@ -11,6 +11,7 @@ import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/pending_writes_queue.dart';
 import 'core/sync/sign_out_cache_clear.dart';
+import 'core/sync/storage_upload_queue.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notifications/services/notification_service.dart';
 
@@ -201,6 +202,13 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
     // invalidation above because draining a queued mutation
     // happens BEFORE the re-fetch that reads its result.
     ref.watch(pendingWritesAutoDrainProvider);
+
+    // Audit L1 Phase 4b: same auto-drain pattern for the storage
+    // upload queue. Receipt image bytes that couldn't reach
+    // Supabase Storage on the original upload sit in
+    // pending_storage_uploads; the false→true connectivity edge
+    // fires the drain which uploads them in FIFO order.
+    ref.watch(storageUploadAutoDrainProvider);
 
     // Audit 2026-05-26 C1: subscribe to Supabase auth state and
     // wipe every drift cache row + the pending_writes queue on

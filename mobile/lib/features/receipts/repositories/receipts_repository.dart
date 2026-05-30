@@ -2,12 +2,15 @@
 // Also owns the Supabase Storage upload/signed-URL logic so the rest
 // of the app never references the bucket name directly.
 //
-// Audit L1 Phase 2c: cache-through on the read paths (fetchReceipts,
-// fetchReceipt, fetchLineItems). Storage uploads + Edge Function
-// invokes (uploadReceipt, deleteReceipt, retryOcr) stay network-
-// only — Phase 4 handles offline storage queueing.
+// Audit L1 Phase 2c (read cache-through) + Phase 4b (storage
+// upload queue). uploadReceipt persists image bytes locally and
+// enqueues a pending_storage_uploads row on transient failure;
+// the StorageUploadQueue drains on the next reconnect. Other
+// storage / edge-function paths (deleteReceipt, retryOcr) stay
+// network-only — they have no payload to persist locally.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -15,6 +18,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/app_database_provider.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../../core/sync/storage_upload_queue.dart';
+import '../../../core/sync/transient_error.dart';
 import '../models/receipt.dart';
 import '../models/receipt_line_item.dart';
 
@@ -24,12 +29,18 @@ const _bucket = 'receipts';
 
 @riverpod
 ReceiptsRepository receiptsRepository(ReceiptsRepositoryRef ref) {
-  return ReceiptsRepository(db: ref.watch(appDatabaseProvider));
+  return ReceiptsRepository(
+    db: ref.watch(appDatabaseProvider),
+    storageQueue: ref.watch(storageUploadQueueProvider),
+  );
 }
 
 class ReceiptsRepository {
-  ReceiptsRepository({AppDatabase? db}) : _db = db;
+  ReceiptsRepository({AppDatabase? db, StorageUploadQueue? storageQueue})
+    : _db = db,
+      _storageQueue = storageQueue;
   final AppDatabase? _db;
+  final StorageUploadQueue? _storageQueue;
   final _uuid = const Uuid();
 
   /// Fetches all receipts for a household, newest first.
@@ -126,64 +137,113 @@ class ReceiptsRepository {
   }) async {
     // Stable unique base name; thumbnail uses the same uuid + suffix
     // so the pair is recognisable in Storage and easy to clean up.
-    final uuid = _uuid.v4();
-    final storagePath = '$householdId/$uuid.jpg';
-    final thumbnailPath = '$householdId/${uuid}_thumb.jpg';
+    final receiptId = _uuid.v4();
+    final storagePath = '$householdId/$receiptId.jpg';
+    final thumbnailPath = '$householdId/${receiptId}_thumb.jpg';
 
-    // Upload full resolution first — if this fails we never even
-    // generate the thumb, no cleanup needed.
-    await supabase.storage.from(_bucket).upload(storagePath, imageFile);
-
-    // Generate + upload the thumbnail. Failures here are NOT fatal:
-    // the receipt still gets stored without a thumbnail; the grid
-    // falls back to the full image (slower, but works). We swallow
-    // the compress error inline rather than failing the whole upload
-    // over a UX-perf optimisation.
-    String? actualThumbnailPath;
+    // Generate the thumbnail bytes up-front (same code as
+    // before). We need them in memory regardless of which path
+    // we take (online upload OR enqueue) — Phase 4b's queue
+    // persists them alongside the full-res image.
+    Uint8List? thumbBytes;
     try {
-      final thumbBytes = await FlutterImageCompress.compressWithFile(
+      final compressed = await FlutterImageCompress.compressWithFile(
         imageFile.absolute.path,
         minWidth: 256,
         minHeight: 256,
         quality: 75,
         format: CompressFormat.jpeg,
       );
-      if (thumbBytes != null && thumbBytes.isNotEmpty) {
-        await supabase.storage
-            .from(_bucket)
-            .uploadBinary(thumbnailPath, thumbBytes);
-        actualThumbnailPath = thumbnailPath;
+      if (compressed != null && compressed.isNotEmpty) {
+        thumbBytes = compressed;
       }
     } catch (_) {
-      // Compress / upload failed — proceed with thumbnail_path NULL.
+      // Compress failed — proceed with thumbnail_path NULL.
     }
 
+    final receiptInsertPayload = <String, dynamic>{
+      'id': receiptId,
+      'household_id': householdId,
+      'uploaded_by': uploadedBy,
+      'storage_path': storagePath,
+      'thumbnail_path': thumbBytes != null ? thumbnailPath : null,
+      'merchant_name': merchantName,
+      'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
+      'total_amount': totalAmountCents,
+      'ocr_status': 'pending',
+    };
+
     try {
-      final data = await supabase
-          .from('receipts')
-          .insert({
-            'household_id': householdId,
-            'uploaded_by': uploadedBy,
-            'storage_path': storagePath,
-            'thumbnail_path': actualThumbnailPath,
-            'merchant_name': merchantName,
-            'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
-            'total_amount': totalAmountCents,
-            'ocr_status': 'pending',
-          })
-          .select()
-          .single();
-      final receipt = Receipt.fromJson(data);
-      await _writeReceiptCacheRow(receipt);
-      return receipt;
-    } catch (_) {
-      // Compensate both objects. Swallow cleanup failures — the
-      // original insert error is what the caller needs to see.
-      final pathsToRemove = <String>[storagePath, ?actualThumbnailPath];
+      // Online path — same shape as before.
+      await supabase.storage.from(_bucket).upload(storagePath, imageFile);
+      if (thumbBytes != null) {
+        try {
+          await supabase.storage
+              .from(_bucket)
+              .uploadBinary(thumbnailPath, thumbBytes);
+        } catch (_) {
+          // Thumbnail upload is best-effort; proceed without it.
+          receiptInsertPayload['thumbnail_path'] = null;
+        }
+      }
       try {
-        await supabase.storage.from(_bucket).remove(pathsToRemove);
-      } catch (_) {}
-      rethrow;
+        final data = await supabase
+            .from('receipts')
+            .insert(receiptInsertPayload)
+            .select()
+            .single();
+        final receipt = Receipt.fromJson(data);
+        await _writeReceiptCacheRow(receipt);
+        return receipt;
+      } catch (_) {
+        // INSERT failed AFTER successful uploads — compensate by
+        // removing the storage objects so the bucket doesn't
+        // collect orphans.
+        final pathsToRemove = <String>[storagePath];
+        if (receiptInsertPayload['thumbnail_path'] != null) {
+          pathsToRemove.add(thumbnailPath);
+        }
+        try {
+          await supabase.storage.from(_bucket).remove(pathsToRemove);
+        } catch (_) {}
+        rethrow;
+      }
+    } catch (e) {
+      // Audit L1 Phase 4b: on transient failure, persist the
+      // image bytes locally + enqueue the upload sequence so the
+      // drain can replay on reconnect. Return an optimistic
+      // Receipt pointing at the (eventual) storage path so the
+      // UI can render against the local file via a `file://`
+      // fallback once Phase 5 wires the badge.
+      if (!isTransientWriteError(e)) rethrow;
+      final queue = _storageQueue;
+      if (queue == null) rethrow;
+      final imageBytes = await imageFile.readAsBytes();
+      await queue.enqueue(
+        receiptId: receiptId,
+        imageBytes: imageBytes,
+        thumbnailBytes: thumbBytes,
+        householdId: householdId,
+        targetBucket: _bucket,
+        targetStoragePath: storagePath,
+        targetThumbnailPath: thumbBytes != null ? thumbnailPath : null,
+        receiptMetadata: receiptInsertPayload,
+      );
+      final now = DateTime.now().toUtc();
+      final optimistic = Receipt(
+        id: receiptId,
+        householdId: householdId,
+        uploadedBy: uploadedBy,
+        storagePath: storagePath,
+        thumbnailPath: thumbBytes != null ? thumbnailPath : null,
+        merchantName: merchantName,
+        receiptDate: receiptDate,
+        totalAmount: totalAmountCents,
+        ocrStatus: OcrStatus.pending,
+        uploadedAt: now,
+      );
+      await _writeReceiptCacheRow(optimistic);
+      return optimistic;
     }
   }
 

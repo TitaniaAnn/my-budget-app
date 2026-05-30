@@ -423,6 +423,45 @@ class PendingWrites extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Pending receipt uploads. Audit L1 Phase 4b.
+///
+/// Storage uploads can't ride on `pending_writes` because the
+/// image bytes (typically 500KB-1.5MB) would balloon the
+/// payload_json column. Instead, the bytes are persisted to
+/// `<docs>/pending_uploads/<id>.jpg` and a row here tracks the
+/// metadata + receipt INSERT shape so the drain can play
+/// everything back in order:
+///   1. Read the local file.
+///   2. Upload to Supabase Storage at targetStoragePath.
+///   3. Optionally upload thumbnailLocalPath bytes to
+///      targetThumbnailPath.
+///   4. INSERT into receipts with receiptMetadataJson.
+///   5. Delete the local file(s).
+///   6. Delete this row.
+///
+/// Failures mid-sequence keep the row + attemptCount bumps so
+/// the next drain pass retries. Step 4 is idempotent at the
+/// id level (receiptMetadataJson carries the row id), so a
+/// half-completed prior attempt becomes a no-op via upsert
+/// on conflict.
+@DataClassName('PendingStorageUploadsRow')
+class PendingStorageUploads extends Table {
+  TextColumn get id => text()();
+  TextColumn get localFilePath => text()();
+  TextColumn get thumbnailLocalPath => text().nullable()();
+  TextColumn get targetBucket => text()();
+  TextColumn get targetStoragePath => text()();
+  TextColumn get targetThumbnailPath => text().nullable()();
+  TextColumn get contentType => text().withDefault(const Constant('image/jpeg'))();
+  TextColumn get receiptMetadataJson => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  IntColumn get attemptCount => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     AccountsCache,
@@ -438,6 +477,7 @@ class PendingWrites extends Table {
     TransactionTagAssignmentsCache,
     ReceiptLineItemTagAssignmentsCache,
     PendingWrites,
+    PendingStorageUploads,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -466,7 +506,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -518,6 +558,11 @@ class AppDatabase extends _$AppDatabase {
       // v6 → v7: Phase 3a. The offline write queue.
       if (from < 7) {
         await m.createTable(pendingWrites);
+      }
+      // v7 → v8: Phase 4b. Storage upload queue for receipt
+      // image bytes.
+      if (from < 8) {
+        await m.createTable(pendingStorageUploads);
       }
     },
   );
@@ -1243,6 +1288,51 @@ class AppDatabase extends _$AppDatabase {
   Future<int> pendingWritesCount() {
     return (selectOnly(pendingWrites)..addColumns([pendingWrites.id.count()]))
         .map((row) => row.read<int>(pendingWrites.id.count()) ?? 0)
+        .getSingle();
+  }
+
+  // ── Pending storage uploads surface (Phase 4b) ──────────────
+
+  Future<void> enqueuePendingStorageUpload(
+    PendingStorageUploadsCompanion row,
+  ) {
+    return into(pendingStorageUploads).insert(row);
+  }
+
+  /// FIFO load of every pending storage upload. The drain loop
+  /// reads this once per pass.
+  Future<List<PendingStorageUploadsRow>> loadPendingStorageUploads() {
+    return (select(pendingStorageUploads)
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+  }
+
+  Future<void> deletePendingStorageUpload(String id) {
+    return (delete(pendingStorageUploads)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Raw-SQL atomic increment of attemptCount + error stamp.
+  /// Same shape as markPendingWriteFailed.
+  Future<void> markPendingStorageUploadFailed({
+    required String id,
+    required String error,
+  }) async {
+    await customUpdate(
+      'UPDATE pending_storage_uploads '
+      'SET attempt_count = attempt_count + 1, last_error = ? '
+      'WHERE id = ?',
+      variables: [Variable.withString(error), Variable.withString(id)],
+      updates: {pendingStorageUploads},
+    );
+  }
+
+  /// Count for the Settings sync indicator (Phase 5c-style).
+  Future<int> pendingStorageUploadsCount() {
+    return (selectOnly(pendingStorageUploads)
+          ..addColumns([pendingStorageUploads.id.count()]))
+        .map(
+          (row) => row.read<int>(pendingStorageUploads.id.count()) ?? 0,
+        )
         .getSingle();
   }
 

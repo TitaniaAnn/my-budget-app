@@ -6,7 +6,7 @@ part of 'connectivity_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$isOnlineHash() => r'5f3a8ace048317486a9e5dfd71fdb141ad72c6cf';
+String _$isOnlineHash() => r'b12122e7668a5a7a98dd15ae1e540bb39749f315';
 
 /// Wraps connectivity_plus in a Riverpod state. keepAlive so the
 /// subscription survives provider scope changes — connectivity

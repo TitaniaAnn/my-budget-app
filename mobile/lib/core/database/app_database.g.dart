@@ -8914,6 +8914,726 @@ class PendingWritesCompanion extends UpdateCompanion<PendingWritesRow> {
   }
 }
 
+class $PendingStorageUploadsTable extends PendingStorageUploads
+    with TableInfo<$PendingStorageUploadsTable, PendingStorageUploadsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingStorageUploadsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localFilePathMeta = const VerificationMeta(
+    'localFilePath',
+  );
+  @override
+  late final GeneratedColumn<String> localFilePath = GeneratedColumn<String>(
+    'local_file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thumbnailLocalPathMeta =
+      const VerificationMeta('thumbnailLocalPath');
+  @override
+  late final GeneratedColumn<String> thumbnailLocalPath =
+      GeneratedColumn<String>(
+        'thumbnail_local_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _targetBucketMeta = const VerificationMeta(
+    'targetBucket',
+  );
+  @override
+  late final GeneratedColumn<String> targetBucket = GeneratedColumn<String>(
+    'target_bucket',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetStoragePathMeta = const VerificationMeta(
+    'targetStoragePath',
+  );
+  @override
+  late final GeneratedColumn<String> targetStoragePath =
+      GeneratedColumn<String>(
+        'target_storage_path',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _targetThumbnailPathMeta =
+      const VerificationMeta('targetThumbnailPath');
+  @override
+  late final GeneratedColumn<String> targetThumbnailPath =
+      GeneratedColumn<String>(
+        'target_thumbnail_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _contentTypeMeta = const VerificationMeta(
+    'contentType',
+  );
+  @override
+  late final GeneratedColumn<String> contentType = GeneratedColumn<String>(
+    'content_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('image/jpeg'),
+  );
+  static const VerificationMeta _receiptMetadataJsonMeta =
+      const VerificationMeta('receiptMetadataJson');
+  @override
+  late final GeneratedColumn<String> receiptMetadataJson =
+      GeneratedColumn<String>(
+        'receipt_metadata_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    localFilePath,
+    thumbnailLocalPath,
+    targetBucket,
+    targetStoragePath,
+    targetThumbnailPath,
+    contentType,
+    receiptMetadataJson,
+    createdAt,
+    attemptCount,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_storage_uploads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingStorageUploadsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('local_file_path')) {
+      context.handle(
+        _localFilePathMeta,
+        localFilePath.isAcceptableOrUnknown(
+          data['local_file_path']!,
+          _localFilePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localFilePathMeta);
+    }
+    if (data.containsKey('thumbnail_local_path')) {
+      context.handle(
+        _thumbnailLocalPathMeta,
+        thumbnailLocalPath.isAcceptableOrUnknown(
+          data['thumbnail_local_path']!,
+          _thumbnailLocalPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('target_bucket')) {
+      context.handle(
+        _targetBucketMeta,
+        targetBucket.isAcceptableOrUnknown(
+          data['target_bucket']!,
+          _targetBucketMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetBucketMeta);
+    }
+    if (data.containsKey('target_storage_path')) {
+      context.handle(
+        _targetStoragePathMeta,
+        targetStoragePath.isAcceptableOrUnknown(
+          data['target_storage_path']!,
+          _targetStoragePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetStoragePathMeta);
+    }
+    if (data.containsKey('target_thumbnail_path')) {
+      context.handle(
+        _targetThumbnailPathMeta,
+        targetThumbnailPath.isAcceptableOrUnknown(
+          data['target_thumbnail_path']!,
+          _targetThumbnailPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('content_type')) {
+      context.handle(
+        _contentTypeMeta,
+        contentType.isAcceptableOrUnknown(
+          data['content_type']!,
+          _contentTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_metadata_json')) {
+      context.handle(
+        _receiptMetadataJsonMeta,
+        receiptMetadataJson.isAcceptableOrUnknown(
+          data['receipt_metadata_json']!,
+          _receiptMetadataJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_receiptMetadataJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingStorageUploadsRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingStorageUploadsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      localFilePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_file_path'],
+      )!,
+      thumbnailLocalPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumbnail_local_path'],
+      ),
+      targetBucket: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_bucket'],
+      )!,
+      targetStoragePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_storage_path'],
+      )!,
+      targetThumbnailPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_thumbnail_path'],
+      ),
+      contentType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_type'],
+      )!,
+      receiptMetadataJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_metadata_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $PendingStorageUploadsTable createAlias(String alias) {
+    return $PendingStorageUploadsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingStorageUploadsRow extends DataClass
+    implements Insertable<PendingStorageUploadsRow> {
+  final String id;
+  final String localFilePath;
+  final String? thumbnailLocalPath;
+  final String targetBucket;
+  final String targetStoragePath;
+  final String? targetThumbnailPath;
+  final String contentType;
+  final String receiptMetadataJson;
+  final DateTime createdAt;
+  final int attemptCount;
+  final String? lastError;
+  const PendingStorageUploadsRow({
+    required this.id,
+    required this.localFilePath,
+    this.thumbnailLocalPath,
+    required this.targetBucket,
+    required this.targetStoragePath,
+    this.targetThumbnailPath,
+    required this.contentType,
+    required this.receiptMetadataJson,
+    required this.createdAt,
+    required this.attemptCount,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['local_file_path'] = Variable<String>(localFilePath);
+    if (!nullToAbsent || thumbnailLocalPath != null) {
+      map['thumbnail_local_path'] = Variable<String>(thumbnailLocalPath);
+    }
+    map['target_bucket'] = Variable<String>(targetBucket);
+    map['target_storage_path'] = Variable<String>(targetStoragePath);
+    if (!nullToAbsent || targetThumbnailPath != null) {
+      map['target_thumbnail_path'] = Variable<String>(targetThumbnailPath);
+    }
+    map['content_type'] = Variable<String>(contentType);
+    map['receipt_metadata_json'] = Variable<String>(receiptMetadataJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  PendingStorageUploadsCompanion toCompanion(bool nullToAbsent) {
+    return PendingStorageUploadsCompanion(
+      id: Value(id),
+      localFilePath: Value(localFilePath),
+      thumbnailLocalPath: thumbnailLocalPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailLocalPath),
+      targetBucket: Value(targetBucket),
+      targetStoragePath: Value(targetStoragePath),
+      targetThumbnailPath: targetThumbnailPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetThumbnailPath),
+      contentType: Value(contentType),
+      receiptMetadataJson: Value(receiptMetadataJson),
+      createdAt: Value(createdAt),
+      attemptCount: Value(attemptCount),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory PendingStorageUploadsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingStorageUploadsRow(
+      id: serializer.fromJson<String>(json['id']),
+      localFilePath: serializer.fromJson<String>(json['localFilePath']),
+      thumbnailLocalPath: serializer.fromJson<String?>(
+        json['thumbnailLocalPath'],
+      ),
+      targetBucket: serializer.fromJson<String>(json['targetBucket']),
+      targetStoragePath: serializer.fromJson<String>(json['targetStoragePath']),
+      targetThumbnailPath: serializer.fromJson<String?>(
+        json['targetThumbnailPath'],
+      ),
+      contentType: serializer.fromJson<String>(json['contentType']),
+      receiptMetadataJson: serializer.fromJson<String>(
+        json['receiptMetadataJson'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'localFilePath': serializer.toJson<String>(localFilePath),
+      'thumbnailLocalPath': serializer.toJson<String?>(thumbnailLocalPath),
+      'targetBucket': serializer.toJson<String>(targetBucket),
+      'targetStoragePath': serializer.toJson<String>(targetStoragePath),
+      'targetThumbnailPath': serializer.toJson<String?>(targetThumbnailPath),
+      'contentType': serializer.toJson<String>(contentType),
+      'receiptMetadataJson': serializer.toJson<String>(receiptMetadataJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  PendingStorageUploadsRow copyWith({
+    String? id,
+    String? localFilePath,
+    Value<String?> thumbnailLocalPath = const Value.absent(),
+    String? targetBucket,
+    String? targetStoragePath,
+    Value<String?> targetThumbnailPath = const Value.absent(),
+    String? contentType,
+    String? receiptMetadataJson,
+    DateTime? createdAt,
+    int? attemptCount,
+    Value<String?> lastError = const Value.absent(),
+  }) => PendingStorageUploadsRow(
+    id: id ?? this.id,
+    localFilePath: localFilePath ?? this.localFilePath,
+    thumbnailLocalPath: thumbnailLocalPath.present
+        ? thumbnailLocalPath.value
+        : this.thumbnailLocalPath,
+    targetBucket: targetBucket ?? this.targetBucket,
+    targetStoragePath: targetStoragePath ?? this.targetStoragePath,
+    targetThumbnailPath: targetThumbnailPath.present
+        ? targetThumbnailPath.value
+        : this.targetThumbnailPath,
+    contentType: contentType ?? this.contentType,
+    receiptMetadataJson: receiptMetadataJson ?? this.receiptMetadataJson,
+    createdAt: createdAt ?? this.createdAt,
+    attemptCount: attemptCount ?? this.attemptCount,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  PendingStorageUploadsRow copyWithCompanion(
+    PendingStorageUploadsCompanion data,
+  ) {
+    return PendingStorageUploadsRow(
+      id: data.id.present ? data.id.value : this.id,
+      localFilePath: data.localFilePath.present
+          ? data.localFilePath.value
+          : this.localFilePath,
+      thumbnailLocalPath: data.thumbnailLocalPath.present
+          ? data.thumbnailLocalPath.value
+          : this.thumbnailLocalPath,
+      targetBucket: data.targetBucket.present
+          ? data.targetBucket.value
+          : this.targetBucket,
+      targetStoragePath: data.targetStoragePath.present
+          ? data.targetStoragePath.value
+          : this.targetStoragePath,
+      targetThumbnailPath: data.targetThumbnailPath.present
+          ? data.targetThumbnailPath.value
+          : this.targetThumbnailPath,
+      contentType: data.contentType.present
+          ? data.contentType.value
+          : this.contentType,
+      receiptMetadataJson: data.receiptMetadataJson.present
+          ? data.receiptMetadataJson.value
+          : this.receiptMetadataJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingStorageUploadsRow(')
+          ..write('id: $id, ')
+          ..write('localFilePath: $localFilePath, ')
+          ..write('thumbnailLocalPath: $thumbnailLocalPath, ')
+          ..write('targetBucket: $targetBucket, ')
+          ..write('targetStoragePath: $targetStoragePath, ')
+          ..write('targetThumbnailPath: $targetThumbnailPath, ')
+          ..write('contentType: $contentType, ')
+          ..write('receiptMetadataJson: $receiptMetadataJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    localFilePath,
+    thumbnailLocalPath,
+    targetBucket,
+    targetStoragePath,
+    targetThumbnailPath,
+    contentType,
+    receiptMetadataJson,
+    createdAt,
+    attemptCount,
+    lastError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingStorageUploadsRow &&
+          other.id == this.id &&
+          other.localFilePath == this.localFilePath &&
+          other.thumbnailLocalPath == this.thumbnailLocalPath &&
+          other.targetBucket == this.targetBucket &&
+          other.targetStoragePath == this.targetStoragePath &&
+          other.targetThumbnailPath == this.targetThumbnailPath &&
+          other.contentType == this.contentType &&
+          other.receiptMetadataJson == this.receiptMetadataJson &&
+          other.createdAt == this.createdAt &&
+          other.attemptCount == this.attemptCount &&
+          other.lastError == this.lastError);
+}
+
+class PendingStorageUploadsCompanion
+    extends UpdateCompanion<PendingStorageUploadsRow> {
+  final Value<String> id;
+  final Value<String> localFilePath;
+  final Value<String?> thumbnailLocalPath;
+  final Value<String> targetBucket;
+  final Value<String> targetStoragePath;
+  final Value<String?> targetThumbnailPath;
+  final Value<String> contentType;
+  final Value<String> receiptMetadataJson;
+  final Value<DateTime> createdAt;
+  final Value<int> attemptCount;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const PendingStorageUploadsCompanion({
+    this.id = const Value.absent(),
+    this.localFilePath = const Value.absent(),
+    this.thumbnailLocalPath = const Value.absent(),
+    this.targetBucket = const Value.absent(),
+    this.targetStoragePath = const Value.absent(),
+    this.targetThumbnailPath = const Value.absent(),
+    this.contentType = const Value.absent(),
+    this.receiptMetadataJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingStorageUploadsCompanion.insert({
+    required String id,
+    required String localFilePath,
+    this.thumbnailLocalPath = const Value.absent(),
+    required String targetBucket,
+    required String targetStoragePath,
+    this.targetThumbnailPath = const Value.absent(),
+    this.contentType = const Value.absent(),
+    required String receiptMetadataJson,
+    required DateTime createdAt,
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       localFilePath = Value(localFilePath),
+       targetBucket = Value(targetBucket),
+       targetStoragePath = Value(targetStoragePath),
+       receiptMetadataJson = Value(receiptMetadataJson),
+       createdAt = Value(createdAt);
+  static Insertable<PendingStorageUploadsRow> custom({
+    Expression<String>? id,
+    Expression<String>? localFilePath,
+    Expression<String>? thumbnailLocalPath,
+    Expression<String>? targetBucket,
+    Expression<String>? targetStoragePath,
+    Expression<String>? targetThumbnailPath,
+    Expression<String>? contentType,
+    Expression<String>? receiptMetadataJson,
+    Expression<DateTime>? createdAt,
+    Expression<int>? attemptCount,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (localFilePath != null) 'local_file_path': localFilePath,
+      if (thumbnailLocalPath != null)
+        'thumbnail_local_path': thumbnailLocalPath,
+      if (targetBucket != null) 'target_bucket': targetBucket,
+      if (targetStoragePath != null) 'target_storage_path': targetStoragePath,
+      if (targetThumbnailPath != null)
+        'target_thumbnail_path': targetThumbnailPath,
+      if (contentType != null) 'content_type': contentType,
+      if (receiptMetadataJson != null)
+        'receipt_metadata_json': receiptMetadataJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingStorageUploadsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? localFilePath,
+    Value<String?>? thumbnailLocalPath,
+    Value<String>? targetBucket,
+    Value<String>? targetStoragePath,
+    Value<String?>? targetThumbnailPath,
+    Value<String>? contentType,
+    Value<String>? receiptMetadataJson,
+    Value<DateTime>? createdAt,
+    Value<int>? attemptCount,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return PendingStorageUploadsCompanion(
+      id: id ?? this.id,
+      localFilePath: localFilePath ?? this.localFilePath,
+      thumbnailLocalPath: thumbnailLocalPath ?? this.thumbnailLocalPath,
+      targetBucket: targetBucket ?? this.targetBucket,
+      targetStoragePath: targetStoragePath ?? this.targetStoragePath,
+      targetThumbnailPath: targetThumbnailPath ?? this.targetThumbnailPath,
+      contentType: contentType ?? this.contentType,
+      receiptMetadataJson: receiptMetadataJson ?? this.receiptMetadataJson,
+      createdAt: createdAt ?? this.createdAt,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (localFilePath.present) {
+      map['local_file_path'] = Variable<String>(localFilePath.value);
+    }
+    if (thumbnailLocalPath.present) {
+      map['thumbnail_local_path'] = Variable<String>(thumbnailLocalPath.value);
+    }
+    if (targetBucket.present) {
+      map['target_bucket'] = Variable<String>(targetBucket.value);
+    }
+    if (targetStoragePath.present) {
+      map['target_storage_path'] = Variable<String>(targetStoragePath.value);
+    }
+    if (targetThumbnailPath.present) {
+      map['target_thumbnail_path'] = Variable<String>(
+        targetThumbnailPath.value,
+      );
+    }
+    if (contentType.present) {
+      map['content_type'] = Variable<String>(contentType.value);
+    }
+    if (receiptMetadataJson.present) {
+      map['receipt_metadata_json'] = Variable<String>(
+        receiptMetadataJson.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingStorageUploadsCompanion(')
+          ..write('id: $id, ')
+          ..write('localFilePath: $localFilePath, ')
+          ..write('thumbnailLocalPath: $thumbnailLocalPath, ')
+          ..write('targetBucket: $targetBucket, ')
+          ..write('targetStoragePath: $targetStoragePath, ')
+          ..write('targetThumbnailPath: $targetThumbnailPath, ')
+          ..write('contentType: $contentType, ')
+          ..write('receiptMetadataJson: $receiptMetadataJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8940,6 +9660,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $PendingWritesTable pendingWrites = $PendingWritesTable(this);
+  late final $PendingStorageUploadsTable pendingStorageUploads =
+      $PendingStorageUploadsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8958,6 +9680,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionTagAssignmentsCache,
     receiptLineItemTagAssignmentsCache,
     pendingWrites,
+    pendingStorageUploads,
   ];
 }
 
@@ -13280,6 +14003,355 @@ typedef $$PendingWritesTableProcessedTableManager =
       PendingWritesRow,
       PrefetchHooks Function()
     >;
+typedef $$PendingStorageUploadsTableCreateCompanionBuilder =
+    PendingStorageUploadsCompanion Function({
+      required String id,
+      required String localFilePath,
+      Value<String?> thumbnailLocalPath,
+      required String targetBucket,
+      required String targetStoragePath,
+      Value<String?> targetThumbnailPath,
+      Value<String> contentType,
+      required String receiptMetadataJson,
+      required DateTime createdAt,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+typedef $$PendingStorageUploadsTableUpdateCompanionBuilder =
+    PendingStorageUploadsCompanion Function({
+      Value<String> id,
+      Value<String> localFilePath,
+      Value<String?> thumbnailLocalPath,
+      Value<String> targetBucket,
+      Value<String> targetStoragePath,
+      Value<String?> targetThumbnailPath,
+      Value<String> contentType,
+      Value<String> receiptMetadataJson,
+      Value<DateTime> createdAt,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+
+class $$PendingStorageUploadsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingStorageUploadsTable> {
+  $$PendingStorageUploadsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbnailLocalPath => $composableBuilder(
+    column: $table.thumbnailLocalPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetBucket => $composableBuilder(
+    column: $table.targetBucket,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetStoragePath => $composableBuilder(
+    column: $table.targetStoragePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetThumbnailPath => $composableBuilder(
+    column: $table.targetThumbnailPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptMetadataJson => $composableBuilder(
+    column: $table.receiptMetadataJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingStorageUploadsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingStorageUploadsTable> {
+  $$PendingStorageUploadsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbnailLocalPath => $composableBuilder(
+    column: $table.thumbnailLocalPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetBucket => $composableBuilder(
+    column: $table.targetBucket,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetStoragePath => $composableBuilder(
+    column: $table.targetStoragePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetThumbnailPath => $composableBuilder(
+    column: $table.targetThumbnailPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptMetadataJson => $composableBuilder(
+    column: $table.receiptMetadataJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingStorageUploadsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingStorageUploadsTable> {
+  $$PendingStorageUploadsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get thumbnailLocalPath => $composableBuilder(
+    column: $table.thumbnailLocalPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetBucket => $composableBuilder(
+    column: $table.targetBucket,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetStoragePath => $composableBuilder(
+    column: $table.targetStoragePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetThumbnailPath => $composableBuilder(
+    column: $table.targetThumbnailPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptMetadataJson => $composableBuilder(
+    column: $table.receiptMetadataJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+}
+
+class $$PendingStorageUploadsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingStorageUploadsTable,
+          PendingStorageUploadsRow,
+          $$PendingStorageUploadsTableFilterComposer,
+          $$PendingStorageUploadsTableOrderingComposer,
+          $$PendingStorageUploadsTableAnnotationComposer,
+          $$PendingStorageUploadsTableCreateCompanionBuilder,
+          $$PendingStorageUploadsTableUpdateCompanionBuilder,
+          (
+            PendingStorageUploadsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingStorageUploadsTable,
+              PendingStorageUploadsRow
+            >,
+          ),
+          PendingStorageUploadsRow,
+          PrefetchHooks Function()
+        > {
+  $$PendingStorageUploadsTableTableManager(
+    _$AppDatabase db,
+    $PendingStorageUploadsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingStorageUploadsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PendingStorageUploadsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingStorageUploadsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> localFilePath = const Value.absent(),
+                Value<String?> thumbnailLocalPath = const Value.absent(),
+                Value<String> targetBucket = const Value.absent(),
+                Value<String> targetStoragePath = const Value.absent(),
+                Value<String?> targetThumbnailPath = const Value.absent(),
+                Value<String> contentType = const Value.absent(),
+                Value<String> receiptMetadataJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingStorageUploadsCompanion(
+                id: id,
+                localFilePath: localFilePath,
+                thumbnailLocalPath: thumbnailLocalPath,
+                targetBucket: targetBucket,
+                targetStoragePath: targetStoragePath,
+                targetThumbnailPath: targetThumbnailPath,
+                contentType: contentType,
+                receiptMetadataJson: receiptMetadataJson,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String localFilePath,
+                Value<String?> thumbnailLocalPath = const Value.absent(),
+                required String targetBucket,
+                required String targetStoragePath,
+                Value<String?> targetThumbnailPath = const Value.absent(),
+                Value<String> contentType = const Value.absent(),
+                required String receiptMetadataJson,
+                required DateTime createdAt,
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingStorageUploadsCompanion.insert(
+                id: id,
+                localFilePath: localFilePath,
+                thumbnailLocalPath: thumbnailLocalPath,
+                targetBucket: targetBucket,
+                targetStoragePath: targetStoragePath,
+                targetThumbnailPath: targetThumbnailPath,
+                contentType: contentType,
+                receiptMetadataJson: receiptMetadataJson,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingStorageUploadsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingStorageUploadsTable,
+      PendingStorageUploadsRow,
+      $$PendingStorageUploadsTableFilterComposer,
+      $$PendingStorageUploadsTableOrderingComposer,
+      $$PendingStorageUploadsTableAnnotationComposer,
+      $$PendingStorageUploadsTableCreateCompanionBuilder,
+      $$PendingStorageUploadsTableUpdateCompanionBuilder,
+      (
+        PendingStorageUploadsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingStorageUploadsTable,
+          PendingStorageUploadsRow
+        >,
+      ),
+      PendingStorageUploadsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13322,4 +14394,6 @@ class $AppDatabaseManager {
       );
   $$PendingWritesTableTableManager get pendingWrites =>
       $$PendingWritesTableTableManager(_db, _db.pendingWrites);
+  $$PendingStorageUploadsTableTableManager get pendingStorageUploads =>
+      $$PendingStorageUploadsTableTableManager(_db, _db.pendingStorageUploads);
 }
