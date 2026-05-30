@@ -836,10 +836,15 @@ class _SyncStatusTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lastSyncedAsync = ref.watch(lastSyncedAtProvider);
     final pendingAsync = ref.watch(pendingWritesCountValueProvider);
+    final pendingUploadsAsync = ref.watch(
+      pendingStorageUploadsCountValueProvider,
+    );
     final colors = context.appColors;
 
     final lastSynced = lastSyncedAsync.valueOrNull;
     final pending = pendingAsync.valueOrNull ?? 0;
+    final pendingUploads = pendingUploadsAsync.valueOrNull ?? 0;
+    final pendingTotal = pending + pendingUploads;
 
     final subtitleParts = <String>[
       'Last synced ${formatLastSynced(lastSynced, DateTime.now())}',
@@ -847,12 +852,18 @@ class _SyncStatusTile extends ConsumerWidget {
         pending == 1
             ? '1 change waiting to upload'
             : '$pending changes waiting to upload',
+      if (pendingUploads > 0)
+        pendingUploads == 1
+            ? '1 receipt image waiting to upload'
+            : '$pendingUploads receipt images waiting to upload',
     ];
 
     return ListTile(
       leading: Icon(
-        pending > 0 ? Icons.cloud_sync_outlined : Icons.cloud_done_outlined,
-        color: pending > 0 ? BrandColors.warning : colors.textMuted,
+        pendingTotal > 0
+            ? Icons.cloud_sync_outlined
+            : Icons.cloud_done_outlined,
+        color: pendingTotal > 0 ? BrandColors.warning : colors.textMuted,
       ),
       title: const Text('Sync now'),
       subtitle: Text(subtitleParts.join(' · ')),

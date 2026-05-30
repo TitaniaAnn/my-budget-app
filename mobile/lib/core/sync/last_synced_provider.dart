@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/app_database_provider.dart';
+import 'storage_upload_queue.dart';
 
 part 'last_synced_provider.g.dart';
 
@@ -29,6 +30,31 @@ Future<DateTime?> lastSyncedAt(LastSyncedAtRef ref) {
 Future<int> pendingWritesCountValue(PendingWritesCountValueRef ref) {
   final db = ref.watch(appDatabaseProvider);
   return db.pendingWritesCount();
+}
+
+/// Pending storage-upload count for the Settings sync surface
+/// (Phase 4b polish). Mirrors pendingWritesCountValue for the
+/// receipt-image queue.
+@riverpod
+Future<int> pendingStorageUploadsCountValue(
+  PendingStorageUploadsCountValueRef ref,
+) {
+  final queue = ref.watch(storageUploadQueueProvider);
+  return queue.pendingCount();
+}
+
+/// Set of receipt ids currently sitting in the storage upload
+/// queue (Phase 4b polish). Powers the "pending upload" badge on
+/// the receipts grid. Plain (not keepAlive) so each grid render
+/// gets a fresh read; the result is a tiny set (typically zero or
+/// single-digit rows) so the read is cheap.
+@riverpod
+Future<Set<String>> pendingStorageUploadIds(
+  PendingStorageUploadIdsRef ref,
+) async {
+  final db = ref.watch(appDatabaseProvider);
+  final rows = await db.loadPendingStorageUploads();
+  return rows.map((r) => r.id).toSet();
 }
 
 /// Pretty-print a "X ago" string for the offline banner. Pure

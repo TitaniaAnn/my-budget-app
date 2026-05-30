@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/sync/last_synced_provider.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/widgets/app_sheet.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -85,6 +86,13 @@ class _ReceiptCard extends ConsumerWidget {
     // subsequent renders skip the network.
     final imagePath = receipt.thumbnailPath ?? receipt.storagePath;
     final imageAsync = ref.watch(receiptImageUrlProvider(imagePath));
+    // Phase 4b polish: receipt is sitting in the storage upload
+    // queue (offline capture, transient upload failure). The badge
+    // signals "this won't render in other people's clients yet".
+    final pendingIds = ref
+        .watch(pendingStorageUploadIdsProvider)
+        .valueOrNull;
+    final isPendingUpload = pendingIds?.contains(receipt.id) ?? false;
 
     return GestureDetector(
       onTap: () => context.push('/receipts/${receipt.id}'),
@@ -95,37 +103,79 @@ class _ReceiptCard extends ConsumerWidget {
           children: [
             // Thumbnail — fills top 60 % of the card
             Expanded(
-              child: imageAsync.when(
-                loading: () => Container(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                error: (_, _) => Container(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: Center(
-                    child: Icon(
-                      Icons.receipt_long_outlined,
-                      size: 40,
-                      color: theme.colorScheme.outline,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  imageAsync.when(
+                    loading: () => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (_, _) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: Icon(
+                          Icons.receipt_long_outlined,
+                          size: 40,
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ),
+                    data: (url) => CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      // Same placeholder shape as the loading state so a
+                      // cache miss doesn't pop a flash of nothing.
+                      placeholder: (context, _) => Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                      ),
+                      errorWidget: (context, _, _) => Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                data: (url) => CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  // Same placeholder shape as the loading state so a
-                  // cache miss doesn't pop a flash of nothing.
-                  placeholder: (context, _) => Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                  errorWidget: (context, _, _) => Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: theme.colorScheme.outline,
+                  if (isPendingUpload)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Tooltip(
+                        message: 'Waiting to upload',
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_upload_outlined,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Pending',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                ],
               ),
             ),
 

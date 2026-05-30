@@ -44,5 +44,53 @@ final pendingWritesCountValueProvider = AutoDisposeFutureProvider<int>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PendingWritesCountValueRef = AutoDisposeFutureProviderRef<int>;
+String _$pendingStorageUploadsCountValueHash() =>
+    r'1aa0acf78645dcd3b1801d54f5bef7a7e36e87c3';
+
+/// Pending storage-upload count for the Settings sync surface
+/// (Phase 4b polish). Mirrors pendingWritesCountValue for the
+/// receipt-image queue.
+///
+/// Copied from [pendingStorageUploadsCountValue].
+@ProviderFor(pendingStorageUploadsCountValue)
+final pendingStorageUploadsCountValueProvider =
+    AutoDisposeFutureProvider<int>.internal(
+      pendingStorageUploadsCountValue,
+      name: r'pendingStorageUploadsCountValueProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$pendingStorageUploadsCountValueHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PendingStorageUploadsCountValueRef = AutoDisposeFutureProviderRef<int>;
+String _$pendingStorageUploadIdsHash() =>
+    r'64d4e9159c4aeeecad3163d117b5a0c5678c1216';
+
+/// Set of receipt ids currently sitting in the storage upload
+/// queue (Phase 4b polish). Powers the "pending upload" badge on
+/// the receipts grid. Plain (not keepAlive) so each grid render
+/// gets a fresh read; the result is a tiny set (typically zero or
+/// single-digit rows) so the read is cheap.
+///
+/// Copied from [pendingStorageUploadIds].
+@ProviderFor(pendingStorageUploadIds)
+final pendingStorageUploadIdsProvider =
+    AutoDisposeFutureProvider<Set<String>>.internal(
+      pendingStorageUploadIds,
+      name: r'pendingStorageUploadIdsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$pendingStorageUploadIdsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PendingStorageUploadIdsRef = AutoDisposeFutureProviderRef<Set<String>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
