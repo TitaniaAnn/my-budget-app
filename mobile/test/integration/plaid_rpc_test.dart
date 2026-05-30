@@ -794,29 +794,68 @@ void main() {
 
   group('plaid_items column-level grants (integration)', () {
     test(
-      'access_token is omitted from client SELECT (column-level REVOKE)',
+      'access_token column is dropped entirely (migration 066)',
       () async {
         final h = await Harness.bootstrap(testTag: 'plaid-items-grant');
         try {
-          // Seed a row via the harness's client. Client INSERT is
-          // denied by RLS (no policy) — this is expected; the test
-          // asserts the access path, not the seed mechanism.
-          // We use the harness directly because the spec's Edge
-          // Function path needs a service-role client which Phase 1
-          // testing doesn't have. So we settle for verifying the
-          // grant shape via information_schema.
+          // Audit 2026-05-26 M2: migration 066 dropped the plaintext
+          // access_token column and replaced it with
+          // access_token_encrypted BYTEA + SECURITY DEFINER
+          // accessors. The column doesn't exist for ANY role —
+          // service_role included. The plaintext only transits
+          // through get_plaid_access_token's return value.
           //
-          // Specifically: a SELECT * must not include access_token
-          // in PostgREST's response. The simplest check is to ask
-          // for the column explicitly and confirm the API rejects
-          // it (or returns no row when one would exist).
+          // PostgREST returns 400 (or similar) when asked for a
+          // column that doesn't exist in the schema. We don't
+          // pin the exact code — the throw shape proves the
+          // column is gone.
           await expectLater(
             h.client.from('plaid_items').select('access_token'),
             throwsA(anything),
             reason:
-                'a client SELECT(access_token) must be rejected by '
-                "PostgREST since the role doesn't hold SELECT on the "
-                'column — the credential never leaves the DB.',
+                'access_token column was dropped in migration 066; '
+                'PostgREST should reject the SELECT.',
+          );
+        } finally {
+          await h.dispose();
+        }
+      },
+      skip: reason,
+    );
+
+    test(
+      'set_plaid_access_token / get_plaid_access_token round-trip '
+      '(M2 — pgcrypto + vault-managed key, anon caller blocked)',
+      () async {
+        final h = await Harness.bootstrap(testTag: 'plaid-token-rpc');
+        try {
+          // The accessor RPCs are GRANT'd to service_role only.
+          // An authenticated anon-key caller (what the harness
+          // provides) MUST get a permission-denied error.
+          await expectLater(
+            h.client.rpc(
+              'set_plaid_access_token',
+              params: const {
+                'p_item_id': '00000000-0000-0000-0000-000000000000',
+                'p_token': 'should-not-land',
+              },
+            ),
+            throwsA(anything),
+            reason:
+                'EXECUTE on set_plaid_access_token is REVOKED from '
+                'anon/authenticated — only service_role can call.',
+          );
+          await expectLater(
+            h.client.rpc(
+              'get_plaid_access_token',
+              params: const {
+                'p_item_id': '00000000-0000-0000-0000-000000000000',
+              },
+            ),
+            throwsA(anything),
+            reason:
+                'EXECUTE on get_plaid_access_token is REVOKED from '
+                'anon/authenticated — only service_role can call.',
           );
         } finally {
           await h.dispose();

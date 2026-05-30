@@ -120,12 +120,28 @@ serve(async (req) => {
   // success-clear shouldn't clobber it.
   const { data: itemRow, error: itemErr } = await serviceClient
     .from("plaid_items")
-    .select("id, household_id, access_token, sync_cursor, last_sync_error")
+    .select("id, household_id, sync_cursor, last_sync_error")
     .eq("id", body.plaid_item_id)
     .maybeSingle();
   if (itemErr) return jsonError(500, String(itemErr));
   if (!itemRow) return jsonError(404, "plaid_item not found");
   const lastSyncErrorAtStart = itemRow.last_sync_error as string | null;
+
+  // Audit 2026-05-26 M2: access_token column was dropped in
+  // migration 066. Fetch the plaintext via the get_plaid_access_token
+  // RPC, which decrypts the ciphertext server-side using a
+  // vault-managed key. The plaintext never lives in a row in
+  // the table — it transits as the RPC return value only.
+  const { data: accessTokenData, error: tokenErr } = await serviceClient
+    .rpc("get_plaid_access_token", { p_item_id: itemRow.id });
+  if (tokenErr) return jsonError(500, String(tokenErr));
+  const accessToken = accessTokenData as string | null;
+  if (!accessToken) {
+    return jsonError(
+      500,
+      "plaid_item has no access_token — re-link the institution",
+    );
+  }
 
   // User-scoped client for household-membership lookup. RLS on
   // household_members returns rows only where user_id = auth.uid(),
@@ -187,7 +203,7 @@ serve(async (req) => {
     // realistic family-scale Item's lifetime backfill.
     for (let page = 0; page < 50; page++) {
       const resp = await plaidPost<PlaidSyncResponse>("/transactions/sync", {
-        access_token: itemRow.access_token,
+        access_token: accessToken,
         ...(cursor === null ? {} : { cursor }),
       });
       allAdded.push(...resp.added);

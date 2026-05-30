@@ -193,8 +193,17 @@ serve(async (req) => {
   }
 
   // Upsert the plaid_items row. The (household_id, plaid_item_id)
-  // UNIQUE means a re-link of the same institution refreshes
-  // access_token + clears stale sync error without duplicating.
+  // UNIQUE means a re-link of the same institution refreshes the
+  // row + clears stale sync error without duplicating.
+  //
+  // Audit 2026-05-26 M2: access_token is NOT written here. The
+  // plaintext column was dropped in migration 066. After the
+  // upsert we call the set_plaid_access_token RPC, which
+  // encrypts via pgcrypto + a vault-managed key. Both writes
+  // happen as the same service-role client; if the encrypt
+  // call fails the item row is rolled forward without a token
+  // (a defensive subsequent sync would fail loudly via
+  // get_plaid_access_token returning NULL).
   const { data: itemRow, error: itemErr } = await supabase
     .from("plaid_items")
     .upsert(
@@ -204,7 +213,6 @@ serve(async (req) => {
         plaid_item_id: exchange.item_id,
         plaid_institution_id: body.institution.id,
         institution_name: body.institution.name,
-        access_token: exchange.access_token,
         environment: plaidEnvironment(),
         is_active: true,
         last_sync_error: null,
@@ -221,6 +229,23 @@ serve(async (req) => {
     return jsonError(500, "could not persist Plaid Item");
   }
   const plaidItemRowId = itemRow.id as string;
+
+  // M2: encrypt + store the access_token via the SECURITY DEFINER
+  // RPC. Failure here is fatal — without the token, future syncs
+  // can't fetch transactions. Roll forward with an error so the
+  // user retries (re-link refreshes the upsert via the UNIQUE
+  // conflict and re-encrypts).
+  const { error: tokenErr } = await supabase.rpc(
+    "set_plaid_access_token",
+    { p_item_id: plaidItemRowId, p_token: exchange.access_token },
+  );
+  if (tokenErr) {
+    console.error(
+      "[plaid-public-token-exchange] set_plaid_access_token failed",
+      tokenErr,
+    );
+    return jsonError(500, "could not store Plaid access token");
+  }
 
   // Review fix #8: thread the per-account currency from Plaid's
   // /accounts/get instead of defaulting everything to USD. The

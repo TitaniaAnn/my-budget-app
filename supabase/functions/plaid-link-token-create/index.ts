@@ -73,10 +73,11 @@ serve(async (req) => {
 
   try {
     // Update-mode path: caller passed plaidItemId so we need to
-    // load the access_token (service role — column-grant from
-    // migration 054 hides it from anon / authenticated) AND
-    // verify the caller actually owns the item via household
-    // membership.
+    // load the access_token (service role — migration 066
+    // dropped the plaintext column and replaced it with
+    // pgcrypto+vault encryption mediated by the
+    // get_plaid_access_token RPC) AND verify the caller
+    // actually owns the item via household membership.
     let accessToken: string | null = null;
     if (body.plaidItemId) {
       const serviceClient = createClient(
@@ -85,7 +86,7 @@ serve(async (req) => {
       );
       const { data: itemRow, error: itemErr } = await serviceClient
         .from("plaid_items")
-        .select("id, household_id, access_token")
+        .select("id, household_id")
         .eq("id", body.plaidItemId)
         .maybeSingle();
       if (itemErr) return jsonError(500, String(itemErr));
@@ -108,7 +109,20 @@ serve(async (req) => {
           "caller is not a member of this Plaid Item's household",
         );
       }
-      accessToken = itemRow.access_token as string;
+
+      // Audit 2026-05-26 M2: decrypt via the SECURITY DEFINER
+      // RPC. The plaintext only lives in this transient string;
+      // it's passed straight to Plaid below.
+      const { data: tokenData, error: tokenErr } = await serviceClient
+        .rpc("get_plaid_access_token", { p_item_id: itemRow.id });
+      if (tokenErr) return jsonError(500, String(tokenErr));
+      if (!tokenData) {
+        return jsonError(
+          500,
+          "plaid_item has no access_token — re-link the institution",
+        );
+      }
+      accessToken = tokenData as string;
     }
 
     // Plaid Link token request. `client_user_id` is the Plaid-
