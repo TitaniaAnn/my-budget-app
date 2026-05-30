@@ -21,6 +21,11 @@ migrate_working_dir/
 # Contains Supabase credentials — keep out of git
 .vscode/
 .env.json
+# Audit 2026-05-26 C8: per-flavor env files (dev points at the
+# local CLI stack; prod at supabase.com). .env.dev.json.example
+# is committed as a template.
+.env.dev.json
+.env.prod.json
 
 # Flutter/Dart/Pub related
 **/doc/api/

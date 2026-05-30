@@ -9,12 +9,23 @@ This file covers only what's specific to the `mobile/` directory.
 
 ## Commands
 
+Audit 2026-05-26 C8 added Android flavors. Every `flutter run` /
+`flutter build` for Android MUST pass `--flavor dev` or
+`--flavor prod`. Dev installs as `com.mybudgetapp.mobile.dev`
+(label "MyBudget Dev"); prod as `com.mybudgetapp.mobile`. Both
+can coexist on the device. Per-flavor env files live at
+`.env.dev.json` (gitignored — copy from
+[`.env.dev.json.example`](.env.dev.json.example)) and `.env.json`.
+
 ```bash
 # Install dependencies
 flutter pub get
 
-# Run app (requires .env.json with Supabase credentials)
-flutter run --dart-define-from-file=.env.json
+# Run app, dev flavor — points at the local Supabase CLI stack
+flutter run --flavor dev --dart-define-from-file=.env.dev.json
+
+# Run app, prod flavor — points at supabase.com
+flutter run --flavor prod --dart-define-from-file=.env.json
 
 # Code generation (freezed, riverpod, json_serializable) — run after model changes
 dart run build_runner build --delete-conflicting-outputs
@@ -26,14 +37,15 @@ dart run build_runner watch
 flutter analyze
 dart format lib/ test/
 
-# Run tests (unit + widget). Integration tests are gated on env;
-# see root CLAUDE.md for the local-Supabase test recipe.
+# Run tests (unit + widget). Tests don't go through the Android
+# build so no flavor flag needed. Integration tests are gated
+# on env; see root CLAUDE.md for the local-Supabase test recipe.
 flutter test
 
-# Build release — wrapper that refuses to run unless .env.json
-# points at the production Supabase project on supabase.com.
-# Prevents a stray localhost URL from shipping in an .aab. The
-# bash + PowerShell variants do the same thing; pick by host.
+# Build release — wrapper that always uses --flavor prod and
+# refuses to run unless .env.json points at the production
+# Supabase project on supabase.com. Prevents a stray localhost
+# URL from shipping in an .aab.
 ./scripts/build-release.sh android   # or windows / all
 .\scripts\build-release.ps1 android  # PowerShell sibling
 ```

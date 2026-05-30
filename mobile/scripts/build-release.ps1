@@ -60,15 +60,21 @@ Write-Host "Building against: $SupabaseUrl"
 
 function Build-Android {
     Write-Host ""
-    Write-Host "==> flutter build appbundle --release"
+    # Audit 2026-05-26 C8: explicit --flavor prod. The dev flavor
+    # uses .env.dev.json with the local-stack URL; release builds
+    # must take the prod path or the production-guard check on
+    # .env.json is meaningless.
+    Write-Host "==> flutter build appbundle --release --flavor prod"
     Push-Location $MobileDir
     try {
-        flutter build appbundle --release --dart-define-from-file=.env.json
+        flutter build appbundle --release `
+            --flavor prod `
+            --dart-define-from-file=.env.json
         if ($LASTEXITCODE -ne 0) { throw "flutter build appbundle failed" }
     } finally {
         Pop-Location
     }
-    $out = Join-Path $MobileDir 'build\app\outputs\bundle\release\app-release.aab'
+    $out = Join-Path $MobileDir 'build\app\outputs\bundle\prodRelease\app-prod-release.aab'
     if (Test-Path $out) {
         Write-Host "    -> $out"
     }

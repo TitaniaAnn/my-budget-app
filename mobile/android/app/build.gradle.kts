@@ -22,8 +22,11 @@ android {
     // would otherwise silently shift targetSdk and change
     // behaviour for runtime permissions / background services
     // / scoped storage on every build. Play Store requires
-    // targetSdk=35 as of Aug 2025. Bump deliberately.
-    compileSdk = 35
+    // targetSdk=35 as of Aug 2025. compileSdk is bumped to 36
+    // because androidx.browser:1.9.0 (transitive via
+    // plaid_flutter) requires it; targetSdk stays at 35 to
+    // keep runtime behaviour deliberate.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -52,10 +55,39 @@ android {
         // C7: literal pins. minSdk=23 (Android 6) is the floor
         // Flutter currently supports for most plugins. targetSdk
         // tracks the compileSdk pin above.
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    // Audit 2026-05-26 C8: dev / prod flavors. Without them, a
+    // debug build pointed at the local Supabase stack installs
+    // OVER a production build because they share an
+    // applicationId — the user finds themselves signed into the
+    // wrong environment with no visible warning. Each flavor
+    // gets its own applicationId suffix and label so both apps
+    // can coexist on the device.
+    //
+    // - dev:  applicationId com.mybudgetapp.mobile.dev,
+    //         label "MyBudget Dev", version "<x.y.z>-dev"
+    // - prod: applicationId com.mybudgetapp.mobile (default)
+    //
+    // Every flutter command MUST now pass --flavor: the build
+    // fails fast on a missing flavor flag rather than picking
+    // a default and surprising someone.
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "MyBudget Dev")
+        }
+        create("prod") {
+            dimension = "environment"
+            resValue("string", "app_name", "MyBudget")
+        }
     }
 
     buildTypes {

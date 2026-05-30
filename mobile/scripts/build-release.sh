@@ -71,10 +71,15 @@ echo "Building against: $SUPABASE_URL"
 
 build_android() {
   echo
-  echo "==> flutter build appbundle --release"
+  # Audit 2026-05-26 C8: explicit --flavor prod. The dev flavor
+  # uses .env.dev.json with the local-stack URL; release builds
+  # must take the prod path or the production-guard check on
+  # .env.json is meaningless.
+  echo "==> flutter build appbundle --release --flavor prod"
   (cd "$MOBILE_DIR" && flutter build appbundle --release \
+    --flavor prod \
     --dart-define-from-file=.env.json)
-  local out="$MOBILE_DIR/build/app/outputs/bundle/release/app-release.aab"
+  local out="$MOBILE_DIR/build/app/outputs/bundle/prodRelease/app-prod-release.aab"
   if [[ -f "$out" ]]; then
     echo "    -> $out"
   fi
