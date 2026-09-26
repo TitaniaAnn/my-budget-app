@@ -61,4 +61,7 @@ regexes = [
   # Supabase local-dev demo anon key (deterministic, public,
   # documented in supabase docs).
   '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24i[A-Za-z0-9_.\-=]+''',
+  # pgcrypto option string in 066_plaid_access_token_encryption.sql;
+  # generic-api-key reads "v_key, 'cipher-algo=aes256'" as a key/value pair.
+  '''cipher-algo=aes256''',
 ]
