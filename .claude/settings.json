@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"\\(Get-Content ''ios/Runner.xcodeproj/project.pbxproj''\\) -replace ''com\\\\.example\\\\.myPotteryStudio\\\\.RunnerTests'', ''com.cynthia.mypotterystudio.RunnerTests'' -replace ''com\\\\.example\\\\.myPotteryStudio'', ''com.cynthia.mypotterystudio'' | Set-Content ''ios/Runner.xcodeproj/project.pbxproj''\")",
+      "Read(//c/Users/cynth/.claude/projects/c--Users-cynth-Development-my-pottery-studio/memory/**)",
+      "WebFetch(domain:glazy.org)",
+      "WebFetch(domain:api.glazy.org)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:help.glazy.org)",
+      "Bash(xargs grep:*)",
+      "Bash(flutter test *)",
+      "Bash(flutter analyze *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dart analyze --fatal-warnings 2>&1 | tail -20",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
