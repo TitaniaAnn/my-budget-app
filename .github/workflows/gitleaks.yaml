@@ -21,7 +21,7 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # gitleaks scans history; depth=0 ⇒ full clone so a
           # secret committed in an earlier commit doesn't slip
