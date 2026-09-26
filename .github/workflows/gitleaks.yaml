@@ -28,7 +28,7 @@ jobs:
           # through because we only fetched the latest.
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           # gitleaks-action looks for the config at repo root
           # automatically when GITLEAKS_CONFIG isn't set, but
