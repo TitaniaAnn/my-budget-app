@@ -47,7 +47,7 @@ dependencies:
   fl_chart: ^0.70.2
 
   # Money math
-  decimal: ^3.2.1
+  decimal: ^3.2.6
 
   # CSV parsing
   csv: ^6.0.0
