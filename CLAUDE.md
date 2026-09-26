@@ -214,3 +214,7 @@ When implementing a feature under strict TDD:
 6. Produce a postmortem listing every approach tried, why each failed or succeeded, and lessons learned
 
 Do not ask the user for input unless an actual ambiguity in the spec.
+
+## Reference — Observability Engineering notes
+
+[OBSERVABILITY-NOTES.md](OBSERVABILITY-NOTES.md) — key concepts from *Observability Engineering* 2e (O'Reilly), framed for this repo. Consult when adding instrumentation, telemetry, SLOs, or evaluating observability tooling. This repo currently has no instrumentation layer.
