@@ -357,10 +357,10 @@ packages:
     dependency: "direct main"
     description:
       name: decimal
-      sha256: fc706a5618b81e5b367b01dd62621def37abc096f2b46a9bd9068b64c1fa36d0
+      sha256: "2c3c8b74f2948066d3f42585477aec9cfc48fefd7a723a4d4274a6c71a5c0df7"
       url: "https://pub.dev"
     source: hosted
-    version: "3.2.4"
+    version: "3.2.6"
   drift:
     dependency: "direct main"
     description:
