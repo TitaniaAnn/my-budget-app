@@ -15,9 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned: an unpinned `stable` picked up Flutter 3.47 (Dart 3.13) on
+      # its own, and the analyzer behind build_runner at the time couldn't
+      # read it, so code generation hung. Move this, codemagic.yaml and
+      # pubspec.yaml's `flutter:` constraint together.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.8
           cache: true
 
       - name: Install dependencies

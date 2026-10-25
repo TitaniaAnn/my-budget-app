@@ -54,13 +54,15 @@ flutter test
 
 Feature-based modular structure. Each feature lives in `lib/features/<name>/` with consistent subdirectories: `models/`, `providers/`, `repositories/`, `screens/`, `widgets/`. Shared app-wide code lives in `lib/core/`.
 
-**State management**: Riverpod with code generation (`@riverpod` annotations). Providers are defined per-feature; repositories are singletons injected via Riverpod. Use `ConsumerWidget` for read-only, `ConsumerStatefulWidget` when local state + Riverpod are both needed.
+**Flutter version**: pinned to 3.47.8 in `.github/workflows/ci.yaml`, `codemagic.yaml` and `pubspec.yaml`. An unpinned `stable` once moved to a Dart release the code generators couldn't read, and `build_runner` hung in CI. Change all three together, and re-run `build_runner` and `dart format` after moving it: the formatter's output changes between Dart releases.
+
+**State management**: Riverpod 3 with code generation (`@riverpod` annotations). Functional providers take a plain `Ref ref`, not a generated `FooRef`. Read a possibly-loading value with `.value` (Riverpod 3 removed `valueOrNull`; `.value` no longer throws on error). A `FooNotifier` class generates `fooProvider`, not `fooNotifierProvider`. Riverpod 3's automatic retry of failed providers is switched off in `main.dart` because the repositories retry and fall back to the offline cache themselves. Providers are defined per-feature; repositories are singletons injected via Riverpod. Use `ConsumerWidget` for read-only, `ConsumerStatefulWidget` when local state + Riverpod are both needed.
 
 **Backend access**: Supabase via `lib/core/supabase/supabase_client.dart`. All data is scoped to `household_id`; every query must include this filter, and RLS does the real gating server-side.
 
 **Routing**: GoRouter with auth-aware redirects in `lib/core/router/app_router.dart`. Authenticated screens are wrapped in a `ShellRoute` with `MainScaffold` (bottom nav). Navigate with `context.go()` / `context.push()`.
 
-**Models**: Freezed + json_serializable. All models are immutable with `copyWith`. Enum values use `@JsonValue` to map to DB snake_case strings. Generated files are `*.freezed.dart` and `*.g.dart` — do not edit these manually.
+**Models**: Freezed 3 + json_serializable. A single-constructor model is `abstract class Foo with _$Foo`; a union is `sealed class`. All models are immutable with `copyWith`. Enum values use `@JsonValue` to map to DB snake_case strings. Generated files are `*.freezed.dart` and `*.g.dart` — do not edit these manually.
 
 ## Key conventions
 
