@@ -31,7 +31,7 @@ enum DevicePushPlatform {
 }
 
 @freezed
-class DevicePushToken with _$DevicePushToken {
+abstract class DevicePushToken with _$DevicePushToken {
   const factory DevicePushToken({
     required String id,
     required String userId,

@@ -33,9 +33,7 @@ part 'notification_runner_provider.g.dart';
 /// Indirection so tests can swap in a fake dispatcher. Production
 /// returns the real flutter_local_notifications-backed singleton.
 @riverpod
-LocalNotificationDispatcher notificationDispatcher(
-  NotificationDispatcherRef ref,
-) {
+LocalNotificationDispatcher notificationDispatcher(Ref ref) {
   return NotificationService.instance;
 }
 
@@ -45,12 +43,12 @@ LocalNotificationDispatcher notificationDispatcher(
 const _serverLogLookback = Duration(days: 90);
 
 @Riverpod(keepAlive: true)
-Future<int> runNotifications(RunNotificationsRef ref) async {
+Future<int> runNotifications(Ref ref) async {
   // Awaits both data sources the engine needs. Watching (not just
   // reading) so a settings flip or a budget refresh re-fires the
   // pass — Riverpod caches subsequent calls to the same input
   // shape, so this isn't expensive.
-  final settings = ref.watch(notificationSettingsNotifierProvider);
+  final settings = ref.watch(notificationSettingsProvider);
   if (!settings.enabled) return 0;
 
   final householdId = await ref.watch(householdIdProvider.future);

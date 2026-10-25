@@ -95,10 +95,9 @@ void main() {
 
   group('AppDatabase receipts surface', () {
     test('upsertReceipt round-trips a single row', () async {
-      await db.upsertReceipt(sampleReceipt(
-        id: 'r-1',
-        ocrRawJson: '{"raw":"text"}',
-      ));
+      await db.upsertReceipt(
+        sampleReceipt(id: 'r-1', ocrRawJson: '{"raw":"text"}'),
+      );
       final row = await db.loadReceiptById('r-1');
       expect(row, isNotNull);
       expect(row!.id, 'r-1');
@@ -110,9 +109,7 @@ void main() {
       await db.upsertReceipt(
         sampleReceipt(id: 'r-1', merchantName: 'Original'),
       );
-      await db.upsertReceipt(
-        sampleReceipt(id: 'r-1', merchantName: 'Renamed'),
-      );
+      await db.upsertReceipt(sampleReceipt(id: 'r-1', merchantName: 'Renamed'));
       final row = await db.loadReceiptById('r-1');
       expect(row?.merchantName, 'Renamed');
     });
@@ -147,12 +144,8 @@ void main() {
 
   group('AppDatabase.replaceLineItemsForReceipt', () {
     test('purges prior line items for the receipt before inserting', () async {
-      await db.upsertLineItem(
-        sampleLineItem(id: 'li-old-1', receiptId: 'r-1'),
-      );
-      await db.upsertLineItem(
-        sampleLineItem(id: 'li-old-2', receiptId: 'r-1'),
-      );
+      await db.upsertLineItem(sampleLineItem(id: 'li-old-1', receiptId: 'r-1'));
+      await db.upsertLineItem(sampleLineItem(id: 'li-old-2', receiptId: 'r-1'));
       await db.replaceLineItemsForReceipt('r-1', [
         sampleLineItem(id: 'li-new', receiptId: 'r-1'),
       ]);
@@ -161,12 +154,8 @@ void main() {
     });
 
     test('leaves line items for other receipts untouched', () async {
-      await db.upsertLineItem(
-        sampleLineItem(id: 'li-r1', receiptId: 'r-1'),
-      );
-      await db.upsertLineItem(
-        sampleLineItem(id: 'li-r2', receiptId: 'r-2'),
-      );
+      await db.upsertLineItem(sampleLineItem(id: 'li-r1', receiptId: 'r-1'));
+      await db.upsertLineItem(sampleLineItem(id: 'li-r2', receiptId: 'r-2'));
       await db.replaceLineItemsForReceipt('r-1', [
         sampleLineItem(id: 'li-fresh', receiptId: 'r-1'),
       ]);
@@ -175,9 +164,7 @@ void main() {
     });
 
     test('empty replacement leaves the receipt with no line items', () async {
-      await db.upsertLineItem(
-        sampleLineItem(id: 'li-1', receiptId: 'r-1'),
-      );
+      await db.upsertLineItem(sampleLineItem(id: 'li-1', receiptId: 'r-1'));
       await db.replaceLineItemsForReceipt('r-1', const []);
       final rows = await db.loadLineItemsForReceipt('r-1');
       expect(rows, isEmpty);
@@ -223,11 +210,7 @@ void main() {
 
     test('preserves ocrConfidenceBp when present, null otherwise', () async {
       await db.upsertLineItem(
-        sampleLineItem(
-          id: 'li-ocr',
-          receiptId: 'r-1',
-          ocrConfidenceBp: 4200,
-        ),
+        sampleLineItem(id: 'li-ocr', receiptId: 'r-1', ocrConfidenceBp: 4200),
       );
       await db.upsertLineItem(
         sampleLineItem(id: 'li-manual', receiptId: 'r-1'),

@@ -6,48 +6,51 @@ part of 'scenarios_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$scenariosHash() => r'9d84f39490ba5fb4fee8ce61dd6902f424a3aac1';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// All scenarios for the current household.
+
+@ProviderFor(scenarios)
+final scenariosProvider = ScenariosProvider._();
 
 /// All scenarios for the current household.
-///
-/// Copied from [scenarios].
-@ProviderFor(scenarios)
-final scenariosProvider = AutoDisposeFutureProvider<List<Scenario>>.internal(
-  scenarios,
-  name: r'scenariosProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$scenariosHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ScenariosRef = AutoDisposeFutureProviderRef<List<Scenario>>;
-String _$scenarioCardSummaryHash() =>
-    r'28aa2cf759760cd886068e99548f2c73b5cd4992';
+final class ScenariosProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Scenario>>,
+          List<Scenario>,
+          FutureOr<List<Scenario>>
+        >
+    with $FutureModifier<List<Scenario>>, $FutureProvider<List<Scenario>> {
+  /// All scenarios for the current household.
+  ScenariosProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'scenariosProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+  @override
+  String debugGetCreateSourceHash() => _$scenariosHash();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
+  @$internal
+  @override
+  $FutureProviderElement<List<Scenario>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @override
+  FutureOr<List<Scenario>> create(Ref ref) {
+    return scenarios(ref);
   }
 }
+
+String _$scenariosHash() => r'a01c8b684a1b05af3f78f605124a886ef897ba74';
 
 /// Cheap card-view companion to [scenarioDetailProvider].
 ///
@@ -67,10 +70,9 @@ class _SystemHash {
 ///
 /// Net effect for a household with 10 plans: 5x fewer round-trips
 /// to Supabase on the scenarios screen.
-///
-/// Copied from [scenarioCardSummary].
+
 @ProviderFor(scenarioCardSummary)
-const scenarioCardSummaryProvider = ScenarioCardSummaryFamily();
+final scenarioCardSummaryProvider = ScenarioCardSummaryFamily._();
 
 /// Cheap card-view companion to [scenarioDetailProvider].
 ///
@@ -90,10 +92,17 @@ const scenarioCardSummaryProvider = ScenarioCardSummaryFamily();
 ///
 /// Net effect for a household with 10 plans: 5x fewer round-trips
 /// to Supabase on the scenarios screen.
-///
-/// Copied from [scenarioCardSummary].
-class ScenarioCardSummaryFamily
-    extends Family<AsyncValue<ScenarioCardSummary>> {
+
+final class ScenarioCardSummaryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ScenarioCardSummary>,
+          ScenarioCardSummary,
+          FutureOr<ScenarioCardSummary>
+        >
+    with
+        $FutureModifier<ScenarioCardSummary>,
+        $FutureProvider<ScenarioCardSummary> {
   /// Cheap card-view companion to [scenarioDetailProvider].
   ///
   /// Each list card needs only the projected end balance + net
@@ -112,56 +121,53 @@ class ScenarioCardSummaryFamily
   ///
   /// Net effect for a household with 10 plans: 5x fewer round-trips
   /// to Supabase on the scenarios screen.
-  ///
-  /// Copied from [scenarioCardSummary].
-  const ScenarioCardSummaryFamily();
+  ScenarioCardSummaryProvider._({
+    required ScenarioCardSummaryFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'scenarioCardSummaryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// Cheap card-view companion to [scenarioDetailProvider].
-  ///
-  /// Each list card needs only the projected end balance + net
-  /// change. The full detail provider, by contrast, also fetches a
-  /// 365-day historical walkback (one transactions round-trip per
-  /// scenario) which the card never displays.
-  ///
-  /// This provider:
-  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
-  ///     so N cards share one fetch of each;
-  ///   * still fetches accounts + FX + this-scenario events itself
-  ///     (the scenarios list view is the only consumer right now —
-  ///     extracting more shared providers can come if a third call
-  ///     site appears);
-  ///   * skips the historical walkback entirely.
-  ///
-  /// Net effect for a household with 10 plans: 5x fewer round-trips
-  /// to Supabase on the scenarios screen.
-  ///
-  /// Copied from [scenarioCardSummary].
-  ScenarioCardSummaryProvider call(String scenarioId) {
-    return ScenarioCardSummaryProvider(scenarioId);
+  @override
+  String debugGetCreateSourceHash() => _$scenarioCardSummaryHash();
+
+  @override
+  String toString() {
+    return r'scenarioCardSummaryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<ScenarioCardSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<ScenarioCardSummary> create(Ref ref) {
+    final argument = this.argument as String;
+    return scenarioCardSummary(ref, argument);
   }
 
   @override
-  ScenarioCardSummaryProvider getProviderOverride(
-    covariant ScenarioCardSummaryProvider provider,
-  ) {
-    return call(provider.scenarioId);
+  bool operator ==(Object other) {
+    return other is ScenarioCardSummaryProvider && other.argument == argument;
   }
 
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'scenarioCardSummaryProvider';
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
+String _$scenarioCardSummaryHash() =>
+    r'dd05f92eb996bc7eb4b8924edad89e7215e25f46';
+
 /// Cheap card-view companion to [scenarioDetailProvider].
 ///
 /// Each list card needs only the projected end balance + net
@@ -180,261 +186,139 @@ class ScenarioCardSummaryFamily
 ///
 /// Net effect for a household with 10 plans: 5x fewer round-trips
 /// to Supabase on the scenarios screen.
-///
-/// Copied from [scenarioCardSummary].
-class ScenarioCardSummaryProvider
-    extends AutoDisposeFutureProvider<ScenarioCardSummary> {
-  /// Cheap card-view companion to [scenarioDetailProvider].
-  ///
-  /// Each list card needs only the projected end balance + net
-  /// change. The full detail provider, by contrast, also fetches a
-  /// 365-day historical walkback (one transactions round-trip per
-  /// scenario) which the card never displays.
-  ///
-  /// This provider:
-  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
-  ///     so N cards share one fetch of each;
-  ///   * still fetches accounts + FX + this-scenario events itself
-  ///     (the scenarios list view is the only consumer right now —
-  ///     extracting more shared providers can come if a third call
-  ///     site appears);
-  ///   * skips the historical walkback entirely.
-  ///
-  /// Net effect for a household with 10 plans: 5x fewer round-trips
-  /// to Supabase on the scenarios screen.
-  ///
-  /// Copied from [scenarioCardSummary].
-  ScenarioCardSummaryProvider(String scenarioId)
-    : this._internal(
-        (ref) => scenarioCardSummary(ref as ScenarioCardSummaryRef, scenarioId),
-        from: scenarioCardSummaryProvider,
+
+final class ScenarioCardSummaryFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<ScenarioCardSummary>, String> {
+  ScenarioCardSummaryFamily._()
+    : super(
+        retry: null,
         name: r'scenarioCardSummaryProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$scenarioCardSummaryHash,
-        dependencies: ScenarioCardSummaryFamily._dependencies,
-        allTransitiveDependencies:
-            ScenarioCardSummaryFamily._allTransitiveDependencies,
-        scenarioId: scenarioId,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
       );
 
-  ScenarioCardSummaryProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.scenarioId,
-  }) : super.internal();
+  /// Cheap card-view companion to [scenarioDetailProvider].
+  ///
+  /// Each list card needs only the projected end balance + net
+  /// change. The full detail provider, by contrast, also fetches a
+  /// 365-day historical walkback (one transactions round-trip per
+  /// scenario) which the card never displays.
+  ///
+  /// This provider:
+  ///   * watches the cached [scenariosProvider] + [householdInfoProvider]
+  ///     so N cards share one fetch of each;
+  ///   * still fetches accounts + FX + this-scenario events itself
+  ///     (the scenarios list view is the only consumer right now —
+  ///     extracting more shared providers can come if a third call
+  ///     site appears);
+  ///   * skips the historical walkback entirely.
+  ///
+  /// Net effect for a household with 10 plans: 5x fewer round-trips
+  /// to Supabase on the scenarios screen.
 
-  final String scenarioId;
-
-  @override
-  Override overrideWith(
-    FutureOr<ScenarioCardSummary> Function(ScenarioCardSummaryRef provider)
-    create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ScenarioCardSummaryProvider._internal(
-        (ref) => create(ref as ScenarioCardSummaryRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        scenarioId: scenarioId,
-      ),
-    );
-  }
+  ScenarioCardSummaryProvider call(String scenarioId) =>
+      ScenarioCardSummaryProvider._(argument: scenarioId, from: this);
 
   @override
-  AutoDisposeFutureProviderElement<ScenarioCardSummary> createElement() {
-    return _ScenarioCardSummaryProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ScenarioCardSummaryProvider &&
-        other.scenarioId == scenarioId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, scenarioId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'scenarioCardSummaryProvider';
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ScenarioCardSummaryRef
-    on AutoDisposeFutureProviderRef<ScenarioCardSummary> {
-  /// The parameter `scenarioId` of this provider.
-  String get scenarioId;
-}
-
-class _ScenarioCardSummaryProviderElement
-    extends AutoDisposeFutureProviderElement<ScenarioCardSummary>
-    with ScenarioCardSummaryRef {
-  _ScenarioCardSummaryProviderElement(super.provider);
-
-  @override
-  String get scenarioId => (origin as ScenarioCardSummaryProvider).scenarioId;
-}
-
-String _$scenarioDetailHash() => r'73eabf2346ded4d7a1ac44b380afa43b9647cb57';
 
 /// Full detail for a single scenario: events + projection.
 ///
 /// The projection starts from the household's current net worth (sum of
 /// account balances) and applies each event forward in time.
-///
-/// Copied from [scenarioDetail].
+
 @ProviderFor(scenarioDetail)
-const scenarioDetailProvider = ScenarioDetailFamily();
+final scenarioDetailProvider = ScenarioDetailFamily._();
 
 /// Full detail for a single scenario: events + projection.
 ///
 /// The projection starts from the household's current net worth (sum of
 /// account balances) and applies each event forward in time.
-///
-/// Copied from [scenarioDetail].
-class ScenarioDetailFamily extends Family<AsyncValue<ScenarioDetail>> {
+
+final class ScenarioDetailProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ScenarioDetail>,
+          ScenarioDetail,
+          FutureOr<ScenarioDetail>
+        >
+    with $FutureModifier<ScenarioDetail>, $FutureProvider<ScenarioDetail> {
   /// Full detail for a single scenario: events + projection.
   ///
   /// The projection starts from the household's current net worth (sum of
   /// account balances) and applies each event forward in time.
-  ///
-  /// Copied from [scenarioDetail].
-  const ScenarioDetailFamily();
+  ScenarioDetailProvider._({
+    required ScenarioDetailFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'scenarioDetailProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// Full detail for a single scenario: events + projection.
-  ///
-  /// The projection starts from the household's current net worth (sum of
-  /// account balances) and applies each event forward in time.
-  ///
-  /// Copied from [scenarioDetail].
-  ScenarioDetailProvider call(String scenarioId) {
-    return ScenarioDetailProvider(scenarioId);
+  @override
+  String debugGetCreateSourceHash() => _$scenarioDetailHash();
+
+  @override
+  String toString() {
+    return r'scenarioDetailProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  ScenarioDetailProvider getProviderOverride(
-    covariant ScenarioDetailProvider provider,
-  ) {
-    return call(provider.scenarioId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<ScenarioDetail> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'scenarioDetailProvider';
-}
-
-/// Full detail for a single scenario: events + projection.
-///
-/// The projection starts from the household's current net worth (sum of
-/// account balances) and applies each event forward in time.
-///
-/// Copied from [scenarioDetail].
-class ScenarioDetailProvider extends AutoDisposeFutureProvider<ScenarioDetail> {
-  /// Full detail for a single scenario: events + projection.
-  ///
-  /// The projection starts from the household's current net worth (sum of
-  /// account balances) and applies each event forward in time.
-  ///
-  /// Copied from [scenarioDetail].
-  ScenarioDetailProvider(String scenarioId)
-    : this._internal(
-        (ref) => scenarioDetail(ref as ScenarioDetailRef, scenarioId),
-        from: scenarioDetailProvider,
-        name: r'scenarioDetailProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$scenarioDetailHash,
-        dependencies: ScenarioDetailFamily._dependencies,
-        allTransitiveDependencies:
-            ScenarioDetailFamily._allTransitiveDependencies,
-        scenarioId: scenarioId,
-      );
-
-  ScenarioDetailProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.scenarioId,
-  }) : super.internal();
-
-  final String scenarioId;
-
-  @override
-  Override overrideWith(
-    FutureOr<ScenarioDetail> Function(ScenarioDetailRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ScenarioDetailProvider._internal(
-        (ref) => create(ref as ScenarioDetailRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        scenarioId: scenarioId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<ScenarioDetail> createElement() {
-    return _ScenarioDetailProviderElement(this);
+  FutureOr<ScenarioDetail> create(Ref ref) {
+    final argument = this.argument as String;
+    return scenarioDetail(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ScenarioDetailProvider && other.scenarioId == scenarioId;
+    return other is ScenarioDetailProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, scenarioId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ScenarioDetailRef on AutoDisposeFutureProviderRef<ScenarioDetail> {
-  /// The parameter `scenarioId` of this provider.
-  String get scenarioId;
-}
+String _$scenarioDetailHash() => r'14a8bdc96889cac3e461b77dd90b8e4c7138bfe7';
 
-class _ScenarioDetailProviderElement
-    extends AutoDisposeFutureProviderElement<ScenarioDetail>
-    with ScenarioDetailRef {
-  _ScenarioDetailProviderElement(super.provider);
+/// Full detail for a single scenario: events + projection.
+///
+/// The projection starts from the household's current net worth (sum of
+/// account balances) and applies each event forward in time.
+
+final class ScenarioDetailFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<ScenarioDetail>, String> {
+  ScenarioDetailFamily._()
+    : super(
+        retry: null,
+        name: r'scenarioDetailProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Full detail for a single scenario: events + projection.
+  ///
+  /// The projection starts from the household's current net worth (sum of
+  /// account balances) and applies each event forward in time.
+
+  ScenarioDetailProvider call(String scenarioId) =>
+      ScenarioDetailProvider._(argument: scenarioId, from: this);
 
   @override
-  String get scenarioId => (origin as ScenarioDetailProvider).scenarioId;
+  String toString() => r'scenarioDetailProvider';
 }
-
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -92,88 +92,78 @@ void main() {
         expect(
           all.single.lastSeenAt.isAfter(firstSeen),
           isTrue,
-          reason: 'last_seen_at must advance on every register so the '
+          reason:
+              'last_seen_at must advance on every register so the '
               'server-side pruner can tell live tokens from stale ones.',
         );
       },
       skip: reason,
     );
 
-    test(
-      'registering the same token with a different platform UPDATES '
-      'the existing row',
-      () async {
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'fcm-token-B',
-          platform: DevicePushPlatform.fcmAndroid,
-        );
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'fcm-token-B',
-          platform: DevicePushPlatform.fcmIos,
-        );
+    test('registering the same token with a different platform UPDATES '
+        'the existing row', () async {
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'fcm-token-B',
+        platform: DevicePushPlatform.fcmAndroid,
+      );
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'fcm-token-B',
+        platform: DevicePushPlatform.fcmIos,
+      );
 
-        final all = await repo.listMine();
-        expect(all, hasLength(1));
-        expect(
-          all.single.platform,
-          DevicePushPlatform.fcmIos,
-          reason: 'a device that switches providers must overwrite the '
-              'stored platform — otherwise the server-side push job '
-              'would send to the wrong FCM topic.',
-        );
-      },
-      skip: reason,
-    );
+      final all = await repo.listMine();
+      expect(all, hasLength(1));
+      expect(
+        all.single.platform,
+        DevicePushPlatform.fcmIos,
+        reason:
+            'a device that switches providers must overwrite the '
+            'stored platform — otherwise the server-side push job '
+            'would send to the wrong FCM topic.',
+      );
+    }, skip: reason);
 
-    test(
-      'removeToken deletes only the matching row',
-      () async {
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'keep-me',
-          platform: DevicePushPlatform.fcmAndroid,
-        );
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'doomed',
-          platform: DevicePushPlatform.fcmAndroid,
-        );
+    test('removeToken deletes only the matching row', () async {
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'keep-me',
+        platform: DevicePushPlatform.fcmAndroid,
+      );
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'doomed',
+        platform: DevicePushPlatform.fcmAndroid,
+      );
 
-        await repo.removeToken('doomed');
+      await repo.removeToken('doomed');
 
-        final remaining = await repo.listMine();
-        expect(remaining.map((t) => t.token), ['keep-me']);
-      },
-      skip: reason,
-    );
+      final remaining = await repo.listMine();
+      expect(remaining.map((t) => t.token), ['keep-me']);
+    }, skip: reason);
 
-    test(
-      'listMine orders newest last_seen_at first',
-      () async {
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'older',
-          platform: DevicePushPlatform.fcmAndroid,
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        await repo.registerToken(
-          userId: harness.userId,
-          householdId: harness.householdId,
-          token: 'newer',
-          platform: DevicePushPlatform.fcmAndroid,
-        );
+    test('listMine orders newest last_seen_at first', () async {
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'older',
+        platform: DevicePushPlatform.fcmAndroid,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await repo.registerToken(
+        userId: harness.userId,
+        householdId: harness.householdId,
+        token: 'newer',
+        platform: DevicePushPlatform.fcmAndroid,
+      );
 
-        final all = await repo.listMine();
-        expect(all.map((t) => t.token), ['newer', 'older']);
-      },
-      skip: reason,
-    );
+      final all = await repo.listMine();
+      expect(all.map((t) => t.token), ['newer', 'older']);
+    }, skip: reason);
   });
 }

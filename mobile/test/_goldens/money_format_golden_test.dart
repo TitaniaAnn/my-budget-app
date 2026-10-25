@@ -74,9 +74,7 @@ void main() {
   });
 
   testWidgets('formatCurrency USD negative — golden', (tester) async {
-    await tester.pumpWidget(
-      const _CurrencyChip(cents: -5042, currency: 'USD'),
-    );
+    await tester.pumpWidget(const _CurrencyChip(cents: -5042, currency: 'USD'));
     await expectLater(
       find.byType(_CurrencyChip),
       matchesGoldenFile('goldens/currency_usd_negative.png'),
@@ -84,9 +82,7 @@ void main() {
   });
 
   testWidgets('formatCurrency EUR — golden', (tester) async {
-    await tester.pumpWidget(
-      const _CurrencyChip(cents: 1099, currency: 'EUR'),
-    );
+    await tester.pumpWidget(const _CurrencyChip(cents: 1099, currency: 'EUR'));
     await expectLater(
       find.byType(_CurrencyChip),
       matchesGoldenFile('goldens/currency_eur.png'),

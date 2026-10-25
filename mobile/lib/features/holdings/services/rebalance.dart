@@ -65,10 +65,7 @@ class RebalanceRow {
 
 /// Output of an evaluation pass.
 class RebalanceReport {
-  const RebalanceReport({
-    required this.totalCents,
-    required this.rows,
-  });
+  const RebalanceReport({required this.totalCents, required this.rows});
 
   /// Sum of current_value across all active holdings, regardless
   /// of asset_class. Zero when the household has no holdings — in
@@ -94,7 +91,11 @@ RebalanceReport evaluateRebalance({
   var total = 0;
   for (final h in holdings) {
     final cls = h.assetClass ?? AssetClass.other;
-    byClass.update(cls, (v) => v + h.currentValue, ifAbsent: () => h.currentValue);
+    byClass.update(
+      cls,
+      (v) => v + h.currentValue,
+      ifAbsent: () => h.currentValue,
+    );
     total += h.currentValue;
   }
 
@@ -117,12 +118,14 @@ RebalanceReport evaluateRebalance({
         : (currentValue * 10000 / total).round();
     final targetPctBp = targetByClass[cls] ?? 0;
     if (currentValue == 0 && targetPctBp == 0) continue;
-    rows.add(RebalanceRow(
-      assetClass: cls,
-      currentValueCents: currentValue,
-      currentPctBp: currentPctBp,
-      targetPctBp: targetPctBp,
-    ));
+    rows.add(
+      RebalanceRow(
+        assetClass: cls,
+        currentValueCents: currentValue,
+        currentPctBp: currentPctBp,
+        targetPctBp: targetPctBp,
+      ),
+    );
   }
 
   rows.sort((a, b) => b.driftBp.abs().compareTo(a.driftBp.abs()));

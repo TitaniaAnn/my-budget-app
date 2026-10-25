@@ -53,13 +53,8 @@ MonthlyReportData _build({
   );
 }
 
-Category _cat(String id, String name, {String? color}) => Category(
-  id: id,
-  name: name,
-  isIncome: false,
-  sortOrder: 0,
-  color: color,
-);
+Category _cat(String id, String name, {String? color}) =>
+    Category(id: id, name: name, isIncome: false, sortOrder: 0, color: color);
 
 Transaction _tx({
   required int amount,
@@ -114,38 +109,35 @@ void main() {
       expect(r.netChangeCents, 200800 - 4700);
     });
 
-    test(
-      'transfer legs are excluded from BOTH income and expenses and counted '
-      'in transferLegCount',
-      () {
-        final r = _build(
-          monthStart: monthStart,
-          monthEnd: monthEnd,
-          householdName: 'Test',
-          transactionsInMonth: [
-            // Real activity.
-            _tx(amount: 100000, date: anyDay, id: 'salary'),
-            _tx(amount: -2000, date: anyDay, id: 'groceries'),
-            // Two transfer legs — must NOT count.
-            _tx(amount: -50000, date: anyDay, id: 'from', transferId: 'X'),
-            _tx(amount: 50000, date: anyDay, id: 'to', transferId: 'X'),
-          ],
-          spendingByCategory: const {},
-          categoryLookup: const {},
-        );
-        expect(
-          r.incomeCents,
-          100000,
-          reason: 'salary only; the +\$500 transfer leg must not count.',
-        );
-        expect(
-          r.expensesCents,
-          2000,
-          reason: 'groceries only; the -\$500 transfer leg must not count.',
-        );
-        expect(r.transferLegCount, 2);
-      },
-    );
+    test('transfer legs are excluded from BOTH income and expenses and counted '
+        'in transferLegCount', () {
+      final r = _build(
+        monthStart: monthStart,
+        monthEnd: monthEnd,
+        householdName: 'Test',
+        transactionsInMonth: [
+          // Real activity.
+          _tx(amount: 100000, date: anyDay, id: 'salary'),
+          _tx(amount: -2000, date: anyDay, id: 'groceries'),
+          // Two transfer legs — must NOT count.
+          _tx(amount: -50000, date: anyDay, id: 'from', transferId: 'X'),
+          _tx(amount: 50000, date: anyDay, id: 'to', transferId: 'X'),
+        ],
+        spendingByCategory: const {},
+        categoryLookup: const {},
+      );
+      expect(
+        r.incomeCents,
+        100000,
+        reason: 'salary only; the +\$500 transfer leg must not count.',
+      );
+      expect(
+        r.expensesCents,
+        2000,
+        reason: 'groceries only; the -\$500 transfer leg must not count.',
+      );
+      expect(r.transferLegCount, 2);
+    });
 
     test('by-category rows come from the RPC map, joined by id', () {
       final groceries = _cat('g', 'Groceries', color: '#22c55e');
@@ -218,12 +210,7 @@ void main() {
             ),
             // Should NOT count: already has a category (lives in
             // byCategory via the RPC map, not in Uncategorized).
-            _tx(
-              amount: -500,
-              date: anyDay,
-              id: 'categorised',
-              categoryId: 'g',
-            ),
+            _tx(amount: -500, date: anyDay, id: 'categorised', categoryId: 'g'),
             // Should NOT count: transfer leg.
             _tx(amount: -800, date: anyDay, id: 'leg', transferId: 'X'),
             // Should NOT count: positive amount.
@@ -269,12 +256,7 @@ void main() {
           householdName: 'Test',
           transactionsInMonth: [
             _tx(amount: 100000, date: anyDay, id: 'us-salary'),
-            _tx(
-              amount: 50000,
-              date: anyDay,
-              id: 'eu-side',
-              currency: 'EUR',
-            ),
+            _tx(amount: 50000, date: anyDay, id: 'eu-side', currency: 'EUR'),
           ],
           spendingByCategory: const {},
           categoryLookup: const {},
@@ -286,39 +268,37 @@ void main() {
         expect(r.missingRateCurrencies, isEmpty);
       });
 
-      test(
-        'missing-rate transactions are EXCLUDED from totals and surface '
-        'in missingRateCurrencies',
-        () {
-          // ¥10,000 JPY expense with no JPY→USD rate. The total
-          // must NOT silently include it (would imply rate=1).
-          final r = _build(
-            monthStart: monthStart,
-            monthEnd: monthEnd,
-            householdName: 'Test',
-            transactionsInMonth: [
-              _tx(amount: -3500, date: anyDay, id: 'us-groceries'),
-              _tx(
-                amount: -1000000,
-                date: anyDay,
-                id: 'jp-noodles',
-                currency: 'JPY',
-              ),
-            ],
-            spendingByCategory: const {},
-            categoryLookup: const {},
-            displayCurrency: 'USD',
-            ratesToDisplay: const {},
-          );
-          expect(
-            r.expensesCents,
-            3500,
-            reason: 'JPY must not contribute at rate=1; only the USD '
-                'expense counts toward the converted total.',
-          );
-          expect(r.missingRateCurrencies, {'JPY'});
-        },
-      );
+      test('missing-rate transactions are EXCLUDED from totals and surface '
+          'in missingRateCurrencies', () {
+        // ¥10,000 JPY expense with no JPY→USD rate. The total
+        // must NOT silently include it (would imply rate=1).
+        final r = _build(
+          monthStart: monthStart,
+          monthEnd: monthEnd,
+          householdName: 'Test',
+          transactionsInMonth: [
+            _tx(amount: -3500, date: anyDay, id: 'us-groceries'),
+            _tx(
+              amount: -1000000,
+              date: anyDay,
+              id: 'jp-noodles',
+              currency: 'JPY',
+            ),
+          ],
+          spendingByCategory: const {},
+          categoryLookup: const {},
+          displayCurrency: 'USD',
+          ratesToDisplay: const {},
+        );
+        expect(
+          r.expensesCents,
+          3500,
+          reason:
+              'JPY must not contribute at rate=1; only the USD '
+              'expense counts toward the converted total.',
+        );
+        expect(r.missingRateCurrencies, {'JPY'});
+      });
 
       test('uncategorized bucket converts too', () {
         // Unpaired, uncategorised EUR expense — must convert via
@@ -328,12 +308,7 @@ void main() {
           monthEnd: monthEnd,
           householdName: 'Test',
           transactionsInMonth: [
-            _tx(
-              amount: -10000,
-              date: anyDay,
-              id: 'eu-misc',
-              currency: 'EUR',
-            ),
+            _tx(amount: -10000, date: anyDay, id: 'eu-misc', currency: 'EUR'),
           ],
           spendingByCategory: const {},
           categoryLookup: const {},

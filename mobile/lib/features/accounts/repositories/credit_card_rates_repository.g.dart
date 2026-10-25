@@ -6,25 +6,53 @@ part of 'credit_card_rates_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$creditCardRatesRepositoryHash() =>
-    r'd9f7b6b08d5524629ae553541af3302bb143897c';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [creditCardRatesRepository].
 @ProviderFor(creditCardRatesRepository)
-final creditCardRatesRepositoryProvider =
-    AutoDisposeProvider<CreditCardRatesRepository>.internal(
-      creditCardRatesRepository,
-      name: r'creditCardRatesRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$creditCardRatesRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final creditCardRatesRepositoryProvider = CreditCardRatesRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CreditCardRatesRepositoryRef =
-    AutoDisposeProviderRef<CreditCardRatesRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class CreditCardRatesRepositoryProvider
+    extends
+        $FunctionalProvider<
+          CreditCardRatesRepository,
+          CreditCardRatesRepository,
+          CreditCardRatesRepository
+        >
+    with $Provider<CreditCardRatesRepository> {
+  CreditCardRatesRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditCardRatesRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditCardRatesRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditCardRatesRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditCardRatesRepository create(Ref ref) {
+    return creditCardRatesRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditCardRatesRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditCardRatesRepository>(value),
+    );
+  }
+}
+
+String _$creditCardRatesRepositoryHash() =>
+    r'cb6058ebd7e4b09993bc610a6f64ce86b7614244';

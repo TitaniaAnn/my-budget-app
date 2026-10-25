@@ -6,22 +6,47 @@ part of 'plaid_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$plaidRepositoryHash() => r'db207b97a02f3437bd6bdad6776b210f8b1f4382';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [plaidRepository].
 @ProviderFor(plaidRepository)
-final plaidRepositoryProvider = AutoDisposeProvider<PlaidRepository>.internal(
-  plaidRepository,
-  name: r'plaidRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$plaidRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final plaidRepositoryProvider = PlaidRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PlaidRepositoryRef = AutoDisposeProviderRef<PlaidRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class PlaidRepositoryProvider
+    extends
+        $FunctionalProvider<PlaidRepository, PlaidRepository, PlaidRepository>
+    with $Provider<PlaidRepository> {
+  PlaidRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'plaidRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$plaidRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<PlaidRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PlaidRepository create(Ref ref) {
+    return plaidRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PlaidRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PlaidRepository>(value),
+    );
+  }
+}
+
+String _$plaidRepositoryHash() => r'52422d08046009f3545017683130655c2837434b';

@@ -170,7 +170,10 @@ class _CurrencySettingsScreenState
                 );
               }
               return Column(
-                children: [for (final r in rates) _RateTile(rate: r, onDelete: () => _deleteRate(r))],
+                children: [
+                  for (final r in rates)
+                    _RateTile(rate: r, onDelete: () => _deleteRate(r)),
+                ],
               );
             },
           ),
@@ -258,7 +261,9 @@ class _AddFxRateSheetState extends ConsumerState<_AddFxRateSheet> {
       if (user == null || householdId == null) {
         throw Exception('Not logged in');
       }
-      await ref.read(fxRatesRepositoryProvider).setRate(
+      await ref
+          .read(fxRatesRepositoryProvider)
+          .setRate(
             householdId: householdId,
             fromCurrency: _fromController.text.trim().toUpperCase(),
             toCurrency: _toController.text.trim().toUpperCase(),
@@ -311,9 +316,7 @@ class _AddFxRateSheetState extends ConsumerState<_AddFxRateSheet> {
                     FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
                     LengthLimitingTextInputFormatter(3),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'To (e.g. USD)',
-                  ),
+                  decoration: const InputDecoration(labelText: 'To (e.g. USD)'),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
@@ -324,7 +327,9 @@ class _AddFxRateSheetState extends ConsumerState<_AddFxRateSheet> {
             controller: _rateController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d{0,9}(\.\d{0,8})?')),
+              FilteringTextInputFormatter.allow(
+                RegExp(r'^\d{0,9}(\.\d{0,8})?'),
+              ),
             ],
             decoration: const InputDecoration(
               labelText: 'Rate (e.g. 1.0573)',

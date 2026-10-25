@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,620 +9,813 @@ part of 'settings_provider.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
-
 /// @nodoc
 mixin _$UserProfile {
-  String get userId => throw _privateConstructorUsedError;
-  String get displayName => throw _privateConstructorUsedError;
 
-  /// Create a copy of UserProfile
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $UserProfileCopyWith<UserProfile> get copyWith =>
-      throw _privateConstructorUsedError;
+ String get userId; String get displayName;
+/// Create a copy of UserProfile
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UserProfileCopyWith<UserProfile> get copyWith => _$UserProfileCopyWithImpl<UserProfile>(this as UserProfile, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserProfile&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,userId,displayName);
+
+@override
+String toString() {
+  return 'UserProfile(userId: $userId, displayName: $displayName)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $UserProfileCopyWith<$Res> {
-  factory $UserProfileCopyWith(
-    UserProfile value,
-    $Res Function(UserProfile) then,
-  ) = _$UserProfileCopyWithImpl<$Res, UserProfile>;
-  @useResult
-  $Res call({String userId, String displayName});
-}
+abstract mixin class $UserProfileCopyWith<$Res>  {
+  factory $UserProfileCopyWith(UserProfile value, $Res Function(UserProfile) _then) = _$UserProfileCopyWithImpl;
+@useResult
+$Res call({
+ String userId, String displayName
+});
 
+
+
+
+}
 /// @nodoc
-class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
+class _$UserProfileCopyWithImpl<$Res>
     implements $UserProfileCopyWith<$Res> {
-  _$UserProfileCopyWithImpl(this._value, this._then);
+  _$UserProfileCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final UserProfile _self;
+  final $Res Function(UserProfile) _then;
 
-  /// Create a copy of UserProfile
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({Object? userId = null, Object? displayName = null}) {
-    return _then(
-      _value.copyWith(
-            userId: null == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            displayName: null == displayName
-                ? _value.displayName
-                : displayName // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of UserProfile
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? displayName = null,}) {
+  return _then(_self.copyWith(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [UserProfile].
+extension UserProfilePatterns on UserProfile {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _UserProfile value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _UserProfile() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _UserProfile value)  $default,){
+final _that = this;
+switch (_that) {
+case _UserProfile():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _UserProfile value)?  $default,){
+final _that = this;
+switch (_that) {
+case _UserProfile() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId,  String displayName)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _UserProfile() when $default != null:
+return $default(_that.userId,_that.displayName);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId,  String displayName)  $default,) {final _that = this;
+switch (_that) {
+case _UserProfile():
+return $default(_that.userId,_that.displayName);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId,  String displayName)?  $default,) {final _that = this;
+switch (_that) {
+case _UserProfile() when $default != null:
+return $default(_that.userId,_that.displayName);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$UserProfileImplCopyWith<$Res>
-    implements $UserProfileCopyWith<$Res> {
-  factory _$$UserProfileImplCopyWith(
-    _$UserProfileImpl value,
-    $Res Function(_$UserProfileImpl) then,
-  ) = __$$UserProfileImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({String userId, String displayName});
+
+
+class _UserProfile implements UserProfile {
+  const _UserProfile({required this.userId, required this.displayName});
+  
+
+@override final  String userId;
+@override final  String displayName;
+
+/// Create a copy of UserProfile
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$UserProfileCopyWith<_UserProfile> get copyWith => __$UserProfileCopyWithImpl<_UserProfile>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserProfile&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,userId,displayName);
+
+@override
+String toString() {
+  return 'UserProfile(userId: $userId, displayName: $displayName)';
+}
+
+
 }
 
 /// @nodoc
-class __$$UserProfileImplCopyWithImpl<$Res>
-    extends _$UserProfileCopyWithImpl<$Res, _$UserProfileImpl>
-    implements _$$UserProfileImplCopyWith<$Res> {
-  __$$UserProfileImplCopyWithImpl(
-    _$UserProfileImpl _value,
-    $Res Function(_$UserProfileImpl) _then,
-  ) : super(_value, _then);
+abstract mixin class _$UserProfileCopyWith<$Res> implements $UserProfileCopyWith<$Res> {
+  factory _$UserProfileCopyWith(_UserProfile value, $Res Function(_UserProfile) _then) = __$UserProfileCopyWithImpl;
+@override @useResult
+$Res call({
+ String userId, String displayName
+});
 
-  /// Create a copy of UserProfile
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({Object? userId = null, Object? displayName = null}) {
-    return _then(
-      _$UserProfileImpl(
-        userId: null == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        displayName: null == displayName
-            ? _value.displayName
-            : displayName // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$UserProfileCopyWithImpl<$Res>
+    implements _$UserProfileCopyWith<$Res> {
+  __$UserProfileCopyWithImpl(this._self, this._then);
 
-class _$UserProfileImpl implements _UserProfile {
-  const _$UserProfileImpl({required this.userId, required this.displayName});
+  final _UserProfile _self;
+  final $Res Function(_UserProfile) _then;
 
-  @override
-  final String userId;
-  @override
-  final String displayName;
-
-  @override
-  String toString() {
-    return 'UserProfile(userId: $userId, displayName: $displayName)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$UserProfileImpl &&
-            (identical(other.userId, userId) || other.userId == userId) &&
-            (identical(other.displayName, displayName) ||
-                other.displayName == displayName));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, userId, displayName);
-
-  /// Create a copy of UserProfile
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$UserProfileImplCopyWith<_$UserProfileImpl> get copyWith =>
-      __$$UserProfileImplCopyWithImpl<_$UserProfileImpl>(this, _$identity);
+/// Create a copy of UserProfile
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? displayName = null,}) {
+  return _then(_UserProfile(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
 }
 
-abstract class _UserProfile implements UserProfile {
-  const factory _UserProfile({
-    required final String userId,
-    required final String displayName,
-  }) = _$UserProfileImpl;
 
-  @override
-  String get userId;
-  @override
-  String get displayName;
-
-  /// Create a copy of UserProfile
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$UserProfileImplCopyWith<_$UserProfileImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 mixin _$HouseholdMember {
-  String get userId => throw _privateConstructorUsedError;
-  String get displayName => throw _privateConstructorUsedError;
-  String get role => throw _privateConstructorUsedError;
-  bool get isCurrentUser => throw _privateConstructorUsedError;
 
-  /// Create a copy of HouseholdMember
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $HouseholdMemberCopyWith<HouseholdMember> get copyWith =>
-      throw _privateConstructorUsedError;
+ String get userId; String get displayName; String get role; bool get isCurrentUser;
+/// Create a copy of HouseholdMember
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$HouseholdMemberCopyWith<HouseholdMember> get copyWith => _$HouseholdMemberCopyWithImpl<HouseholdMember>(this as HouseholdMember, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HouseholdMember&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.role, role) || other.role == role)&&(identical(other.isCurrentUser, isCurrentUser) || other.isCurrentUser == isCurrentUser));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,userId,displayName,role,isCurrentUser);
+
+@override
+String toString() {
+  return 'HouseholdMember(userId: $userId, displayName: $displayName, role: $role, isCurrentUser: $isCurrentUser)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $HouseholdMemberCopyWith<$Res> {
-  factory $HouseholdMemberCopyWith(
-    HouseholdMember value,
-    $Res Function(HouseholdMember) then,
-  ) = _$HouseholdMemberCopyWithImpl<$Res, HouseholdMember>;
-  @useResult
-  $Res call({
-    String userId,
-    String displayName,
-    String role,
-    bool isCurrentUser,
-  });
-}
+abstract mixin class $HouseholdMemberCopyWith<$Res>  {
+  factory $HouseholdMemberCopyWith(HouseholdMember value, $Res Function(HouseholdMember) _then) = _$HouseholdMemberCopyWithImpl;
+@useResult
+$Res call({
+ String userId, String displayName, String role, bool isCurrentUser
+});
 
+
+
+
+}
 /// @nodoc
-class _$HouseholdMemberCopyWithImpl<$Res, $Val extends HouseholdMember>
+class _$HouseholdMemberCopyWithImpl<$Res>
     implements $HouseholdMemberCopyWith<$Res> {
-  _$HouseholdMemberCopyWithImpl(this._value, this._then);
+  _$HouseholdMemberCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final HouseholdMember _self;
+  final $Res Function(HouseholdMember) _then;
 
-  /// Create a copy of HouseholdMember
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userId = null,
-    Object? displayName = null,
-    Object? role = null,
-    Object? isCurrentUser = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            userId: null == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            displayName: null == displayName
-                ? _value.displayName
-                : displayName // ignore: cast_nullable_to_non_nullable
-                      as String,
-            role: null == role
-                ? _value.role
-                : role // ignore: cast_nullable_to_non_nullable
-                      as String,
-            isCurrentUser: null == isCurrentUser
-                ? _value.isCurrentUser
-                : isCurrentUser // ignore: cast_nullable_to_non_nullable
-                      as bool,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of HouseholdMember
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? displayName = null,Object? role = null,Object? isCurrentUser = null,}) {
+  return _then(_self.copyWith(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
+as String,isCurrentUser: null == isCurrentUser ? _self.isCurrentUser : isCurrentUser // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [HouseholdMember].
+extension HouseholdMemberPatterns on HouseholdMember {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _HouseholdMember value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _HouseholdMember() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _HouseholdMember value)  $default,){
+final _that = this;
+switch (_that) {
+case _HouseholdMember():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _HouseholdMember value)?  $default,){
+final _that = this;
+switch (_that) {
+case _HouseholdMember() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId,  String displayName,  String role,  bool isCurrentUser)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _HouseholdMember() when $default != null:
+return $default(_that.userId,_that.displayName,_that.role,_that.isCurrentUser);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId,  String displayName,  String role,  bool isCurrentUser)  $default,) {final _that = this;
+switch (_that) {
+case _HouseholdMember():
+return $default(_that.userId,_that.displayName,_that.role,_that.isCurrentUser);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId,  String displayName,  String role,  bool isCurrentUser)?  $default,) {final _that = this;
+switch (_that) {
+case _HouseholdMember() when $default != null:
+return $default(_that.userId,_that.displayName,_that.role,_that.isCurrentUser);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$HouseholdMemberImplCopyWith<$Res>
-    implements $HouseholdMemberCopyWith<$Res> {
-  factory _$$HouseholdMemberImplCopyWith(
-    _$HouseholdMemberImpl value,
-    $Res Function(_$HouseholdMemberImpl) then,
-  ) = __$$HouseholdMemberImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String userId,
-    String displayName,
-    String role,
-    bool isCurrentUser,
-  });
+
+
+class _HouseholdMember implements HouseholdMember {
+  const _HouseholdMember({required this.userId, required this.displayName, required this.role, required this.isCurrentUser});
+  
+
+@override final  String userId;
+@override final  String displayName;
+@override final  String role;
+@override final  bool isCurrentUser;
+
+/// Create a copy of HouseholdMember
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$HouseholdMemberCopyWith<_HouseholdMember> get copyWith => __$HouseholdMemberCopyWithImpl<_HouseholdMember>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HouseholdMember&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.role, role) || other.role == role)&&(identical(other.isCurrentUser, isCurrentUser) || other.isCurrentUser == isCurrentUser));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,userId,displayName,role,isCurrentUser);
+
+@override
+String toString() {
+  return 'HouseholdMember(userId: $userId, displayName: $displayName, role: $role, isCurrentUser: $isCurrentUser)';
+}
+
+
 }
 
 /// @nodoc
-class __$$HouseholdMemberImplCopyWithImpl<$Res>
-    extends _$HouseholdMemberCopyWithImpl<$Res, _$HouseholdMemberImpl>
-    implements _$$HouseholdMemberImplCopyWith<$Res> {
-  __$$HouseholdMemberImplCopyWithImpl(
-    _$HouseholdMemberImpl _value,
-    $Res Function(_$HouseholdMemberImpl) _then,
-  ) : super(_value, _then);
+abstract mixin class _$HouseholdMemberCopyWith<$Res> implements $HouseholdMemberCopyWith<$Res> {
+  factory _$HouseholdMemberCopyWith(_HouseholdMember value, $Res Function(_HouseholdMember) _then) = __$HouseholdMemberCopyWithImpl;
+@override @useResult
+$Res call({
+ String userId, String displayName, String role, bool isCurrentUser
+});
 
-  /// Create a copy of HouseholdMember
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userId = null,
-    Object? displayName = null,
-    Object? role = null,
-    Object? isCurrentUser = null,
-  }) {
-    return _then(
-      _$HouseholdMemberImpl(
-        userId: null == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        displayName: null == displayName
-            ? _value.displayName
-            : displayName // ignore: cast_nullable_to_non_nullable
-                  as String,
-        role: null == role
-            ? _value.role
-            : role // ignore: cast_nullable_to_non_nullable
-                  as String,
-        isCurrentUser: null == isCurrentUser
-            ? _value.isCurrentUser
-            : isCurrentUser // ignore: cast_nullable_to_non_nullable
-                  as bool,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$HouseholdMemberCopyWithImpl<$Res>
+    implements _$HouseholdMemberCopyWith<$Res> {
+  __$HouseholdMemberCopyWithImpl(this._self, this._then);
 
-class _$HouseholdMemberImpl implements _HouseholdMember {
-  const _$HouseholdMemberImpl({
-    required this.userId,
-    required this.displayName,
-    required this.role,
-    required this.isCurrentUser,
-  });
+  final _HouseholdMember _self;
+  final $Res Function(_HouseholdMember) _then;
 
-  @override
-  final String userId;
-  @override
-  final String displayName;
-  @override
-  final String role;
-  @override
-  final bool isCurrentUser;
-
-  @override
-  String toString() {
-    return 'HouseholdMember(userId: $userId, displayName: $displayName, role: $role, isCurrentUser: $isCurrentUser)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$HouseholdMemberImpl &&
-            (identical(other.userId, userId) || other.userId == userId) &&
-            (identical(other.displayName, displayName) ||
-                other.displayName == displayName) &&
-            (identical(other.role, role) || other.role == role) &&
-            (identical(other.isCurrentUser, isCurrentUser) ||
-                other.isCurrentUser == isCurrentUser));
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(runtimeType, userId, displayName, role, isCurrentUser);
-
-  /// Create a copy of HouseholdMember
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$HouseholdMemberImplCopyWith<_$HouseholdMemberImpl> get copyWith =>
-      __$$HouseholdMemberImplCopyWithImpl<_$HouseholdMemberImpl>(
-        this,
-        _$identity,
-      );
+/// Create a copy of HouseholdMember
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? displayName = null,Object? role = null,Object? isCurrentUser = null,}) {
+  return _then(_HouseholdMember(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
+as String,isCurrentUser: null == isCurrentUser ? _self.isCurrentUser : isCurrentUser // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
 }
 
-abstract class _HouseholdMember implements HouseholdMember {
-  const factory _HouseholdMember({
-    required final String userId,
-    required final String displayName,
-    required final String role,
-    required final bool isCurrentUser,
-  }) = _$HouseholdMemberImpl;
 
-  @override
-  String get userId;
-  @override
-  String get displayName;
-  @override
-  String get role;
-  @override
-  bool get isCurrentUser;
-
-  /// Create a copy of HouseholdMember
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$HouseholdMemberImplCopyWith<_$HouseholdMemberImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 mixin _$HouseholdInfo {
-  String get householdId => throw _privateConstructorUsedError;
-  String get householdName => throw _privateConstructorUsedError;
-  bool get isOwner => throw _privateConstructorUsedError;
-  List<HouseholdMember> get members => throw _privateConstructorUsedError;
 
-  /// Currency the dashboard's aggregations are shown in
-  /// (migration 036). Defaults to 'USD' on every existing row;
-  /// changed via [SettingsRepository.updateDisplayCurrency].
-  String get displayCurrency => throw _privateConstructorUsedError;
+ String get householdId; String get householdName; bool get isOwner; List<HouseholdMember> get members;/// Currency the dashboard's aggregations are shown in
+/// (migration 036). Defaults to 'USD' on every existing row;
+/// changed via [SettingsRepository.updateDisplayCurrency].
+ String get displayCurrency;
+/// Create a copy of HouseholdInfo
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$HouseholdInfoCopyWith<HouseholdInfo> get copyWith => _$HouseholdInfoCopyWithImpl<HouseholdInfo>(this as HouseholdInfo, _$identity);
 
-  /// Create a copy of HouseholdInfo
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $HouseholdInfoCopyWith<HouseholdInfo> get copyWith =>
-      throw _privateConstructorUsedError;
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HouseholdInfo&&(identical(other.householdId, householdId) || other.householdId == householdId)&&(identical(other.householdName, householdName) || other.householdName == householdName)&&(identical(other.isOwner, isOwner) || other.isOwner == isOwner)&&const DeepCollectionEquality().equals(other.members, members)&&(identical(other.displayCurrency, displayCurrency) || other.displayCurrency == displayCurrency));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,householdId,householdName,isOwner,const DeepCollectionEquality().hash(members),displayCurrency);
+
+@override
+String toString() {
+  return 'HouseholdInfo(householdId: $householdId, householdName: $householdName, isOwner: $isOwner, members: $members, displayCurrency: $displayCurrency)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $HouseholdInfoCopyWith<$Res> {
-  factory $HouseholdInfoCopyWith(
-    HouseholdInfo value,
-    $Res Function(HouseholdInfo) then,
-  ) = _$HouseholdInfoCopyWithImpl<$Res, HouseholdInfo>;
-  @useResult
-  $Res call({
-    String householdId,
-    String householdName,
-    bool isOwner,
-    List<HouseholdMember> members,
-    String displayCurrency,
-  });
-}
+abstract mixin class $HouseholdInfoCopyWith<$Res>  {
+  factory $HouseholdInfoCopyWith(HouseholdInfo value, $Res Function(HouseholdInfo) _then) = _$HouseholdInfoCopyWithImpl;
+@useResult
+$Res call({
+ String householdId, String householdName, bool isOwner, List<HouseholdMember> members, String displayCurrency
+});
 
+
+
+
+}
 /// @nodoc
-class _$HouseholdInfoCopyWithImpl<$Res, $Val extends HouseholdInfo>
+class _$HouseholdInfoCopyWithImpl<$Res>
     implements $HouseholdInfoCopyWith<$Res> {
-  _$HouseholdInfoCopyWithImpl(this._value, this._then);
+  _$HouseholdInfoCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final HouseholdInfo _self;
+  final $Res Function(HouseholdInfo) _then;
 
-  /// Create a copy of HouseholdInfo
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? householdId = null,
-    Object? householdName = null,
-    Object? isOwner = null,
-    Object? members = null,
-    Object? displayCurrency = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            householdId: null == householdId
-                ? _value.householdId
-                : householdId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            householdName: null == householdName
-                ? _value.householdName
-                : householdName // ignore: cast_nullable_to_non_nullable
-                      as String,
-            isOwner: null == isOwner
-                ? _value.isOwner
-                : isOwner // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            members: null == members
-                ? _value.members
-                : members // ignore: cast_nullable_to_non_nullable
-                      as List<HouseholdMember>,
-            displayCurrency: null == displayCurrency
-                ? _value.displayCurrency
-                : displayCurrency // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of HouseholdInfo
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? householdId = null,Object? householdName = null,Object? isOwner = null,Object? members = null,Object? displayCurrency = null,}) {
+  return _then(_self.copyWith(
+householdId: null == householdId ? _self.householdId : householdId // ignore: cast_nullable_to_non_nullable
+as String,householdName: null == householdName ? _self.householdName : householdName // ignore: cast_nullable_to_non_nullable
+as String,isOwner: null == isOwner ? _self.isOwner : isOwner // ignore: cast_nullable_to_non_nullable
+as bool,members: null == members ? _self.members : members // ignore: cast_nullable_to_non_nullable
+as List<HouseholdMember>,displayCurrency: null == displayCurrency ? _self.displayCurrency : displayCurrency // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [HouseholdInfo].
+extension HouseholdInfoPatterns on HouseholdInfo {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _HouseholdInfo value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _HouseholdInfo() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _HouseholdInfo value)  $default,){
+final _that = this;
+switch (_that) {
+case _HouseholdInfo():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _HouseholdInfo value)?  $default,){
+final _that = this;
+switch (_that) {
+case _HouseholdInfo() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String householdId,  String householdName,  bool isOwner,  List<HouseholdMember> members,  String displayCurrency)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _HouseholdInfo() when $default != null:
+return $default(_that.householdId,_that.householdName,_that.isOwner,_that.members,_that.displayCurrency);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String householdId,  String householdName,  bool isOwner,  List<HouseholdMember> members,  String displayCurrency)  $default,) {final _that = this;
+switch (_that) {
+case _HouseholdInfo():
+return $default(_that.householdId,_that.householdName,_that.isOwner,_that.members,_that.displayCurrency);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String householdId,  String householdName,  bool isOwner,  List<HouseholdMember> members,  String displayCurrency)?  $default,) {final _that = this;
+switch (_that) {
+case _HouseholdInfo() when $default != null:
+return $default(_that.householdId,_that.householdName,_that.isOwner,_that.members,_that.displayCurrency);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$HouseholdInfoImplCopyWith<$Res>
-    implements $HouseholdInfoCopyWith<$Res> {
-  factory _$$HouseholdInfoImplCopyWith(
-    _$HouseholdInfoImpl value,
-    $Res Function(_$HouseholdInfoImpl) then,
-  ) = __$$HouseholdInfoImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String householdId,
-    String householdName,
-    bool isOwner,
-    List<HouseholdMember> members,
-    String displayCurrency,
-  });
+
+
+class _HouseholdInfo implements HouseholdInfo {
+  const _HouseholdInfo({required this.householdId, required this.householdName, required this.isOwner, required final  List<HouseholdMember> members, this.displayCurrency = 'USD'}): _members = members;
+  
+
+@override final  String householdId;
+@override final  String householdName;
+@override final  bool isOwner;
+ final  List<HouseholdMember> _members;
+@override List<HouseholdMember> get members {
+  if (_members is EqualUnmodifiableListView) return _members;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_members);
+}
+
+/// Currency the dashboard's aggregations are shown in
+/// (migration 036). Defaults to 'USD' on every existing row;
+/// changed via [SettingsRepository.updateDisplayCurrency].
+@override@JsonKey() final  String displayCurrency;
+
+/// Create a copy of HouseholdInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$HouseholdInfoCopyWith<_HouseholdInfo> get copyWith => __$HouseholdInfoCopyWithImpl<_HouseholdInfo>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HouseholdInfo&&(identical(other.householdId, householdId) || other.householdId == householdId)&&(identical(other.householdName, householdName) || other.householdName == householdName)&&(identical(other.isOwner, isOwner) || other.isOwner == isOwner)&&const DeepCollectionEquality().equals(other._members, _members)&&(identical(other.displayCurrency, displayCurrency) || other.displayCurrency == displayCurrency));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,householdId,householdName,isOwner,const DeepCollectionEquality().hash(_members),displayCurrency);
+
+@override
+String toString() {
+  return 'HouseholdInfo(householdId: $householdId, householdName: $householdName, isOwner: $isOwner, members: $members, displayCurrency: $displayCurrency)';
+}
+
+
 }
 
 /// @nodoc
-class __$$HouseholdInfoImplCopyWithImpl<$Res>
-    extends _$HouseholdInfoCopyWithImpl<$Res, _$HouseholdInfoImpl>
-    implements _$$HouseholdInfoImplCopyWith<$Res> {
-  __$$HouseholdInfoImplCopyWithImpl(
-    _$HouseholdInfoImpl _value,
-    $Res Function(_$HouseholdInfoImpl) _then,
-  ) : super(_value, _then);
+abstract mixin class _$HouseholdInfoCopyWith<$Res> implements $HouseholdInfoCopyWith<$Res> {
+  factory _$HouseholdInfoCopyWith(_HouseholdInfo value, $Res Function(_HouseholdInfo) _then) = __$HouseholdInfoCopyWithImpl;
+@override @useResult
+$Res call({
+ String householdId, String householdName, bool isOwner, List<HouseholdMember> members, String displayCurrency
+});
 
-  /// Create a copy of HouseholdInfo
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? householdId = null,
-    Object? householdName = null,
-    Object? isOwner = null,
-    Object? members = null,
-    Object? displayCurrency = null,
-  }) {
-    return _then(
-      _$HouseholdInfoImpl(
-        householdId: null == householdId
-            ? _value.householdId
-            : householdId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        householdName: null == householdName
-            ? _value.householdName
-            : householdName // ignore: cast_nullable_to_non_nullable
-                  as String,
-        isOwner: null == isOwner
-            ? _value.isOwner
-            : isOwner // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        members: null == members
-            ? _value._members
-            : members // ignore: cast_nullable_to_non_nullable
-                  as List<HouseholdMember>,
-        displayCurrency: null == displayCurrency
-            ? _value.displayCurrency
-            : displayCurrency // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$HouseholdInfoCopyWithImpl<$Res>
+    implements _$HouseholdInfoCopyWith<$Res> {
+  __$HouseholdInfoCopyWithImpl(this._self, this._then);
 
-class _$HouseholdInfoImpl implements _HouseholdInfo {
-  const _$HouseholdInfoImpl({
-    required this.householdId,
-    required this.householdName,
-    required this.isOwner,
-    required final List<HouseholdMember> members,
-    this.displayCurrency = 'USD',
-  }) : _members = members;
+  final _HouseholdInfo _self;
+  final $Res Function(_HouseholdInfo) _then;
 
-  @override
-  final String householdId;
-  @override
-  final String householdName;
-  @override
-  final bool isOwner;
-  final List<HouseholdMember> _members;
-  @override
-  List<HouseholdMember> get members {
-    if (_members is EqualUnmodifiableListView) return _members;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_members);
-  }
-
-  /// Currency the dashboard's aggregations are shown in
-  /// (migration 036). Defaults to 'USD' on every existing row;
-  /// changed via [SettingsRepository.updateDisplayCurrency].
-  @override
-  @JsonKey()
-  final String displayCurrency;
-
-  @override
-  String toString() {
-    return 'HouseholdInfo(householdId: $householdId, householdName: $householdName, isOwner: $isOwner, members: $members, displayCurrency: $displayCurrency)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$HouseholdInfoImpl &&
-            (identical(other.householdId, householdId) ||
-                other.householdId == householdId) &&
-            (identical(other.householdName, householdName) ||
-                other.householdName == householdName) &&
-            (identical(other.isOwner, isOwner) || other.isOwner == isOwner) &&
-            const DeepCollectionEquality().equals(other._members, _members) &&
-            (identical(other.displayCurrency, displayCurrency) ||
-                other.displayCurrency == displayCurrency));
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    householdId,
-    householdName,
-    isOwner,
-    const DeepCollectionEquality().hash(_members),
-    displayCurrency,
-  );
-
-  /// Create a copy of HouseholdInfo
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$HouseholdInfoImplCopyWith<_$HouseholdInfoImpl> get copyWith =>
-      __$$HouseholdInfoImplCopyWithImpl<_$HouseholdInfoImpl>(this, _$identity);
+/// Create a copy of HouseholdInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? householdId = null,Object? householdName = null,Object? isOwner = null,Object? members = null,Object? displayCurrency = null,}) {
+  return _then(_HouseholdInfo(
+householdId: null == householdId ? _self.householdId : householdId // ignore: cast_nullable_to_non_nullable
+as String,householdName: null == householdName ? _self.householdName : householdName // ignore: cast_nullable_to_non_nullable
+as String,isOwner: null == isOwner ? _self.isOwner : isOwner // ignore: cast_nullable_to_non_nullable
+as bool,members: null == members ? _self._members : members // ignore: cast_nullable_to_non_nullable
+as List<HouseholdMember>,displayCurrency: null == displayCurrency ? _self.displayCurrency : displayCurrency // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
 }
 
-abstract class _HouseholdInfo implements HouseholdInfo {
-  const factory _HouseholdInfo({
-    required final String householdId,
-    required final String householdName,
-    required final bool isOwner,
-    required final List<HouseholdMember> members,
-    final String displayCurrency,
-  }) = _$HouseholdInfoImpl;
 
-  @override
-  String get householdId;
-  @override
-  String get householdName;
-  @override
-  bool get isOwner;
-  @override
-  List<HouseholdMember> get members;
-
-  /// Currency the dashboard's aggregations are shown in
-  /// (migration 036). Defaults to 'USD' on every existing row;
-  /// changed via [SettingsRepository.updateDisplayCurrency].
-  @override
-  String get displayCurrency;
-
-  /// Create a copy of HouseholdInfo
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$HouseholdInfoImplCopyWith<_$HouseholdInfoImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
+
+// dart format on

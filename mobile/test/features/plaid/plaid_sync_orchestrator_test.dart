@@ -39,8 +39,18 @@ void main() {
       final repo = _StubRepo(
         items: [item('a'), item('b')],
         syncResults: {
-          'a': const PlaidSyncResult(added: 5, modified: 2, removed: 0, merged: 1),
-          'b': const PlaidSyncResult(added: 3, modified: 0, removed: 4, merged: 0),
+          'a': const PlaidSyncResult(
+            added: 5,
+            modified: 2,
+            removed: 0,
+            merged: 1,
+          ),
+          'b': const PlaidSyncResult(
+            added: 3,
+            modified: 0,
+            removed: 4,
+            merged: 0,
+          ),
         },
       );
       final summary = await PlaidSyncOrchestrator(repository: repo).syncAll();
@@ -56,7 +66,10 @@ void main() {
 
     test('item returning requires_reauth lands in the reauth list', () async {
       final repo = _StubRepo(
-        items: [item('a', institution: 'Chase'), item('b', institution: 'Amex')],
+        items: [
+          item('a', institution: 'Chase'),
+          item('b', institution: 'Amex'),
+        ],
         syncResults: {
           'a': const PlaidSyncResult(added: 1),
           'b': const PlaidSyncResult(
@@ -88,36 +101,32 @@ void main() {
       expect(summary.hasUnhealthyItems, isTrue);
     });
 
-    test(
-      'partial_failure on one item lands it in itemsWithPartialFailure '
-      '(distinct from failedItems/reauth)',
-      () async {
-        // Code-review fix #2: the Edge Function holds the cursor
-        // on per-account RPC failure and returns partial_failure
-        // true. The orchestrator surfaces these as a distinct
-        // bucket so the UI can say "1 account in $institution
-        // didn't update — we'll retry next time" instead of the
-        // generic "couldn't sync" treatment for hard failures.
-        final repo = _StubRepo(
-          items: [item('a'), item('b')],
-          syncResults: {
-            'a': const PlaidSyncResult(added: 5),
-            'b': const PlaidSyncResult(
-              added: 0,
-              partialFailure: true,
-              failedAccountIds: ['acct-xyz'],
-            ),
-          },
-        );
-        final summary =
-            await PlaidSyncOrchestrator(repository: repo).syncAll();
-        expect(summary.itemsWithPartialFailure.length, 1);
-        expect(summary.itemsWithPartialFailure.single.id, 'b');
-        expect(summary.failedItems, isEmpty);
-        expect(summary.itemsRequiringReauth, isEmpty);
-        expect(summary.hasUnhealthyItems, isTrue);
-      },
-    );
+    test('partial_failure on one item lands it in itemsWithPartialFailure '
+        '(distinct from failedItems/reauth)', () async {
+      // Code-review fix #2: the Edge Function holds the cursor
+      // on per-account RPC failure and returns partial_failure
+      // true. The orchestrator surfaces these as a distinct
+      // bucket so the UI can say "1 account in $institution
+      // didn't update — we'll retry next time" instead of the
+      // generic "couldn't sync" treatment for hard failures.
+      final repo = _StubRepo(
+        items: [item('a'), item('b')],
+        syncResults: {
+          'a': const PlaidSyncResult(added: 5),
+          'b': const PlaidSyncResult(
+            added: 0,
+            partialFailure: true,
+            failedAccountIds: ['acct-xyz'],
+          ),
+        },
+      );
+      final summary = await PlaidSyncOrchestrator(repository: repo).syncAll();
+      expect(summary.itemsWithPartialFailure.length, 1);
+      expect(summary.itemsWithPartialFailure.single.id, 'b');
+      expect(summary.failedItems, isEmpty);
+      expect(summary.itemsRequiringReauth, isEmpty);
+      expect(summary.hasUnhealthyItems, isTrue);
+    });
   });
 
   group('PlaidItem.requiresReauth', () {
@@ -184,6 +193,5 @@ class _StubRepo implements PlaidRepository {
     required String publicToken,
     required dynamic institution,
     required dynamic accounts,
-  }) =>
-      throw StateError('orchestrator should not exchange tokens');
+  }) => throw StateError('orchestrator should not exchange tokens');
 }

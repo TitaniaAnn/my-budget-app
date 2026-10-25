@@ -291,37 +291,31 @@ void main() {
       expect(data.topCategories.single.name, 'Groceries');
     });
 
-    test(
-      'rows carry the category id for drill-down; Uncategorized carries '
-      'null',
-      () {
-        // The dashboard tile uses `id` to deep-link into the
-        // transactions screen with the category filter pre-applied.
-        // Real categories must surface their id; the synthesised
-        // Uncategorized bucket must report null so the tile can
-        // render it inert (there's no single category to filter by).
-        final monthStart = DateTime(
-          DateTime.now().year,
-          DateTime.now().month,
-          1,
-        );
-        final data = DashboardData(
-          accounts: const [],
-          recentTransactions90d: [_tx(amount: -1000, date: monthStart, id: 'u')],
-          recentTransactions: const [],
-          spendingByCategory: const {'g': 5000},
-          categoryLookup: {'g': cat('g', 'Groceries')},
-        );
-        final rowsById = {for (final r in data.topCategories) r.name: r.id};
-        expect(rowsById['Groceries'], 'g');
-        expect(
-          rowsById['Uncategorized'],
-          isNull,
-          reason: 'Uncategorized has no category id — the tile renders it '
-              'as a non-tappable row.',
-        );
-      },
-    );
+    test('rows carry the category id for drill-down; Uncategorized carries '
+        'null', () {
+      // The dashboard tile uses `id` to deep-link into the
+      // transactions screen with the category filter pre-applied.
+      // Real categories must surface their id; the synthesised
+      // Uncategorized bucket must report null so the tile can
+      // render it inert (there's no single category to filter by).
+      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [_tx(amount: -1000, date: monthStart, id: 'u')],
+        recentTransactions: const [],
+        spendingByCategory: const {'g': 5000},
+        categoryLookup: {'g': cat('g', 'Groceries')},
+      );
+      final rowsById = {for (final r in data.topCategories) r.name: r.id};
+      expect(rowsById['Groceries'], 'g');
+      expect(
+        rowsById['Uncategorized'],
+        isNull,
+        reason:
+            'Uncategorized has no category id — the tile renders it '
+            'as a non-tappable row.',
+      );
+    });
   });
 
   group('spendingByDay', () {
@@ -451,25 +445,22 @@ void main() {
       );
     }
 
-    test(
-      'monthlyIncome / monthlySpending convert foreign currency rows',
-      () {
-        // $1,000 USD salary + €100 EUR refund → expect $1,000 + $107.30 income.
-        final data = DashboardData(
-          accounts: const [],
-          recentTransactions90d: [
-            tx(amount: 100000, id: 'usd-pay'),
-            tx(amount: 10000, currency: 'EUR', id: 'eu-refund'),
-            tx(amount: -5000, id: 'usd-spend'),
-            tx(amount: -2000, currency: 'EUR', id: 'eu-spend'),
-          ],
-          recentTransactions: const [],
-          ratesToDisplay: const {'EUR': 1.073},
-        );
-        expect(data.monthlyIncome, 100000 + 10730);
-        expect(data.monthlySpending, 5000 + 2146);
-      },
-    );
+    test('monthlyIncome / monthlySpending convert foreign currency rows', () {
+      // $1,000 USD salary + €100 EUR refund → expect $1,000 + $107.30 income.
+      final data = DashboardData(
+        accounts: const [],
+        recentTransactions90d: [
+          tx(amount: 100000, id: 'usd-pay'),
+          tx(amount: 10000, currency: 'EUR', id: 'eu-refund'),
+          tx(amount: -5000, id: 'usd-spend'),
+          tx(amount: -2000, currency: 'EUR', id: 'eu-spend'),
+        ],
+        recentTransactions: const [],
+        ratesToDisplay: const {'EUR': 1.073},
+      );
+      expect(data.monthlyIncome, 100000 + 10730);
+      expect(data.monthlySpending, 5000 + 2146);
+    });
 
     test(
       'missing-rate transactions are excluded from monthlyIncome / Spending',
@@ -487,7 +478,8 @@ void main() {
         expect(
           data.monthlySpending,
           5000,
-          reason: 'JPY row has no rate → excluded; including it at '
+          reason:
+              'JPY row has no rate → excluded; including it at '
               'rate=1 would silently lie about cash flow.',
         );
       },

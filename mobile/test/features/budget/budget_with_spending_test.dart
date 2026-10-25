@@ -187,38 +187,35 @@ void main() {
   // conversion-aware contract.
 
   group('BudgetWithSpending multi-currency comparison', () {
-    test(
-      'capCents matters for progress / over-budget — capIsMissingRate '
-      'safely returns 0% / not-over',
-      () {
-        // Budget of €500 in a USD household, EUR→USD rate 1.20 →
-        // capCents = 60000 (in USD). spentCents=70000 (returned
-        // from the RPC in USD already) → over by 10000.
-        final overConverted = _bws(
-          budgetCents: 50000,
-          spentCents: 70000,
-          capCents: 60000,
-        );
-        expect(overConverted.isOverBudget, isTrue);
-        expect(overConverted.remainingCents, -10000);
-        expect(overConverted.progress, 1.0); // clamped
+    test('capCents matters for progress / over-budget — capIsMissingRate '
+        'safely returns 0% / not-over', () {
+      // Budget of €500 in a USD household, EUR→USD rate 1.20 →
+      // capCents = 60000 (in USD). spentCents=70000 (returned
+      // from the RPC in USD already) → over by 10000.
+      final overConverted = _bws(
+        budgetCents: 50000,
+        spentCents: 70000,
+        capCents: 60000,
+      );
+      expect(overConverted.isOverBudget, isTrue);
+      expect(overConverted.remainingCents, -10000);
+      expect(overConverted.progress, 1.0); // clamped
 
-        // No rate → cap=0, missing flag set. The getters must
-        // return safe values (0% / not-over) so the UI can render
-        // a placeholder rather than crashing.
-        final unconvertible = _bws(
-          budgetCents: 50000,
-          spentCents: 12000,
-          capCents: 0,
-          capIsMissingRate: true,
-        );
-        expect(unconvertible.isOverBudget, isFalse);
-        expect(unconvertible.isProjectedOver, isFalse);
-        expect(unconvertible.progress, 0);
-        expect(unconvertible.projectedProgress, 0);
-        expect(unconvertible.capIsMissingRate, isTrue);
-      },
-    );
+      // No rate → cap=0, missing flag set. The getters must
+      // return safe values (0% / not-over) so the UI can render
+      // a placeholder rather than crashing.
+      final unconvertible = _bws(
+        budgetCents: 50000,
+        spentCents: 12000,
+        capCents: 0,
+        capIsMissingRate: true,
+      );
+      expect(unconvertible.isOverBudget, isFalse);
+      expect(unconvertible.isProjectedOver, isFalse);
+      expect(unconvertible.progress, 0);
+      expect(unconvertible.projectedProgress, 0);
+      expect(unconvertible.capIsMissingRate, isTrue);
+    });
 
     test('legacy single-currency tests still work via capCents default', () {
       // _bws defaults capCents to budgetCents, so existing tests

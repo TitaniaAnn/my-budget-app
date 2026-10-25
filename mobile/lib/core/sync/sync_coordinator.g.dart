@@ -6,22 +6,47 @@ part of 'sync_coordinator.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$syncCoordinatorHash() => r'2853a1351a7fc56df55a9cae09405f9b451e45bb';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [syncCoordinator].
 @ProviderFor(syncCoordinator)
-final syncCoordinatorProvider = Provider<SyncCoordinator>.internal(
-  syncCoordinator,
-  name: r'syncCoordinatorProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$syncCoordinatorHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final syncCoordinatorProvider = SyncCoordinatorProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SyncCoordinatorRef = ProviderRef<SyncCoordinator>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class SyncCoordinatorProvider
+    extends
+        $FunctionalProvider<SyncCoordinator, SyncCoordinator, SyncCoordinator>
+    with $Provider<SyncCoordinator> {
+  SyncCoordinatorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'syncCoordinatorProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$syncCoordinatorHash();
+
+  @$internal
+  @override
+  $ProviderElement<SyncCoordinator> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SyncCoordinator create(Ref ref) {
+    return syncCoordinator(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SyncCoordinator value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SyncCoordinator>(value),
+    );
+  }
+}
+
+String _$syncCoordinatorHash() => r'479d6768807c154efc7166a50e89c1c58591be7c';

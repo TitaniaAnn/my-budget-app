@@ -59,7 +59,9 @@ class UserLocale extends _$UserLocale {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userLocaleKey, tag);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 }
 

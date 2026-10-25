@@ -81,7 +81,7 @@ class _ReviewOcrLinesScreenState extends ConsumerState<ReviewOcrLinesScreen> {
                   'items the recognizer is unsure about will land here.',
             );
           }
-          final categories = categoriesAsync.valueOrNull ?? const <Category>[];
+          final categories = categoriesAsync.value ?? const <Category>[];
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: items.length,
@@ -156,10 +156,7 @@ class _UncertainTile extends ConsumerWidget {
   Future<void> _openEdit(BuildContext context, WidgetRef ref) async {
     await showAppSheet<void>(
       context,
-      child: _ReviewLineSheet(
-        item: item,
-        categories: categories,
-      ),
+      child: _ReviewLineSheet(item: item, categories: categories),
     );
     onAction();
   }
@@ -280,7 +277,9 @@ class _ReviewLineSheetState extends ConsumerState<_ReviewLineSheet> {
               Expanded(
                 child: LoadingButton.filled(
                   loading: _loading,
-                  onPressed: _loading ? null : () => _confirm(acceptAsIs: false),
+                  onPressed: _loading
+                      ? null
+                      : () => _confirm(acceptAsIs: false),
                   child: const Text('Save changes'),
                 ),
               ),

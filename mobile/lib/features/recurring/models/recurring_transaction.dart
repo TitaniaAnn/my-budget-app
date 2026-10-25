@@ -69,7 +69,7 @@ enum RecurrenceCadence {
 }
 
 @freezed
-class RecurringTransaction with _$RecurringTransaction {
+abstract class RecurringTransaction with _$RecurringTransaction {
   const factory RecurringTransaction({
     required String id,
     required String householdId,

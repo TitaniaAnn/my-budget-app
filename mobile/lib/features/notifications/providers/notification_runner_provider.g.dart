@@ -6,45 +6,93 @@ part of 'notification_runner_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$notificationDispatcherHash() =>
-    r'af970aa6229148807d13e6273b849a0f5d271df9';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Indirection so tests can swap in a fake dispatcher. Production
+/// returns the real flutter_local_notifications-backed singleton.
+
+@ProviderFor(notificationDispatcher)
+final notificationDispatcherProvider = NotificationDispatcherProvider._();
 
 /// Indirection so tests can swap in a fake dispatcher. Production
 /// returns the real flutter_local_notifications-backed singleton.
-///
-/// Copied from [notificationDispatcher].
-@ProviderFor(notificationDispatcher)
-final notificationDispatcherProvider =
-    AutoDisposeProvider<LocalNotificationDispatcher>.internal(
-      notificationDispatcher,
-      name: r'notificationDispatcherProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$notificationDispatcherHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+
+final class NotificationDispatcherProvider
+    extends
+        $FunctionalProvider<
+          LocalNotificationDispatcher,
+          LocalNotificationDispatcher,
+          LocalNotificationDispatcher
+        >
+    with $Provider<LocalNotificationDispatcher> {
+  /// Indirection so tests can swap in a fake dispatcher. Production
+  /// returns the real flutter_local_notifications-backed singleton.
+  NotificationDispatcherProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'notificationDispatcherProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$notificationDispatcherHash();
+
+  @$internal
+  @override
+  $ProviderElement<LocalNotificationDispatcher> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LocalNotificationDispatcher create(Ref ref) {
+    return notificationDispatcher(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LocalNotificationDispatcher value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LocalNotificationDispatcher>(value),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NotificationDispatcherRef =
-    AutoDisposeProviderRef<LocalNotificationDispatcher>;
-String _$runNotificationsHash() => r'00964f9ca59c13aabe19602367125f1f9f13ca70';
+String _$notificationDispatcherHash() =>
+    r'49b99630b7745ab62e4a96f9b1d78f56cbade679';
 
-/// See also [runNotifications].
 @ProviderFor(runNotifications)
-final runNotificationsProvider = FutureProvider<int>.internal(
-  runNotifications,
-  name: r'runNotificationsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$runNotificationsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final runNotificationsProvider = RunNotificationsProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RunNotificationsRef = FutureProviderRef<int>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class RunNotificationsProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  RunNotificationsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'runNotificationsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$runNotificationsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return runNotifications(ref);
+  }
+}
+
+String _$runNotificationsHash() => r'9a3f74d29bea1b8591feaebe699f25baaae1de9c';

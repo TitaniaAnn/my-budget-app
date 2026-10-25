@@ -224,7 +224,7 @@ List<ProjectionPoint> buildProjection({
 
 /// All scenarios for the current household.
 @riverpod
-Future<List<Scenario>> scenarios(ScenariosRef ref) async {
+Future<List<Scenario>> scenarios(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
   return ref.read(scenariosRepositoryProvider).fetchScenarios(householdId);
@@ -261,7 +261,7 @@ class ScenarioCardSummary {
 /// to Supabase on the scenarios screen.
 @riverpod
 Future<ScenarioCardSummary> scenarioCardSummary(
-  ScenarioCardSummaryRef ref,
+  Ref ref,
   String scenarioId,
 ) async {
   final householdId = await ref.watch(householdIdProvider.future);
@@ -315,10 +315,7 @@ Future<ScenarioCardSummary> scenarioCardSummary(
 /// The projection starts from the household's current net worth (sum of
 /// account balances) and applies each event forward in time.
 @riverpod
-Future<ScenarioDetail> scenarioDetail(
-  ScenarioDetailRef ref,
-  String scenarioId,
-) async {
+Future<ScenarioDetail> scenarioDetail(Ref ref, String scenarioId) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) throw StateError('No household');
 

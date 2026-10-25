@@ -75,9 +75,7 @@ void main() {
   group('closingBalancesAtMonthEnd', () {
     test('no post-close activity → current_balance unchanged', () {
       final result = closingBalancesAtMonthEnd(
-        accounts: [
-          _acct(id: 'chk', name: 'Checking', balance: 250000),
-        ],
+        accounts: [_acct(id: 'chk', name: 'Checking', balance: 250000)],
         transactionsAfterClose: const [],
         closingAsOf: monthEnd,
       );
@@ -168,10 +166,11 @@ void main() {
         transactionsAfterClose: const [],
         closingAsOf: monthEnd,
       );
-      expect(
-        result.map((r) => r.accountName),
-        ['Mortgage', 'Savings', 'Checking'],
-      );
+      expect(result.map((r) => r.accountName), [
+        'Mortgage',
+        'Savings',
+        'Checking',
+      ]);
     });
 
     test('accounts with no post-close activity still appear', () {

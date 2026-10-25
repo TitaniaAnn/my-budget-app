@@ -6,25 +6,56 @@ part of 'recurring_transactions_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$recurringTransactionsRepositoryHash() =>
-    r'aefc3c10b7b9f945a553db17c00a2236864d5f89';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [recurringTransactionsRepository].
 @ProviderFor(recurringTransactionsRepository)
 final recurringTransactionsRepositoryProvider =
-    AutoDisposeProvider<RecurringTransactionsRepository>.internal(
-      recurringTransactionsRepository,
-      name: r'recurringTransactionsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$recurringTransactionsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+    RecurringTransactionsRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RecurringTransactionsRepositoryRef =
-    AutoDisposeProviderRef<RecurringTransactionsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class RecurringTransactionsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          RecurringTransactionsRepository,
+          RecurringTransactionsRepository,
+          RecurringTransactionsRepository
+        >
+    with $Provider<RecurringTransactionsRepository> {
+  RecurringTransactionsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'recurringTransactionsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$recurringTransactionsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<RecurringTransactionsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  RecurringTransactionsRepository create(Ref ref) {
+    return recurringTransactionsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RecurringTransactionsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RecurringTransactionsRepository>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$recurringTransactionsRepositoryHash() =>
+    r'a08a431755947dce241c53fca70011df5c416cf8';

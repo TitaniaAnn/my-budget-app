@@ -33,7 +33,7 @@ enum CreditRateType {
 }
 
 @freezed
-class CreditCardRate with _$CreditCardRate {
+abstract class CreditCardRate with _$CreditCardRate {
   const factory CreditCardRate({
     required String id,
     required String accountId,

@@ -6,200 +6,154 @@ part of 'transaction_tags_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transactionTagsHash() => r'ca3aa37d4efa80e5837316f7be775b1f6ad29696';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Every tag in the current household, alphabetical. Powers the
+/// chip-picker on the transaction edit sheet — and later, the tag
+/// filter on the transactions list.
+
+@ProviderFor(transactionTags)
+final transactionTagsProvider = TransactionTagsProvider._();
 
 /// Every tag in the current household, alphabetical. Powers the
 /// chip-picker on the transaction edit sheet — and later, the tag
 /// filter on the transactions list.
-///
-/// Copied from [transactionTags].
-@ProviderFor(transactionTags)
-final transactionTagsProvider =
-    AutoDisposeFutureProvider<List<TransactionTag>>.internal(
-      transactionTags,
-      name: r'transactionTagsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$transactionTagsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TransactionTagsRef = AutoDisposeFutureProviderRef<List<TransactionTag>>;
-String _$tagIdsForTransactionHash() =>
-    r'a7fcc25ba5d168876998a5975c6c4f371b6cf456';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// Ids of the tags currently assigned to [transactionId]. Family-
-/// keyed so invalidating one transaction's assignments doesn't
-/// disturb the picker state for any other open editor.
-///
-/// Copied from [tagIdsForTransaction].
-@ProviderFor(tagIdsForTransaction)
-const tagIdsForTransactionProvider = TagIdsForTransactionFamily();
-
-/// Ids of the tags currently assigned to [transactionId]. Family-
-/// keyed so invalidating one transaction's assignments doesn't
-/// disturb the picker state for any other open editor.
-///
-/// Copied from [tagIdsForTransaction].
-class TagIdsForTransactionFamily extends Family<AsyncValue<List<String>>> {
-  /// Ids of the tags currently assigned to [transactionId]. Family-
-  /// keyed so invalidating one transaction's assignments doesn't
-  /// disturb the picker state for any other open editor.
-  ///
-  /// Copied from [tagIdsForTransaction].
-  const TagIdsForTransactionFamily();
-
-  /// Ids of the tags currently assigned to [transactionId]. Family-
-  /// keyed so invalidating one transaction's assignments doesn't
-  /// disturb the picker state for any other open editor.
-  ///
-  /// Copied from [tagIdsForTransaction].
-  TagIdsForTransactionProvider call(String transactionId) {
-    return TagIdsForTransactionProvider(transactionId);
-  }
-
-  @override
-  TagIdsForTransactionProvider getProviderOverride(
-    covariant TagIdsForTransactionProvider provider,
-  ) {
-    return call(provider.transactionId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'tagIdsForTransactionProvider';
-}
-
-/// Ids of the tags currently assigned to [transactionId]. Family-
-/// keyed so invalidating one transaction's assignments doesn't
-/// disturb the picker state for any other open editor.
-///
-/// Copied from [tagIdsForTransaction].
-class TagIdsForTransactionProvider
-    extends AutoDisposeFutureProvider<List<String>> {
-  /// Ids of the tags currently assigned to [transactionId]. Family-
-  /// keyed so invalidating one transaction's assignments doesn't
-  /// disturb the picker state for any other open editor.
-  ///
-  /// Copied from [tagIdsForTransaction].
-  TagIdsForTransactionProvider(String transactionId)
-    : this._internal(
-        (ref) =>
-            tagIdsForTransaction(ref as TagIdsForTransactionRef, transactionId),
-        from: tagIdsForTransactionProvider,
-        name: r'tagIdsForTransactionProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$tagIdsForTransactionHash,
-        dependencies: TagIdsForTransactionFamily._dependencies,
-        allTransitiveDependencies:
-            TagIdsForTransactionFamily._allTransitiveDependencies,
-        transactionId: transactionId,
+final class TransactionTagsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TransactionTag>>,
+          List<TransactionTag>,
+          FutureOr<List<TransactionTag>>
+        >
+    with
+        $FutureModifier<List<TransactionTag>>,
+        $FutureProvider<List<TransactionTag>> {
+  /// Every tag in the current household, alphabetical. Powers the
+  /// chip-picker on the transaction edit sheet — and later, the tag
+  /// filter on the transactions list.
+  TransactionTagsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionTagsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  TagIdsForTransactionProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.transactionId,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$transactionTagsHash();
 
-  final String transactionId;
+  @$internal
+  @override
+  $FutureProviderElement<List<TransactionTag>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<List<String>> Function(TagIdsForTransactionRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: TagIdsForTransactionProvider._internal(
-        (ref) => create(ref as TagIdsForTransactionRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        transactionId: transactionId,
-      ),
-    );
+  FutureOr<List<TransactionTag>> create(Ref ref) {
+    return transactionTags(ref);
+  }
+}
+
+String _$transactionTagsHash() => r'4233f0485546fd72d4e7ffdd35546286efa36852';
+
+/// Ids of the tags currently assigned to [transactionId]. Family-
+/// keyed so invalidating one transaction's assignments doesn't
+/// disturb the picker state for any other open editor.
+
+@ProviderFor(tagIdsForTransaction)
+final tagIdsForTransactionProvider = TagIdsForTransactionFamily._();
+
+/// Ids of the tags currently assigned to [transactionId]. Family-
+/// keyed so invalidating one transaction's assignments doesn't
+/// disturb the picker state for any other open editor.
+
+final class TagIdsForTransactionProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<String>>,
+          List<String>,
+          FutureOr<List<String>>
+        >
+    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
+  /// Ids of the tags currently assigned to [transactionId]. Family-
+  /// keyed so invalidating one transaction's assignments doesn't
+  /// disturb the picker state for any other open editor.
+  TagIdsForTransactionProvider._({
+    required TagIdsForTransactionFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'tagIdsForTransactionProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$tagIdsForTransactionHash();
+
+  @override
+  String toString() {
+    return r'tagIdsForTransactionProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<List<String>> createElement() {
-    return _TagIdsForTransactionProviderElement(this);
+  $FutureProviderElement<List<String>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<String>> create(Ref ref) {
+    final argument = this.argument as String;
+    return tagIdsForTransaction(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is TagIdsForTransactionProvider &&
-        other.transactionId == transactionId;
+    return other is TagIdsForTransactionProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, transactionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin TagIdsForTransactionRef on AutoDisposeFutureProviderRef<List<String>> {
-  /// The parameter `transactionId` of this provider.
-  String get transactionId;
-}
+String _$tagIdsForTransactionHash() =>
+    r'5092cf29ff25649dc889ed065f97cf28ecaba99d';
 
-class _TagIdsForTransactionProviderElement
-    extends AutoDisposeFutureProviderElement<List<String>>
-    with TagIdsForTransactionRef {
-  _TagIdsForTransactionProviderElement(super.provider);
+/// Ids of the tags currently assigned to [transactionId]. Family-
+/// keyed so invalidating one transaction's assignments doesn't
+/// disturb the picker state for any other open editor.
+
+final class TagIdsForTransactionFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<String>>, String> {
+  TagIdsForTransactionFamily._()
+    : super(
+        retry: null,
+        name: r'tagIdsForTransactionProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Ids of the tags currently assigned to [transactionId]. Family-
+  /// keyed so invalidating one transaction's assignments doesn't
+  /// disturb the picker state for any other open editor.
+
+  TagIdsForTransactionProvider call(String transactionId) =>
+      TagIdsForTransactionProvider._(argument: transactionId, from: this);
 
   @override
-  String get transactionId =>
-      (origin as TagIdsForTransactionProvider).transactionId;
+  String toString() => r'tagIdsForTransactionProvider';
 }
-
-String _$transactionTagAssignmentsHash() =>
-    r'b1c31894f76d09f20c62cb2c6b16a7762a5f19cf';
 
 /// Every visible tag assignment, indexed by transaction id. The
 /// transactions list watches this once and looks up tags per card
@@ -209,51 +163,116 @@ String _$transactionTagAssignmentsHash() =>
 /// RLS scopes the underlying fetch to the caller's household via
 /// the assignment table's "transaction_id IN (SELECT id FROM
 /// transactions)" policy (migration 020).
-///
-/// Copied from [transactionTagAssignments].
-@ProviderFor(transactionTagAssignments)
-final transactionTagAssignmentsProvider =
-    AutoDisposeFutureProvider<Map<String, Set<String>>>.internal(
-      transactionTagAssignments,
-      name: r'transactionTagAssignmentsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$transactionTagAssignmentsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TransactionTagAssignmentsRef =
-    AutoDisposeFutureProviderRef<Map<String, Set<String>>>;
-String _$tagUsageCountsHash() => r'd08b509944e67c67142c16167ae27bd9500409b4';
+@ProviderFor(transactionTagAssignments)
+final transactionTagAssignmentsProvider = TransactionTagAssignmentsProvider._();
+
+/// Every visible tag assignment, indexed by transaction id. The
+/// transactions list watches this once and looks up tags per card
+/// in O(1) — alternative would be a per-row provider that fires
+/// hundreds of requests on a long list.
+///
+/// RLS scopes the underlying fetch to the caller's household via
+/// the assignment table's "transaction_id IN (SELECT id FROM
+/// transactions)" policy (migration 020).
+
+final class TransactionTagAssignmentsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, Set<String>>>,
+          Map<String, Set<String>>,
+          FutureOr<Map<String, Set<String>>>
+        >
+    with
+        $FutureModifier<Map<String, Set<String>>>,
+        $FutureProvider<Map<String, Set<String>>> {
+  /// Every visible tag assignment, indexed by transaction id. The
+  /// transactions list watches this once and looks up tags per card
+  /// in O(1) — alternative would be a per-row provider that fires
+  /// hundreds of requests on a long list.
+  ///
+  /// RLS scopes the underlying fetch to the caller's household via
+  /// the assignment table's "transaction_id IN (SELECT id FROM
+  /// transactions)" policy (migration 020).
+  TransactionTagAssignmentsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionTagAssignmentsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionTagAssignmentsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, Set<String>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, Set<String>>> create(Ref ref) {
+    return transactionTagAssignments(ref);
+  }
+}
+
+String _$transactionTagAssignmentsHash() =>
+    r'1a7f91d53f3645893e4162b2de7fff3fec57260d';
 
 /// Assignment counts per tag, used by the manage-tags screen for
 /// the "X transactions, Y line items" subtitle and to inform the
 /// delete-confirmation message. Empty inner counts are omitted —
 /// callers treat an absent key the same as "(0, 0)".
-///
-/// Copied from [tagUsageCounts].
-@ProviderFor(tagUsageCounts)
-final tagUsageCountsProvider =
-    AutoDisposeFutureProvider<
-      Map<String, ({int txCount, int lineItemCount})>
-    >.internal(
-      tagUsageCounts,
-      name: r'tagUsageCountsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$tagUsageCountsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TagUsageCountsRef =
-    AutoDisposeFutureProviderRef<
-      Map<String, ({int txCount, int lineItemCount})>
-    >;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(tagUsageCounts)
+final tagUsageCountsProvider = TagUsageCountsProvider._();
+
+/// Assignment counts per tag, used by the manage-tags screen for
+/// the "X transactions, Y line items" subtitle and to inform the
+/// delete-confirmation message. Empty inner counts are omitted —
+/// callers treat an absent key the same as "(0, 0)".
+
+final class TagUsageCountsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, ({int lineItemCount, int txCount})>>,
+          Map<String, ({int lineItemCount, int txCount})>,
+          FutureOr<Map<String, ({int lineItemCount, int txCount})>>
+        >
+    with
+        $FutureModifier<Map<String, ({int lineItemCount, int txCount})>>,
+        $FutureProvider<Map<String, ({int lineItemCount, int txCount})>> {
+  /// Assignment counts per tag, used by the manage-tags screen for
+  /// the "X transactions, Y line items" subtitle and to inform the
+  /// delete-confirmation message. Empty inner counts are omitted —
+  /// callers treat an absent key the same as "(0, 0)".
+  TagUsageCountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'tagUsageCountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$tagUsageCountsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, ({int lineItemCount, int txCount})>>
+  $createElement($ProviderPointer pointer) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, ({int lineItemCount, int txCount})>> create(Ref ref) {
+    return tagUsageCounts(ref);
+  }
+}
+
+String _$tagUsageCountsHash() => r'd82d504634b80a8dab56f3c837fe30768754c479';

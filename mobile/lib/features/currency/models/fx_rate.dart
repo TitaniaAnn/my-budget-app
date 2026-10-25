@@ -17,7 +17,7 @@ part 'fx_rate.freezed.dart';
 part 'fx_rate.g.dart';
 
 @freezed
-class FxRate with _$FxRate {
+abstract class FxRate with _$FxRate {
   const factory FxRate({
     required String householdId,
     required String fromCurrency,
@@ -35,8 +35,7 @@ class FxRate with _$FxRate {
     required DateTime updatedAt,
   }) = _FxRate;
 
-  factory FxRate.fromJson(Map<String, dynamic> json) =>
-      _$FxRateFromJson(json);
+  factory FxRate.fromJson(Map<String, dynamic> json) => _$FxRateFromJson(json);
 }
 
 double _rateFromJson(Object? raw) {

@@ -23,7 +23,7 @@ part 'auth_provider.g.dart';
 /// manual yield avoids the cold-start race that the duplicate would
 /// otherwise paper over.
 @riverpod
-Stream<AuthState> authState(AuthStateRef ref) async* {
+Stream<AuthState> authState(Ref ref) async* {
   final initial = supabase.auth.currentSession;
   if (initial != null) {
     yield AuthState(AuthChangeEvent.initialSession, initial);
@@ -36,7 +36,7 @@ Stream<AuthState> authState(AuthStateRef ref) async* {
 /// Falls back to [supabase.auth.currentUser] before any auth event has fired
 /// so a persisted session is recognised on cold start.
 @riverpod
-User? currentUser(CurrentUserRef ref) {
-  return ref.watch(authStateProvider).valueOrNull?.session?.user ??
+User? currentUser(Ref ref) {
+  return ref.watch(authStateProvider).value?.session?.user ??
       supabase.auth.currentUser;
 }

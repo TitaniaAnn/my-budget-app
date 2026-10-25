@@ -55,7 +55,12 @@ void main() async {
 
   // ProviderScope is required at the root so all Riverpod providers are
   // accessible anywhere in the widget tree.
-  runApp(const ProviderScope(child: MyBudgetApp()));
+  //
+  // Riverpod 3 retries a failed provider automatically (up to 10 times,
+  // backing off exponentially). Riverpod 2 didn't, and the repositories
+  // already retry their own network calls and fall back to the offline
+  // cache, so retrying again here would only delay the error screen.
+  runApp(ProviderScope(retry: (_, _) => null, child: const MyBudgetApp()));
 }
 
 /// Standalone MaterialApp shown when Supabase init throws at launch.
@@ -177,7 +182,7 @@ class _MyBudgetAppState extends ConsumerState<MyBudgetApp>
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeNotifierProvider);
+    final themeMode = ref.watch(themeModeProvider);
     // Audit 2026-05-26 I2: locale comes from userLocaleProvider so
     // the Settings picker controls MaterialApp.locale + every site
     // that reads ref.watch(userLocaleProvider) for formatting. Null

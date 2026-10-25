@@ -140,18 +140,24 @@ void main() {
     });
 
     test('loadRecurringForHousehold sorts next_occurrence_date ASC', () async {
-      await db.upsertRecurring(sampleRecurring(
-        id: 'r-late',
-        nextOccurrenceDate: DateTime.utc(2026, 7, 1),
-      ));
-      await db.upsertRecurring(sampleRecurring(
-        id: 'r-early',
-        nextOccurrenceDate: DateTime.utc(2026, 6, 1),
-      ));
-      await db.upsertRecurring(sampleRecurring(
-        id: 'r-mid',
-        nextOccurrenceDate: DateTime.utc(2026, 6, 15),
-      ));
+      await db.upsertRecurring(
+        sampleRecurring(
+          id: 'r-late',
+          nextOccurrenceDate: DateTime.utc(2026, 7, 1),
+        ),
+      );
+      await db.upsertRecurring(
+        sampleRecurring(
+          id: 'r-early',
+          nextOccurrenceDate: DateTime.utc(2026, 6, 1),
+        ),
+      );
+      await db.upsertRecurring(
+        sampleRecurring(
+          id: 'r-mid',
+          nextOccurrenceDate: DateTime.utc(2026, 6, 15),
+        ),
+      );
       final rows = await db.loadRecurringForHousehold('hh-1');
       expect(rows.map((r) => r.id), ['r-early', 'r-mid', 'r-late']);
     });
@@ -175,9 +181,7 @@ void main() {
   group('AppDatabase tags dictionary surface', () {
     test('replaceTagsForHousehold purges + reinserts', () async {
       await db.upsertTag(sampleTag(id: 't-old'));
-      await db.replaceTagsForHousehold('hh-1', [
-        sampleTag(id: 't-new'),
-      ]);
+      await db.replaceTagsForHousehold('hh-1', [sampleTag(id: 't-new')]);
       final rows = await db.loadTagsForHousehold('hh-1');
       expect(rows.map((r) => r.id), ['t-new']);
     });
@@ -282,31 +286,33 @@ void main() {
       expect(ids.toSet(), {'tx-a1', 'tx-a2'});
     });
 
-    test('deleteTransactionTagAssignmentsByTransactionIds removes multiple',
-        () async {
-      await db.replaceAllTransactionTagAssignments([
-        TransactionTagAssignmentsCacheCompanion(
-          transactionId: const Value('tx-1'),
-          tagId: const Value('tag-a'),
-          cachedAt: Value(DateTime.utc(2026, 5, 28)),
-        ),
-        TransactionTagAssignmentsCacheCompanion(
-          transactionId: const Value('tx-2'),
-          tagId: const Value('tag-a'),
-          cachedAt: Value(DateTime.utc(2026, 5, 28)),
-        ),
-        TransactionTagAssignmentsCacheCompanion(
-          transactionId: const Value('tx-3'),
-          tagId: const Value('tag-a'),
-          cachedAt: Value(DateTime.utc(2026, 5, 28)),
-        ),
-      ]);
-      final removed = await db
-          .deleteTransactionTagAssignmentsByTransactionIds(['tx-1', 'tx-3']);
-      expect(removed, 2);
-      final remaining = await db.loadAllTransactionTagAssignments();
-      expect(remaining.keys.toSet(), {'tx-2'});
-    });
+    test(
+      'deleteTransactionTagAssignmentsByTransactionIds removes multiple',
+      () async {
+        await db.replaceAllTransactionTagAssignments([
+          TransactionTagAssignmentsCacheCompanion(
+            transactionId: const Value('tx-1'),
+            tagId: const Value('tag-a'),
+            cachedAt: Value(DateTime.utc(2026, 5, 28)),
+          ),
+          TransactionTagAssignmentsCacheCompanion(
+            transactionId: const Value('tx-2'),
+            tagId: const Value('tag-a'),
+            cachedAt: Value(DateTime.utc(2026, 5, 28)),
+          ),
+          TransactionTagAssignmentsCacheCompanion(
+            transactionId: const Value('tx-3'),
+            tagId: const Value('tag-a'),
+            cachedAt: Value(DateTime.utc(2026, 5, 28)),
+          ),
+        ]);
+        final removed = await db
+            .deleteTransactionTagAssignmentsByTransactionIds(['tx-1', 'tx-3']);
+        expect(removed, 2);
+        final remaining = await db.loadAllTransactionTagAssignments();
+        expect(remaining.keys.toSet(), {'tx-2'});
+      },
+    );
   });
 
   group('AppDatabase receipt line item tag assignments', () {

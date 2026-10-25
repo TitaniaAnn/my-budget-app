@@ -173,7 +173,7 @@ class _ReceiptDetailScreenState extends ConsumerState<ReceiptDetailScreen> {
                       tooltip: 'Delete',
                     ),
                   )
-                  .valueOrNull ??
+                  .value ??
               const SizedBox.shrink(),
         ],
       ),
@@ -515,9 +515,7 @@ class _OcrRetryButtonState extends ConsumerState<_OcrRetryButton> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await ref
-          .read(receiptsRepositoryProvider)
-          .retryOcr(widget.receiptId);
+      await ref.read(receiptsRepositoryProvider).retryOcr(widget.receiptId);
       ref.invalidate(receiptProvider(widget.receiptId));
     } catch (e) {
       if (mounted) context.showErrorSnackBar(e);

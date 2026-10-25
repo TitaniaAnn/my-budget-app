@@ -116,32 +116,28 @@ void main() {
       expect(rows.single.assetClass, AssetClass.bond);
     }, skip: reason);
 
-    test(
-      'DB CHECK rejects basis points outside 0..10000',
-      () async {
-        // Pin the migration 035 CHECK constraint. A future model
-        // change that lets 15000bp through would silently surface
-        // a 150% target on the rebalance card.
-        await expectLater(
-          repo.setTarget(
-            householdId: harness.householdId,
-            assetClass: AssetClass.usEquity,
-            targetPctBp: 15000,
-            createdBy: harness.userId,
-          ),
-          throwsA(anything),
-        );
-        await expectLater(
-          repo.setTarget(
-            householdId: harness.householdId,
-            assetClass: AssetClass.bond,
-            targetPctBp: -100,
-            createdBy: harness.userId,
-          ),
-          throwsA(anything),
-        );
-      },
-      skip: reason,
-    );
+    test('DB CHECK rejects basis points outside 0..10000', () async {
+      // Pin the migration 035 CHECK constraint. A future model
+      // change that lets 15000bp through would silently surface
+      // a 150% target on the rebalance card.
+      await expectLater(
+        repo.setTarget(
+          householdId: harness.householdId,
+          assetClass: AssetClass.usEquity,
+          targetPctBp: 15000,
+          createdBy: harness.userId,
+        ),
+        throwsA(anything),
+      );
+      await expectLater(
+        repo.setTarget(
+          householdId: harness.householdId,
+          assetClass: AssetClass.bond,
+          targetPctBp: -100,
+          createdBy: harness.userId,
+        ),
+        throwsA(anything),
+      );
+    }, skip: reason);
   });
 }

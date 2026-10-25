@@ -6,26 +6,57 @@ part of 'accounts_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$accountsRepositoryHash() =>
-    r'9a30d3cba5440607528ce2811365c3dab75deee0';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Provides a singleton [AccountsRepository] instance via Riverpod.
+
+@ProviderFor(accountsRepository)
+final accountsRepositoryProvider = AccountsRepositoryProvider._();
 
 /// Provides a singleton [AccountsRepository] instance via Riverpod.
-///
-/// Copied from [accountsRepository].
-@ProviderFor(accountsRepository)
-final accountsRepositoryProvider =
-    AutoDisposeProvider<AccountsRepository>.internal(
-      accountsRepository,
-      name: r'accountsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$accountsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AccountsRepositoryRef = AutoDisposeProviderRef<AccountsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class AccountsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AccountsRepository,
+          AccountsRepository,
+          AccountsRepository
+        >
+    with $Provider<AccountsRepository> {
+  /// Provides a singleton [AccountsRepository] instance via Riverpod.
+  AccountsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountsRepository create(Ref ref) {
+    return accountsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountsRepository>(value),
+    );
+  }
+}
+
+String _$accountsRepositoryHash() =>
+    r'ac3f1dd2c138922e94c1e6b975882591c81300a6';

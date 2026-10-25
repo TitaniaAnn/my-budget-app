@@ -30,9 +30,7 @@ class PlaidItemsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const ConnectBankScreen(),
-          ),
+          MaterialPageRoute<void>(builder: (_) => const ConnectBankScreen()),
         ),
         icon: const Icon(Icons.add),
         label: const Text('Connect bank'),

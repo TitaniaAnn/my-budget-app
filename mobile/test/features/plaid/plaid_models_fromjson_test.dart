@@ -116,8 +116,10 @@ void main() {
       expect(result.plaidItemId, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
       expect(result.institution.name, 'First Platypus Bank');
       expect(result.insertedAccounts.length, 1);
-      expect(result.insertedAccounts.single.accountId,
-          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+      expect(
+        result.insertedAccounts.single.accountId,
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      );
       expect(result.insertedAccounts.single.plaidAccountId, 'plaid-acct-1');
       expect(result.insertedAccounts.single.accountType, 'checking');
       expect(result.skippedAccounts.length, 1);
@@ -184,20 +186,20 @@ void main() {
 }
 
 Map<String, dynamic> _baseItemRow() => {
-      'id': '11111111-1111-1111-1111-111111111111',
-      'household_id': '22222222-2222-2222-2222-222222222222',
-      'created_by': '33333333-3333-3333-3333-333333333333',
-      'plaid_item_id': 'plaid-item-abc123',
-      'plaid_institution_id': 'ins_109508',
-      'institution_name': 'First Platypus Bank',
-      'environment': 'sandbox',
-      // sync_cursor + access_token are REVOKED from client
-      // SELECT (migrations 054 + 059); they don't appear in
-      // production payloads at all.
-      'last_sync_at': null,
-      'last_sync_error': null,
-      'consent_expires_at': null,
-      'is_active': true,
-      'created_at': '2026-05-01T00:00:00Z',
-      'updated_at': '2026-05-25T12:34:56.789Z',
-    };
+  'id': '11111111-1111-1111-1111-111111111111',
+  'household_id': '22222222-2222-2222-2222-222222222222',
+  'created_by': '33333333-3333-3333-3333-333333333333',
+  'plaid_item_id': 'plaid-item-abc123',
+  'plaid_institution_id': 'ins_109508',
+  'institution_name': 'First Platypus Bank',
+  'environment': 'sandbox',
+  // sync_cursor + access_token are REVOKED from client
+  // SELECT (migrations 054 + 059); they don't appear in
+  // production payloads at all.
+  'last_sync_at': null,
+  'last_sync_error': null,
+  'consent_expires_at': null,
+  'is_active': true,
+  'created_at': '2026-05-01T00:00:00Z',
+  'updated_at': '2026-05-25T12:34:56.789Z',
+};

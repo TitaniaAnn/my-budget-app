@@ -6,27 +6,57 @@ part of 'transactions_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transactionsRepositoryHash() =>
-    r'2be6e901e757da3a49f6d4366263ecc1888a747b';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Provides a singleton [TransactionsRepository] instance via Riverpod.
+
+@ProviderFor(transactionsRepository)
+final transactionsRepositoryProvider = TransactionsRepositoryProvider._();
 
 /// Provides a singleton [TransactionsRepository] instance via Riverpod.
-///
-/// Copied from [transactionsRepository].
-@ProviderFor(transactionsRepository)
-final transactionsRepositoryProvider =
-    AutoDisposeProvider<TransactionsRepository>.internal(
-      transactionsRepository,
-      name: r'transactionsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$transactionsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TransactionsRepositoryRef =
-    AutoDisposeProviderRef<TransactionsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class TransactionsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          TransactionsRepository,
+          TransactionsRepository,
+          TransactionsRepository
+        >
+    with $Provider<TransactionsRepository> {
+  /// Provides a singleton [TransactionsRepository] instance via Riverpod.
+  TransactionsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionsRepository create(Ref ref) {
+    return transactionsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionsRepository>(value),
+    );
+  }
+}
+
+String _$transactionsRepositoryHash() =>
+    r'3059b0601412af00929e25e7df438a27d3f96677';

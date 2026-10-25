@@ -47,7 +47,7 @@ enum DebtPayoffStrategy {
 /// strategy; when it's set, the simulator pre-pays that specific
 /// debt before strategy allocation.
 @freezed
-class OneOffPayment with _$OneOffPayment {
+abstract class OneOffPayment with _$OneOffPayment {
   const factory OneOffPayment({
     /// Calendar date the payment lands. The simulator buckets it
     /// to the iteration whose monthEnd shares the same year+month.
@@ -69,7 +69,7 @@ class OneOffPayment with _$OneOffPayment {
 /// `scenarios.debt_payoff_targets` — short list, read with the
 /// scenario, never queried independently.
 @freezed
-class DebtPayoffTarget with _$DebtPayoffTarget {
+abstract class DebtPayoffTarget with _$DebtPayoffTarget {
   const factory DebtPayoffTarget({
     /// References accounts.id. The simulator snapshots the
     /// account's current_balance at plan-creation time below;
@@ -104,7 +104,7 @@ class DebtPayoffTarget with _$DebtPayoffTarget {
 /// [color] is a 7-char hex string (e.g. "#6366F1") used to tint the card
 /// and the chart line.
 @freezed
-class Scenario with _$Scenario {
+abstract class Scenario with _$Scenario {
   const factory Scenario({
     required String id,
     required String householdId,

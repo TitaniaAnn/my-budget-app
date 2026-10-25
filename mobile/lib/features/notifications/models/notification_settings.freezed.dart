@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,265 +9,288 @@ part of 'notification_settings.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
-
 /// @nodoc
 mixin _$NotificationSettings {
-  /// Master switch. When false, the engine returns no notifications
-  /// regardless of the per-trigger toggles. Lets the user silence
-  /// everything in one tap without losing their other preferences.
-  bool get enabled => throw _privateConstructorUsedError;
 
-  /// Fire when a category budget's actual spend exceeds the cap.
-  bool get budgetOverEnabled => throw _privateConstructorUsedError;
+/// Master switch. When false, the engine returns no notifications
+/// regardless of the per-trigger toggles. Lets the user silence
+/// everything in one tap without losing their other preferences.
+ bool get enabled;/// Fire when a category budget's actual spend exceeds the cap.
+ bool get budgetOverEnabled;/// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
+ bool get largeTxEnabled;/// Magnitude in cents at or above which a transaction triggers a
+/// large-transaction notification. Default $200; the settings
+/// screen lets the user adjust.
+ int get largeTxThresholdCents;
+/// Create a copy of NotificationSettings
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NotificationSettingsCopyWith<NotificationSettings> get copyWith => _$NotificationSettingsCopyWithImpl<NotificationSettings>(this as NotificationSettings, _$identity);
 
-  /// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
-  bool get largeTxEnabled => throw _privateConstructorUsedError;
 
-  /// Magnitude in cents at or above which a transaction triggers a
-  /// large-transaction notification. Default $200; the settings
-  /// screen lets the user adjust.
-  int get largeTxThresholdCents => throw _privateConstructorUsedError;
 
-  /// Create a copy of NotificationSettings
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $NotificationSettingsCopyWith<NotificationSettings> get copyWith =>
-      throw _privateConstructorUsedError;
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationSettings&&(identical(other.enabled, enabled) || other.enabled == enabled)&&(identical(other.budgetOverEnabled, budgetOverEnabled) || other.budgetOverEnabled == budgetOverEnabled)&&(identical(other.largeTxEnabled, largeTxEnabled) || other.largeTxEnabled == largeTxEnabled)&&(identical(other.largeTxThresholdCents, largeTxThresholdCents) || other.largeTxThresholdCents == largeTxThresholdCents));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,enabled,budgetOverEnabled,largeTxEnabled,largeTxThresholdCents);
+
+@override
+String toString() {
+  return 'NotificationSettings(enabled: $enabled, budgetOverEnabled: $budgetOverEnabled, largeTxEnabled: $largeTxEnabled, largeTxThresholdCents: $largeTxThresholdCents)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $NotificationSettingsCopyWith<$Res> {
-  factory $NotificationSettingsCopyWith(
-    NotificationSettings value,
-    $Res Function(NotificationSettings) then,
-  ) = _$NotificationSettingsCopyWithImpl<$Res, NotificationSettings>;
-  @useResult
-  $Res call({
-    bool enabled,
-    bool budgetOverEnabled,
-    bool largeTxEnabled,
-    int largeTxThresholdCents,
-  });
-}
+abstract mixin class $NotificationSettingsCopyWith<$Res>  {
+  factory $NotificationSettingsCopyWith(NotificationSettings value, $Res Function(NotificationSettings) _then) = _$NotificationSettingsCopyWithImpl;
+@useResult
+$Res call({
+ bool enabled, bool budgetOverEnabled, bool largeTxEnabled, int largeTxThresholdCents
+});
 
+
+
+
+}
 /// @nodoc
-class _$NotificationSettingsCopyWithImpl<
-  $Res,
-  $Val extends NotificationSettings
->
+class _$NotificationSettingsCopyWithImpl<$Res>
     implements $NotificationSettingsCopyWith<$Res> {
-  _$NotificationSettingsCopyWithImpl(this._value, this._then);
+  _$NotificationSettingsCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final NotificationSettings _self;
+  final $Res Function(NotificationSettings) _then;
 
-  /// Create a copy of NotificationSettings
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? enabled = null,
-    Object? budgetOverEnabled = null,
-    Object? largeTxEnabled = null,
-    Object? largeTxThresholdCents = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            enabled: null == enabled
-                ? _value.enabled
-                : enabled // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            budgetOverEnabled: null == budgetOverEnabled
-                ? _value.budgetOverEnabled
-                : budgetOverEnabled // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            largeTxEnabled: null == largeTxEnabled
-                ? _value.largeTxEnabled
-                : largeTxEnabled // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            largeTxThresholdCents: null == largeTxThresholdCents
-                ? _value.largeTxThresholdCents
-                : largeTxThresholdCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of NotificationSettings
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? enabled = null,Object? budgetOverEnabled = null,Object? largeTxEnabled = null,Object? largeTxThresholdCents = null,}) {
+  return _then(_self.copyWith(
+enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
+as bool,budgetOverEnabled: null == budgetOverEnabled ? _self.budgetOverEnabled : budgetOverEnabled // ignore: cast_nullable_to_non_nullable
+as bool,largeTxEnabled: null == largeTxEnabled ? _self.largeTxEnabled : largeTxEnabled // ignore: cast_nullable_to_non_nullable
+as bool,largeTxThresholdCents: null == largeTxThresholdCents ? _self.largeTxThresholdCents : largeTxThresholdCents // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [NotificationSettings].
+extension NotificationSettingsPatterns on NotificationSettings {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _NotificationSettings value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _NotificationSettings() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _NotificationSettings value)  $default,){
+final _that = this;
+switch (_that) {
+case _NotificationSettings():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _NotificationSettings value)?  $default,){
+final _that = this;
+switch (_that) {
+case _NotificationSettings() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool enabled,  bool budgetOverEnabled,  bool largeTxEnabled,  int largeTxThresholdCents)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _NotificationSettings() when $default != null:
+return $default(_that.enabled,_that.budgetOverEnabled,_that.largeTxEnabled,_that.largeTxThresholdCents);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool enabled,  bool budgetOverEnabled,  bool largeTxEnabled,  int largeTxThresholdCents)  $default,) {final _that = this;
+switch (_that) {
+case _NotificationSettings():
+return $default(_that.enabled,_that.budgetOverEnabled,_that.largeTxEnabled,_that.largeTxThresholdCents);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool enabled,  bool budgetOverEnabled,  bool largeTxEnabled,  int largeTxThresholdCents)?  $default,) {final _that = this;
+switch (_that) {
+case _NotificationSettings() when $default != null:
+return $default(_that.enabled,_that.budgetOverEnabled,_that.largeTxEnabled,_that.largeTxThresholdCents);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$NotificationSettingsImplCopyWith<$Res>
-    implements $NotificationSettingsCopyWith<$Res> {
-  factory _$$NotificationSettingsImplCopyWith(
-    _$NotificationSettingsImpl value,
-    $Res Function(_$NotificationSettingsImpl) then,
-  ) = __$$NotificationSettingsImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    bool enabled,
-    bool budgetOverEnabled,
-    bool largeTxEnabled,
-    int largeTxThresholdCents,
-  });
+
+
+class _NotificationSettings implements NotificationSettings {
+  const _NotificationSettings({this.enabled = false, this.budgetOverEnabled = true, this.largeTxEnabled = true, this.largeTxThresholdCents = 20000});
+  
+
+/// Master switch. When false, the engine returns no notifications
+/// regardless of the per-trigger toggles. Lets the user silence
+/// everything in one tap without losing their other preferences.
+@override@JsonKey() final  bool enabled;
+/// Fire when a category budget's actual spend exceeds the cap.
+@override@JsonKey() final  bool budgetOverEnabled;
+/// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
+@override@JsonKey() final  bool largeTxEnabled;
+/// Magnitude in cents at or above which a transaction triggers a
+/// large-transaction notification. Default $200; the settings
+/// screen lets the user adjust.
+@override@JsonKey() final  int largeTxThresholdCents;
+
+/// Create a copy of NotificationSettings
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$NotificationSettingsCopyWith<_NotificationSettings> get copyWith => __$NotificationSettingsCopyWithImpl<_NotificationSettings>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationSettings&&(identical(other.enabled, enabled) || other.enabled == enabled)&&(identical(other.budgetOverEnabled, budgetOverEnabled) || other.budgetOverEnabled == budgetOverEnabled)&&(identical(other.largeTxEnabled, largeTxEnabled) || other.largeTxEnabled == largeTxEnabled)&&(identical(other.largeTxThresholdCents, largeTxThresholdCents) || other.largeTxThresholdCents == largeTxThresholdCents));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,enabled,budgetOverEnabled,largeTxEnabled,largeTxThresholdCents);
+
+@override
+String toString() {
+  return 'NotificationSettings(enabled: $enabled, budgetOverEnabled: $budgetOverEnabled, largeTxEnabled: $largeTxEnabled, largeTxThresholdCents: $largeTxThresholdCents)';
+}
+
+
 }
 
 /// @nodoc
-class __$$NotificationSettingsImplCopyWithImpl<$Res>
-    extends _$NotificationSettingsCopyWithImpl<$Res, _$NotificationSettingsImpl>
-    implements _$$NotificationSettingsImplCopyWith<$Res> {
-  __$$NotificationSettingsImplCopyWithImpl(
-    _$NotificationSettingsImpl _value,
-    $Res Function(_$NotificationSettingsImpl) _then,
-  ) : super(_value, _then);
+abstract mixin class _$NotificationSettingsCopyWith<$Res> implements $NotificationSettingsCopyWith<$Res> {
+  factory _$NotificationSettingsCopyWith(_NotificationSettings value, $Res Function(_NotificationSettings) _then) = __$NotificationSettingsCopyWithImpl;
+@override @useResult
+$Res call({
+ bool enabled, bool budgetOverEnabled, bool largeTxEnabled, int largeTxThresholdCents
+});
 
-  /// Create a copy of NotificationSettings
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? enabled = null,
-    Object? budgetOverEnabled = null,
-    Object? largeTxEnabled = null,
-    Object? largeTxThresholdCents = null,
-  }) {
-    return _then(
-      _$NotificationSettingsImpl(
-        enabled: null == enabled
-            ? _value.enabled
-            : enabled // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        budgetOverEnabled: null == budgetOverEnabled
-            ? _value.budgetOverEnabled
-            : budgetOverEnabled // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        largeTxEnabled: null == largeTxEnabled
-            ? _value.largeTxEnabled
-            : largeTxEnabled // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        largeTxThresholdCents: null == largeTxThresholdCents
-            ? _value.largeTxThresholdCents
-            : largeTxThresholdCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$NotificationSettingsCopyWithImpl<$Res>
+    implements _$NotificationSettingsCopyWith<$Res> {
+  __$NotificationSettingsCopyWithImpl(this._self, this._then);
 
-class _$NotificationSettingsImpl implements _NotificationSettings {
-  const _$NotificationSettingsImpl({
-    this.enabled = false,
-    this.budgetOverEnabled = true,
-    this.largeTxEnabled = true,
-    this.largeTxThresholdCents = 20000,
-  });
+  final _NotificationSettings _self;
+  final $Res Function(_NotificationSettings) _then;
 
-  /// Master switch. When false, the engine returns no notifications
-  /// regardless of the per-trigger toggles. Lets the user silence
-  /// everything in one tap without losing their other preferences.
-  @override
-  @JsonKey()
-  final bool enabled;
-
-  /// Fire when a category budget's actual spend exceeds the cap.
-  @override
-  @JsonKey()
-  final bool budgetOverEnabled;
-
-  /// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
-  @override
-  @JsonKey()
-  final bool largeTxEnabled;
-
-  /// Magnitude in cents at or above which a transaction triggers a
-  /// large-transaction notification. Default $200; the settings
-  /// screen lets the user adjust.
-  @override
-  @JsonKey()
-  final int largeTxThresholdCents;
-
-  @override
-  String toString() {
-    return 'NotificationSettings(enabled: $enabled, budgetOverEnabled: $budgetOverEnabled, largeTxEnabled: $largeTxEnabled, largeTxThresholdCents: $largeTxThresholdCents)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$NotificationSettingsImpl &&
-            (identical(other.enabled, enabled) || other.enabled == enabled) &&
-            (identical(other.budgetOverEnabled, budgetOverEnabled) ||
-                other.budgetOverEnabled == budgetOverEnabled) &&
-            (identical(other.largeTxEnabled, largeTxEnabled) ||
-                other.largeTxEnabled == largeTxEnabled) &&
-            (identical(other.largeTxThresholdCents, largeTxThresholdCents) ||
-                other.largeTxThresholdCents == largeTxThresholdCents));
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    enabled,
-    budgetOverEnabled,
-    largeTxEnabled,
-    largeTxThresholdCents,
-  );
-
-  /// Create a copy of NotificationSettings
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$NotificationSettingsImplCopyWith<_$NotificationSettingsImpl>
-  get copyWith =>
-      __$$NotificationSettingsImplCopyWithImpl<_$NotificationSettingsImpl>(
-        this,
-        _$identity,
-      );
+/// Create a copy of NotificationSettings
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? enabled = null,Object? budgetOverEnabled = null,Object? largeTxEnabled = null,Object? largeTxThresholdCents = null,}) {
+  return _then(_NotificationSettings(
+enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
+as bool,budgetOverEnabled: null == budgetOverEnabled ? _self.budgetOverEnabled : budgetOverEnabled // ignore: cast_nullable_to_non_nullable
+as bool,largeTxEnabled: null == largeTxEnabled ? _self.largeTxEnabled : largeTxEnabled // ignore: cast_nullable_to_non_nullable
+as bool,largeTxThresholdCents: null == largeTxThresholdCents ? _self.largeTxThresholdCents : largeTxThresholdCents // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
 }
 
-abstract class _NotificationSettings implements NotificationSettings {
-  const factory _NotificationSettings({
-    final bool enabled,
-    final bool budgetOverEnabled,
-    final bool largeTxEnabled,
-    final int largeTxThresholdCents,
-  }) = _$NotificationSettingsImpl;
 
-  /// Master switch. When false, the engine returns no notifications
-  /// regardless of the per-trigger toggles. Lets the user silence
-  /// everything in one tap without losing their other preferences.
-  @override
-  bool get enabled;
-
-  /// Fire when a category budget's actual spend exceeds the cap.
-  @override
-  bool get budgetOverEnabled;
-
-  /// Fire when a transaction's |amount| crosses [largeTxThresholdCents].
-  @override
-  bool get largeTxEnabled;
-
-  /// Magnitude in cents at or above which a transaction triggers a
-  /// large-transaction notification. Default $200; the settings
-  /// screen lets the user adjust.
-  @override
-  int get largeTxThresholdCents;
-
-  /// Create a copy of NotificationSettings
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$NotificationSettingsImplCopyWith<_$NotificationSettingsImpl>
-  get copyWith => throw _privateConstructorUsedError;
 }
+
+// dart format on

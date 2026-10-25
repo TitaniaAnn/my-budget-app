@@ -5,9 +5,7 @@ import '../models/credit_card_rate.dart';
 part 'credit_card_rates_repository.g.dart';
 
 @riverpod
-CreditCardRatesRepository creditCardRatesRepository(
-  CreditCardRatesRepositoryRef ref,
-) {
+CreditCardRatesRepository creditCardRatesRepository(Ref ref) {
   return CreditCardRatesRepository();
 }
 

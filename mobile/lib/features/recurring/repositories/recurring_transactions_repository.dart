@@ -31,9 +31,7 @@ import '../models/recurring_transaction.dart';
 part 'recurring_transactions_repository.g.dart';
 
 @riverpod
-RecurringTransactionsRepository recurringTransactionsRepository(
-  RecurringTransactionsRepositoryRef ref,
-) {
+RecurringTransactionsRepository recurringTransactionsRepository(Ref ref) {
   return RecurringTransactionsRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -41,11 +39,9 @@ RecurringTransactionsRepository recurringTransactionsRepository(
 }
 
 class RecurringTransactionsRepository {
-  RecurringTransactionsRepository({
-    AppDatabase? db,
-    PendingWritesQueue? queue,
-  }) : _db = db,
-       _queue = queue;
+  RecurringTransactionsRepository({AppDatabase? db, PendingWritesQueue? queue})
+    : _db = db,
+      _queue = queue;
   final AppDatabase? _db;
   final PendingWritesQueue? _queue;
   final _uuid = const Uuid();
@@ -166,12 +162,14 @@ class RecurringTransactionsRepository {
       'merchant': ?merchant,
       'category_id': ?categoryId,
       'cadence': ?cadence?.dbValue,
-      'next_occurrence_date': ?nextOccurrenceDate
-          ?.toIso8601String()
-          .substring(0, 10),
-      'skipped_until_date': ?skippedUntilDate
-          ?.toIso8601String()
-          .substring(0, 10),
+      'next_occurrence_date': ?nextOccurrenceDate?.toIso8601String().substring(
+        0,
+        10,
+      ),
+      'skipped_until_date': ?skippedUntilDate?.toIso8601String().substring(
+        0,
+        10,
+      ),
       'is_active': ?isActive,
     };
     try {
@@ -200,7 +198,9 @@ class RecurringTransactionsRepository {
           if (db == null) return;
           try {
             await db.deleteRecurring(id);
-          } catch (_) {/**/}
+          } catch (_) {
+            /**/
+          }
         },
         queueOp: QueuedUpdate(
           table: 'recurring_transactions',
@@ -224,7 +224,9 @@ class RecurringTransactionsRepository {
       if (db != null) {
         try {
           await db.deleteRecurring(id);
-        } catch (_) {/**/}
+        } catch (_) {
+          /**/
+        }
       }
     } catch (e) {
       if (!isTransientWriteError(e)) rethrow;
@@ -236,7 +238,9 @@ class RecurringTransactionsRepository {
           if (db == null) return;
           try {
             await db.deleteRecurring(id);
-          } catch (_) {/**/}
+          } catch (_) {
+            /**/
+          }
         },
         queueOp: QueuedUpdate(
           table: 'recurring_transactions',
@@ -254,7 +258,9 @@ class RecurringTransactionsRepository {
       if (db != null) {
         try {
           await db.deleteRecurring(id);
-        } catch (_) {/**/}
+        } catch (_) {
+          /**/
+        }
       }
     } catch (e) {
       if (!isTransientWriteError(e)) rethrow;
@@ -266,12 +272,11 @@ class RecurringTransactionsRepository {
           if (db == null) return;
           try {
             await db.deleteRecurring(id);
-          } catch (_) {/**/}
+          } catch (_) {
+            /**/
+          }
         },
-        queueOp: QueuedDelete(
-          table: 'recurring_transactions',
-          rowId: id,
-        ),
+        queueOp: QueuedDelete(table: 'recurring_transactions', rowId: id),
       );
     }
   }
@@ -326,7 +331,9 @@ class RecurringTransactionsRepository {
         householdId,
         rules.map(_toCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeRecurringCacheRow(RecurringTransaction r) async {
@@ -334,7 +341,9 @@ class RecurringTransactionsRepository {
     if (db == null) return;
     try {
       await db.upsertRecurring(_toCompanion(r));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<RecurringTransaction>?> _loadFromCache(String householdId) async {

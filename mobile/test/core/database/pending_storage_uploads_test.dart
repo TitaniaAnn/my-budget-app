@@ -86,10 +86,7 @@ void main() {
   group('AppDatabase.markPendingStorageUploadFailed', () {
     test('bumps attemptCount + stores error', () async {
       await db.enqueuePendingStorageUpload(sample(id: 'r-1'));
-      await db.markPendingStorageUploadFailed(
-        id: 'r-1',
-        error: 'network blip',
-      );
+      await db.markPendingStorageUploadFailed(id: 'r-1', error: 'network blip');
       var row = (await db.loadPendingStorageUploads()).single;
       expect(row.attemptCount, 1);
       expect(row.lastError, 'network blip');

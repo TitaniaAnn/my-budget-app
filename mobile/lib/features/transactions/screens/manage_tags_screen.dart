@@ -54,7 +54,7 @@ class ManageTagsScreen extends ConsumerWidget {
           // flight or errored, render rows without subtitles rather
           // than blocking the whole list.
           final usage =
-              usageAsync.valueOrNull ??
+              usageAsync.value ??
               const <String, ({int txCount, int lineItemCount})>{};
           return ListView.separated(
             padding: const EdgeInsets.only(bottom: 96),
@@ -225,7 +225,7 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
     // this is a "nothing to lose, just clean up" delete or a "this
     // touches actual records" one. Pulled inline rather than via
     // an extra provider watch because the dialog is short-lived.
-    final usage = ref.read(tagUsageCountsProvider).valueOrNull?[widget.tag!.id];
+    final usage = ref.read(tagUsageCountsProvider).value?[widget.tag!.id];
     final tx = usage?.txCount ?? 0;
     final li = usage?.lineItemCount ?? 0;
     final String message;
@@ -276,8 +276,7 @@ class _EditTagDialogState extends ConsumerState<_EditTagDialog> {
     // first save still hits the DB constraint, so worst case is a
     // brief lag before the inline hint catches up.
     final existing =
-        ref.watch(transactionTagsProvider).valueOrNull ??
-        const <TransactionTag>[];
+        ref.watch(transactionTagsProvider).value ?? const <TransactionTag>[];
     final nameError = validateTagName(
       _nameCtrl.text,
       existing: existing,

@@ -34,7 +34,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final profileAsync = ref.watch(profileProvider);
     final householdAsync = ref.watch(householdInfoProvider);
-    final themeMode = ref.watch(themeModeNotifierProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -284,7 +284,10 @@ class SettingsScreen extends ConsumerWidget {
           // delete_my_household RPC together remove the household
           // (cascades wire the rest) AND the auth.users row.
           ListTile(
-            leading: Icon(Icons.delete_forever_outlined, color: context.cs.error),
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: context.cs.error,
+            ),
             title: Text(
               'Delete my account',
               style: TextStyle(color: context.cs.error),
@@ -609,10 +612,7 @@ class SettingsScreen extends ConsumerWidget {
             child: SingleChildScrollView(
               child: SelectableText(
                 pretty,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
               ),
             ),
           ),
@@ -635,9 +635,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
@@ -679,29 +677,22 @@ class SettingsScreen extends ConsumerWidget {
         'delete-my-account',
         body: {'householdId': householdId},
       );
-      if (resp.data is Map &&
-          (resp.data as Map)['auth_user_deleted'] == true) {
+      if (resp.data is Map && (resp.data as Map)['auth_user_deleted'] == true) {
         // Both halves succeeded. Sign out locally; auth.admin
         // already invalidated the session server-side.
         await supabase.auth.signOut();
         if (!context.mounted) return;
         context.go('/login');
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Account deleted.'),
-          ),
+          const SnackBar(content: Text('Account deleted.')),
         );
       } else {
         messenger.showSnackBar(
-          SnackBar(
-            content: Text('Unexpected response: ${resp.data}'),
-          ),
+          SnackBar(content: Text('Unexpected response: ${resp.data}')),
         );
       }
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Deletion failed: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Deletion failed: $e')));
     }
   }
 }
@@ -818,7 +809,7 @@ class _ThemeTile extends ConsumerWidget {
         ],
         selected: {current},
         onSelectionChanged: (s) =>
-            ref.read(themeModeNotifierProvider.notifier).setMode(s.first),
+            ref.read(themeModeProvider.notifier).setMode(s.first),
         style: const ButtonStyle(visualDensity: VisualDensity.compact),
       ),
     );
@@ -901,9 +892,9 @@ class _SyncStatusTile extends ConsumerWidget {
     );
     final colors = context.appColors;
 
-    final lastSynced = lastSyncedAsync.valueOrNull;
-    final pending = pendingAsync.valueOrNull ?? 0;
-    final pendingUploads = pendingUploadsAsync.valueOrNull ?? 0;
+    final lastSynced = lastSyncedAsync.value;
+    final pending = pendingAsync.value ?? 0;
+    final pendingUploads = pendingUploadsAsync.value ?? 0;
     final pendingTotal = pending + pendingUploads;
 
     final subtitleParts = <String>[

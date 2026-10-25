@@ -6,338 +6,270 @@ part of 'receipts_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$receiptsHash() => r'ddb81cbbeb9a3fb56e8916d3a2db9d265f05c6a7';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// All receipts for the current household, newest first.
+
+@ProviderFor(receipts)
+final receiptsProvider = ReceiptsProvider._();
 
 /// All receipts for the current household, newest first.
-///
-/// Copied from [receipts].
-@ProviderFor(receipts)
-final receiptsProvider = AutoDisposeFutureProvider<List<Receipt>>.internal(
-  receipts,
-  name: r'receiptsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$receiptsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ReceiptsRef = AutoDisposeFutureProviderRef<List<Receipt>>;
-String _$receiptHash() => r'540a48ee86b43a70497e31ce34fbb9cf18f3a9ab';
+final class ReceiptsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Receipt>>,
+          List<Receipt>,
+          FutureOr<List<Receipt>>
+        >
+    with $FutureModifier<List<Receipt>>, $FutureProvider<List<Receipt>> {
+  /// All receipts for the current household, newest first.
+  ReceiptsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'receiptsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+  @override
+  String debugGetCreateSourceHash() => _$receiptsHash();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
+  @$internal
+  @override
+  $FutureProviderElement<List<Receipt>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @override
+  FutureOr<List<Receipt>> create(Ref ref) {
+    return receipts(ref);
   }
 }
 
+String _$receiptsHash() => r'dd5460db069d6e7598a9fed8eb9fdd15fd69f54e';
+
 /// Single receipt by [receiptId]. Used by the detail screen.
-///
-/// Copied from [receipt].
+
 @ProviderFor(receipt)
-const receiptProvider = ReceiptFamily();
+final receiptProvider = ReceiptFamily._();
 
 /// Single receipt by [receiptId]. Used by the detail screen.
-///
-/// Copied from [receipt].
-class ReceiptFamily extends Family<AsyncValue<Receipt>> {
-  /// Single receipt by [receiptId]. Used by the detail screen.
-  ///
-  /// Copied from [receipt].
-  const ReceiptFamily();
 
+final class ReceiptProvider
+    extends $FunctionalProvider<AsyncValue<Receipt>, Receipt, FutureOr<Receipt>>
+    with $FutureModifier<Receipt>, $FutureProvider<Receipt> {
   /// Single receipt by [receiptId]. Used by the detail screen.
-  ///
-  /// Copied from [receipt].
-  ReceiptProvider call(String receiptId) {
-    return ReceiptProvider(receiptId);
+  ReceiptProvider._({
+    required ReceiptFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'receiptProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$receiptHash();
+
+  @override
+  String toString() {
+    return r'receiptProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<Receipt> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Receipt> create(Ref ref) {
+    final argument = this.argument as String;
+    return receipt(ref, argument);
   }
 
   @override
-  ReceiptProvider getProviderOverride(covariant ReceiptProvider provider) {
-    return call(provider.receiptId);
+  bool operator ==(Object other) {
+    return other is ReceiptProvider && other.argument == argument;
   }
 
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'receiptProvider';
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
+String _$receiptHash() => r'32dade9d85376a3c10cf381514d7b698cb5109b1';
+
 /// Single receipt by [receiptId]. Used by the detail screen.
-///
-/// Copied from [receipt].
-class ReceiptProvider extends AutoDisposeFutureProvider<Receipt> {
-  /// Single receipt by [receiptId]. Used by the detail screen.
-  ///
-  /// Copied from [receipt].
-  ReceiptProvider(String receiptId)
-    : this._internal(
-        (ref) => receipt(ref as ReceiptRef, receiptId),
-        from: receiptProvider,
+
+final class ReceiptFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<Receipt>, String> {
+  ReceiptFamily._()
+    : super(
+        retry: null,
         name: r'receiptProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$receiptHash,
-        dependencies: ReceiptFamily._dependencies,
-        allTransitiveDependencies: ReceiptFamily._allTransitiveDependencies,
-        receiptId: receiptId,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
       );
 
-  ReceiptProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.receiptId,
-  }) : super.internal();
+  /// Single receipt by [receiptId]. Used by the detail screen.
 
-  final String receiptId;
+  ReceiptProvider call(String receiptId) =>
+      ReceiptProvider._(argument: receiptId, from: this);
 
   @override
-  Override overrideWith(
-    FutureOr<Receipt> Function(ReceiptRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ReceiptProvider._internal(
-        (ref) => create(ref as ReceiptRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        receiptId: receiptId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<Receipt> createElement() {
-    return _ReceiptProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ReceiptProvider && other.receiptId == receiptId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, receiptId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'receiptProvider';
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ReceiptRef on AutoDisposeFutureProviderRef<Receipt> {
-  /// The parameter `receiptId` of this provider.
-  String get receiptId;
-}
-
-class _ReceiptProviderElement extends AutoDisposeFutureProviderElement<Receipt>
-    with ReceiptRef {
-  _ReceiptProviderElement(super.provider);
-
-  @override
-  String get receiptId => (origin as ReceiptProvider).receiptId;
-}
-
-String _$receiptLineItemsHash() => r'e8fa749755f0485d81e604973db3f687975dede9';
 
 /// Line items for a receipt. Separate provider so the grid list doesn't
 /// need to load line items for every thumbnail.
-///
-/// Copied from [receiptLineItems].
+
 @ProviderFor(receiptLineItems)
-const receiptLineItemsProvider = ReceiptLineItemsFamily();
+final receiptLineItemsProvider = ReceiptLineItemsFamily._();
 
 /// Line items for a receipt. Separate provider so the grid list doesn't
 /// need to load line items for every thumbnail.
-///
-/// Copied from [receiptLineItems].
-class ReceiptLineItemsFamily extends Family<AsyncValue<List<ReceiptLineItem>>> {
+
+final class ReceiptLineItemsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ReceiptLineItem>>,
+          List<ReceiptLineItem>,
+          FutureOr<List<ReceiptLineItem>>
+        >
+    with
+        $FutureModifier<List<ReceiptLineItem>>,
+        $FutureProvider<List<ReceiptLineItem>> {
   /// Line items for a receipt. Separate provider so the grid list doesn't
   /// need to load line items for every thumbnail.
-  ///
-  /// Copied from [receiptLineItems].
-  const ReceiptLineItemsFamily();
+  ReceiptLineItemsProvider._({
+    required ReceiptLineItemsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'receiptLineItemsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// Line items for a receipt. Separate provider so the grid list doesn't
-  /// need to load line items for every thumbnail.
-  ///
-  /// Copied from [receiptLineItems].
-  ReceiptLineItemsProvider call(String receiptId) {
-    return ReceiptLineItemsProvider(receiptId);
+  @override
+  String debugGetCreateSourceHash() => _$receiptLineItemsHash();
+
+  @override
+  String toString() {
+    return r'receiptLineItemsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  ReceiptLineItemsProvider getProviderOverride(
-    covariant ReceiptLineItemsProvider provider,
-  ) {
-    return call(provider.receiptId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<List<ReceiptLineItem>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'receiptLineItemsProvider';
-}
-
-/// Line items for a receipt. Separate provider so the grid list doesn't
-/// need to load line items for every thumbnail.
-///
-/// Copied from [receiptLineItems].
-class ReceiptLineItemsProvider
-    extends AutoDisposeFutureProvider<List<ReceiptLineItem>> {
-  /// Line items for a receipt. Separate provider so the grid list doesn't
-  /// need to load line items for every thumbnail.
-  ///
-  /// Copied from [receiptLineItems].
-  ReceiptLineItemsProvider(String receiptId)
-    : this._internal(
-        (ref) => receiptLineItems(ref as ReceiptLineItemsRef, receiptId),
-        from: receiptLineItemsProvider,
-        name: r'receiptLineItemsProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$receiptLineItemsHash,
-        dependencies: ReceiptLineItemsFamily._dependencies,
-        allTransitiveDependencies:
-            ReceiptLineItemsFamily._allTransitiveDependencies,
-        receiptId: receiptId,
-      );
-
-  ReceiptLineItemsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.receiptId,
-  }) : super.internal();
-
-  final String receiptId;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<ReceiptLineItem>> Function(ReceiptLineItemsRef provider)
-    create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ReceiptLineItemsProvider._internal(
-        (ref) => create(ref as ReceiptLineItemsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        receiptId: receiptId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<ReceiptLineItem>> createElement() {
-    return _ReceiptLineItemsProviderElement(this);
+  FutureOr<List<ReceiptLineItem>> create(Ref ref) {
+    final argument = this.argument as String;
+    return receiptLineItems(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ReceiptLineItemsProvider && other.receiptId == receiptId;
+    return other is ReceiptLineItemsProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, receiptId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ReceiptLineItemsRef
-    on AutoDisposeFutureProviderRef<List<ReceiptLineItem>> {
-  /// The parameter `receiptId` of this provider.
-  String get receiptId;
-}
+String _$receiptLineItemsHash() => r'c3a1ee49c065c3214cd4477a2dcb7460d3595696';
 
-class _ReceiptLineItemsProviderElement
-    extends AutoDisposeFutureProviderElement<List<ReceiptLineItem>>
-    with ReceiptLineItemsRef {
-  _ReceiptLineItemsProviderElement(super.provider);
+/// Line items for a receipt. Separate provider so the grid list doesn't
+/// need to load line items for every thumbnail.
+
+final class ReceiptLineItemsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<ReceiptLineItem>>, String> {
+  ReceiptLineItemsFamily._()
+    : super(
+        retry: null,
+        name: r'receiptLineItemsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Line items for a receipt. Separate provider so the grid list doesn't
+  /// need to load line items for every thumbnail.
+
+  ReceiptLineItemsProvider call(String receiptId) =>
+      ReceiptLineItemsProvider._(argument: receiptId, from: this);
 
   @override
-  String get receiptId => (origin as ReceiptLineItemsProvider).receiptId;
+  String toString() => r'receiptLineItemsProvider';
 }
-
-String _$unpairedReceiptsHash() => r'fa3b5d3649240c793e139cb066647409b2c77bda';
 
 /// Receipts in the current household with no transaction pointing at
 /// them. Powers the transaction edit sheet's "Attach Receipt" picker —
 /// the inverse direction of the existing pair-from-receipt flow.
-///
-/// Copied from [unpairedReceipts].
-@ProviderFor(unpairedReceipts)
-final unpairedReceiptsProvider =
-    AutoDisposeFutureProvider<List<Receipt>>.internal(
-      unpairedReceipts,
-      name: r'unpairedReceiptsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$unpairedReceiptsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef UnpairedReceiptsRef = AutoDisposeFutureProviderRef<List<Receipt>>;
-String _$signedReceiptUrlsHash() => r'cd563671ba3a2f7e7d0cf047153049b47202b380';
+@ProviderFor(unpairedReceipts)
+final unpairedReceiptsProvider = UnpairedReceiptsProvider._();
+
+/// Receipts in the current household with no transaction pointing at
+/// them. Powers the transaction edit sheet's "Attach Receipt" picker —
+/// the inverse direction of the existing pair-from-receipt flow.
+
+final class UnpairedReceiptsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Receipt>>,
+          List<Receipt>,
+          FutureOr<List<Receipt>>
+        >
+    with $FutureModifier<List<Receipt>>, $FutureProvider<List<Receipt>> {
+  /// Receipts in the current household with no transaction pointing at
+  /// them. Powers the transaction edit sheet's "Attach Receipt" picker —
+  /// the inverse direction of the existing pair-from-receipt flow.
+  UnpairedReceiptsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'unpairedReceiptsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$unpairedReceiptsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Receipt>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Receipt>> create(Ref ref) {
+    return unpairedReceipts(ref);
+  }
+}
+
+String _$unpairedReceiptsHash() => r'00b8e978a01f522faf9ac037f96da28923cd4cd0';
 
 /// Signed URLs for EVERY receipt in the current household, keyed by
 /// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
@@ -347,191 +279,169 @@ String _$signedReceiptUrlsHash() => r'cd563671ba3a2f7e7d0cf047153049b47202b380';
 /// AND thumbnail paths — the grid uses thumbnails when present,
 /// the detail screen uses full images, but one wire fetch covers
 /// both. Cards resolve from the map.
-///
-/// Copied from [signedReceiptUrls].
+
 @ProviderFor(signedReceiptUrls)
-final signedReceiptUrlsProvider =
-    AutoDisposeFutureProvider<Map<String, String>>.internal(
-      signedReceiptUrls,
-      name: r'signedReceiptUrlsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$signedReceiptUrlsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final signedReceiptUrlsProvider = SignedReceiptUrlsProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SignedReceiptUrlsRef =
-    AutoDisposeFutureProviderRef<Map<String, String>>;
-String _$receiptImageUrlHash() => r'9637493a7d9bbaa7f8cc9401965b16a2058b90c5';
+/// Signed URLs for EVERY receipt in the current household, keyed by
+/// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
+/// own per-path provider so a 50-receipt grid fired 50 sign-url
+/// HTTP round-trips on first paint. This pulls them in one
+/// `createSignedUrls` POST that covers both full-resolution paths
+/// AND thumbnail paths — the grid uses thumbnails when present,
+/// the detail screen uses full images, but one wire fetch covers
+/// both. Cards resolve from the map.
 
-/// Signed URL for one receipt image, by [storagePath]. Resolves
-/// from the batched [signedReceiptUrlsProvider] when the path is
-/// part of the current household receipts list (the common case);
-/// falls back to a one-off sign for paths outside that list
-/// (e.g. detail screen opened via deep link before the list has
-/// been fetched, or for a brand-new receipt that hasn't propagated
-/// into the cached `receiptsProvider` value yet).
-///
-/// Copied from [receiptImageUrl].
-@ProviderFor(receiptImageUrl)
-const receiptImageUrlProvider = ReceiptImageUrlFamily();
-
-/// Signed URL for one receipt image, by [storagePath]. Resolves
-/// from the batched [signedReceiptUrlsProvider] when the path is
-/// part of the current household receipts list (the common case);
-/// falls back to a one-off sign for paths outside that list
-/// (e.g. detail screen opened via deep link before the list has
-/// been fetched, or for a brand-new receipt that hasn't propagated
-/// into the cached `receiptsProvider` value yet).
-///
-/// Copied from [receiptImageUrl].
-class ReceiptImageUrlFamily extends Family<AsyncValue<String>> {
-  /// Signed URL for one receipt image, by [storagePath]. Resolves
-  /// from the batched [signedReceiptUrlsProvider] when the path is
-  /// part of the current household receipts list (the common case);
-  /// falls back to a one-off sign for paths outside that list
-  /// (e.g. detail screen opened via deep link before the list has
-  /// been fetched, or for a brand-new receipt that hasn't propagated
-  /// into the cached `receiptsProvider` value yet).
-  ///
-  /// Copied from [receiptImageUrl].
-  const ReceiptImageUrlFamily();
-
-  /// Signed URL for one receipt image, by [storagePath]. Resolves
-  /// from the batched [signedReceiptUrlsProvider] when the path is
-  /// part of the current household receipts list (the common case);
-  /// falls back to a one-off sign for paths outside that list
-  /// (e.g. detail screen opened via deep link before the list has
-  /// been fetched, or for a brand-new receipt that hasn't propagated
-  /// into the cached `receiptsProvider` value yet).
-  ///
-  /// Copied from [receiptImageUrl].
-  ReceiptImageUrlProvider call(String storagePath) {
-    return ReceiptImageUrlProvider(storagePath);
-  }
-
-  @override
-  ReceiptImageUrlProvider getProviderOverride(
-    covariant ReceiptImageUrlProvider provider,
-  ) {
-    return call(provider.storagePath);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'receiptImageUrlProvider';
-}
-
-/// Signed URL for one receipt image, by [storagePath]. Resolves
-/// from the batched [signedReceiptUrlsProvider] when the path is
-/// part of the current household receipts list (the common case);
-/// falls back to a one-off sign for paths outside that list
-/// (e.g. detail screen opened via deep link before the list has
-/// been fetched, or for a brand-new receipt that hasn't propagated
-/// into the cached `receiptsProvider` value yet).
-///
-/// Copied from [receiptImageUrl].
-class ReceiptImageUrlProvider extends AutoDisposeFutureProvider<String> {
-  /// Signed URL for one receipt image, by [storagePath]. Resolves
-  /// from the batched [signedReceiptUrlsProvider] when the path is
-  /// part of the current household receipts list (the common case);
-  /// falls back to a one-off sign for paths outside that list
-  /// (e.g. detail screen opened via deep link before the list has
-  /// been fetched, or for a brand-new receipt that hasn't propagated
-  /// into the cached `receiptsProvider` value yet).
-  ///
-  /// Copied from [receiptImageUrl].
-  ReceiptImageUrlProvider(String storagePath)
-    : this._internal(
-        (ref) => receiptImageUrl(ref as ReceiptImageUrlRef, storagePath),
-        from: receiptImageUrlProvider,
-        name: r'receiptImageUrlProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$receiptImageUrlHash,
-        dependencies: ReceiptImageUrlFamily._dependencies,
-        allTransitiveDependencies:
-            ReceiptImageUrlFamily._allTransitiveDependencies,
-        storagePath: storagePath,
+final class SignedReceiptUrlsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, String>>,
+          Map<String, String>,
+          FutureOr<Map<String, String>>
+        >
+    with
+        $FutureModifier<Map<String, String>>,
+        $FutureProvider<Map<String, String>> {
+  /// Signed URLs for EVERY receipt in the current household, keyed by
+  /// `storagePath`. Audit P4: pre-fix each `_ReceiptCard` watched its
+  /// own per-path provider so a 50-receipt grid fired 50 sign-url
+  /// HTTP round-trips on first paint. This pulls them in one
+  /// `createSignedUrls` POST that covers both full-resolution paths
+  /// AND thumbnail paths — the grid uses thumbnails when present,
+  /// the detail screen uses full images, but one wire fetch covers
+  /// both. Cards resolve from the map.
+  SignedReceiptUrlsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'signedReceiptUrlsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  ReceiptImageUrlProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.storagePath,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$signedReceiptUrlsHash();
 
-  final String storagePath;
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, String>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<String> Function(ReceiptImageUrlRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ReceiptImageUrlProvider._internal(
-        (ref) => create(ref as ReceiptImageUrlRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        storagePath: storagePath,
-      ),
-    );
+  FutureOr<Map<String, String>> create(Ref ref) {
+    return signedReceiptUrls(ref);
+  }
+}
+
+String _$signedReceiptUrlsHash() => r'4fa35d92b1237e5d1aca7459292e5ec41f7dd262';
+
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
+
+@ProviderFor(receiptImageUrl)
+final receiptImageUrlProvider = ReceiptImageUrlFamily._();
+
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
+
+final class ReceiptImageUrlProvider
+    extends $FunctionalProvider<AsyncValue<String>, String, FutureOr<String>>
+    with $FutureModifier<String>, $FutureProvider<String> {
+  /// Signed URL for one receipt image, by [storagePath]. Resolves
+  /// from the batched [signedReceiptUrlsProvider] when the path is
+  /// part of the current household receipts list (the common case);
+  /// falls back to a one-off sign for paths outside that list
+  /// (e.g. detail screen opened via deep link before the list has
+  /// been fetched, or for a brand-new receipt that hasn't propagated
+  /// into the cached `receiptsProvider` value yet).
+  ReceiptImageUrlProvider._({
+    required ReceiptImageUrlFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'receiptImageUrlProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$receiptImageUrlHash();
+
+  @override
+  String toString() {
+    return r'receiptImageUrlProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<String> createElement() {
-    return _ReceiptImageUrlProviderElement(this);
+  $FutureProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<String> create(Ref ref) {
+    final argument = this.argument as String;
+    return receiptImageUrl(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ReceiptImageUrlProvider && other.storagePath == storagePath;
+    return other is ReceiptImageUrlProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, storagePath.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ReceiptImageUrlRef on AutoDisposeFutureProviderRef<String> {
-  /// The parameter `storagePath` of this provider.
-  String get storagePath;
-}
+String _$receiptImageUrlHash() => r'b52a3d6b8bc501be713836290e5e143504c6af8c';
 
-class _ReceiptImageUrlProviderElement
-    extends AutoDisposeFutureProviderElement<String>
-    with ReceiptImageUrlRef {
-  _ReceiptImageUrlProviderElement(super.provider);
+/// Signed URL for one receipt image, by [storagePath]. Resolves
+/// from the batched [signedReceiptUrlsProvider] when the path is
+/// part of the current household receipts list (the common case);
+/// falls back to a one-off sign for paths outside that list
+/// (e.g. detail screen opened via deep link before the list has
+/// been fetched, or for a brand-new receipt that hasn't propagated
+/// into the cached `receiptsProvider` value yet).
+
+final class ReceiptImageUrlFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<String>, String> {
+  ReceiptImageUrlFamily._()
+    : super(
+        retry: null,
+        name: r'receiptImageUrlProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Signed URL for one receipt image, by [storagePath]. Resolves
+  /// from the batched [signedReceiptUrlsProvider] when the path is
+  /// part of the current household receipts list (the common case);
+  /// falls back to a one-off sign for paths outside that list
+  /// (e.g. detail screen opened via deep link before the list has
+  /// been fetched, or for a brand-new receipt that hasn't propagated
+  /// into the cached `receiptsProvider` value yet).
+
+  ReceiptImageUrlProvider call(String storagePath) =>
+      ReceiptImageUrlProvider._(argument: storagePath, from: this);
 
   @override
-  String get storagePath => (origin as ReceiptImageUrlProvider).storagePath;
+  String toString() => r'receiptImageUrlProvider';
 }
-
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

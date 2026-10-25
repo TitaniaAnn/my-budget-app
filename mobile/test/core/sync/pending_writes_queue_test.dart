@@ -82,28 +82,27 @@ void main() {
       expect(envelope['expected_updated_at'], isNull);
     });
 
-    test(
-      'persists a QueuedUpdate with optimistic-lock precondition '
-      '(H5 — survives the cross-device race)',
-      () async {
-        final precondition = DateTime.utc(2026, 5, 28, 10, 0, 0);
-        await queue.enqueue(
-          QueuedUpdate(
-            table: 'transactions',
-            rowId: 'tx-1',
-            payload: const {'description': 'Espresso'},
-            expectedUpdatedAt: precondition,
-          ),
-        );
-        final row = (await db.loadPendingWrites()).single;
-        final envelope = jsonDecode(row.payloadJson) as Map<String, dynamic>;
-        expect((envelope['payload'] as Map<String, dynamic>)['description'],
-            'Espresso');
-        // ISO-8601 UTC with the Z suffix so the replay's .eq
-        // filter compares string-equal to what Postgres returns.
-        expect(envelope['expected_updated_at'], '2026-05-28T10:00:00.000Z');
-      },
-    );
+    test('persists a QueuedUpdate with optimistic-lock precondition '
+        '(H5 — survives the cross-device race)', () async {
+      final precondition = DateTime.utc(2026, 5, 28, 10, 0, 0);
+      await queue.enqueue(
+        QueuedUpdate(
+          table: 'transactions',
+          rowId: 'tx-1',
+          payload: const {'description': 'Espresso'},
+          expectedUpdatedAt: precondition,
+        ),
+      );
+      final row = (await db.loadPendingWrites()).single;
+      final envelope = jsonDecode(row.payloadJson) as Map<String, dynamic>;
+      expect(
+        (envelope['payload'] as Map<String, dynamic>)['description'],
+        'Espresso',
+      );
+      // ISO-8601 UTC with the Z suffix so the replay's .eq
+      // filter compares string-equal to what Postgres returns.
+      expect(envelope['expected_updated_at'], '2026-05-28T10:00:00.000Z');
+    });
 
     test('persists a QueuedDelete with rowId + empty payload', () async {
       await queue.enqueue(

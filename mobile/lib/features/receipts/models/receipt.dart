@@ -34,7 +34,7 @@ enum OcrStatus {
 /// e.g. "{household_id}/{uuid}.jpg". Use the repository to get a signed URL.
 /// [totalAmount] is in cents (null until confirmed by user or OCR).
 @freezed
-class Receipt with _$Receipt {
+abstract class Receipt with _$Receipt {
   const factory Receipt({
     required String id,
     required String householdId,

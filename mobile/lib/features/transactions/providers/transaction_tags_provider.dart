@@ -13,7 +13,7 @@ part 'transaction_tags_provider.g.dart';
 /// chip-picker on the transaction edit sheet — and later, the tag
 /// filter on the transactions list.
 @riverpod
-Future<List<TransactionTag>> transactionTags(TransactionTagsRef ref) async {
+Future<List<TransactionTag>> transactionTags(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
   final repo = ref.watch(transactionTagsRepositoryProvider);
@@ -24,10 +24,7 @@ Future<List<TransactionTag>> transactionTags(TransactionTagsRef ref) async {
 /// keyed so invalidating one transaction's assignments doesn't
 /// disturb the picker state for any other open editor.
 @riverpod
-Future<List<String>> tagIdsForTransaction(
-  TagIdsForTransactionRef ref,
-  String transactionId,
-) async {
+Future<List<String>> tagIdsForTransaction(Ref ref, String transactionId) async {
   final repo = ref.watch(transactionTagsRepositoryProvider);
   return repo.fetchAssignedTagIds(transactionId);
 }
@@ -41,9 +38,7 @@ Future<List<String>> tagIdsForTransaction(
 /// the assignment table's "transaction_id IN (SELECT id FROM
 /// transactions)" policy (migration 020).
 @riverpod
-Future<Map<String, Set<String>>> transactionTagAssignments(
-  TransactionTagAssignmentsRef ref,
-) async {
+Future<Map<String, Set<String>>> transactionTagAssignments(Ref ref) async {
   final repo = ref.watch(transactionTagsRepositoryProvider);
   return repo.fetchAllAssignments();
 }
@@ -54,7 +49,7 @@ Future<Map<String, Set<String>>> transactionTagAssignments(
 /// callers treat an absent key the same as "(0, 0)".
 @riverpod
 Future<Map<String, ({int txCount, int lineItemCount})>> tagUsageCounts(
-  TagUsageCountsRef ref,
+  Ref ref,
 ) async {
   final repo = ref.watch(transactionTagsRepositoryProvider);
   return repo.tagUsageCounts();

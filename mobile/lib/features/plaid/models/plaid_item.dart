@@ -32,7 +32,7 @@ enum PlaidEnvironment {
 /// the UI needs (institution name, last sync, re-auth error)
 /// without ever touching the access_token.
 @freezed
-class PlaidItem with _$PlaidItem {
+abstract class PlaidItem with _$PlaidItem {
   const factory PlaidItem({
     required String id,
     required String householdId,

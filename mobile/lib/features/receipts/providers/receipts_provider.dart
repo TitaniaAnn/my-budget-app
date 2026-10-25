@@ -12,7 +12,7 @@ part 'receipts_provider.g.dart';
 
 /// All receipts for the current household, newest first.
 @riverpod
-Future<List<Receipt>> receipts(ReceiptsRef ref) async {
+Future<List<Receipt>> receipts(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
 
@@ -22,7 +22,7 @@ Future<List<Receipt>> receipts(ReceiptsRef ref) async {
 
 /// Single receipt by [receiptId]. Used by the detail screen.
 @riverpod
-Future<Receipt> receipt(ReceiptRef ref, String receiptId) async {
+Future<Receipt> receipt(Ref ref, String receiptId) async {
   final repo = ref.watch(receiptsRepositoryProvider);
   return repo.fetchReceipt(receiptId);
 }
@@ -31,7 +31,7 @@ Future<Receipt> receipt(ReceiptRef ref, String receiptId) async {
 /// need to load line items for every thumbnail.
 @riverpod
 Future<List<ReceiptLineItem>> receiptLineItems(
-  ReceiptLineItemsRef ref,
+  Ref ref,
   String receiptId,
 ) async {
   final repo = ref.watch(receiptsRepositoryProvider);
@@ -42,7 +42,7 @@ Future<List<ReceiptLineItem>> receiptLineItems(
 /// them. Powers the transaction edit sheet's "Attach Receipt" picker —
 /// the inverse direction of the existing pair-from-receipt flow.
 @riverpod
-Future<List<Receipt>> unpairedReceipts(UnpairedReceiptsRef ref) async {
+Future<List<Receipt>> unpairedReceipts(Ref ref) async {
   final repo = ref.watch(receiptsRepositoryProvider);
   return repo.fetchUnpaired();
 }
@@ -56,7 +56,7 @@ Future<List<Receipt>> unpairedReceipts(UnpairedReceiptsRef ref) async {
 /// the detail screen uses full images, but one wire fetch covers
 /// both. Cards resolve from the map.
 @riverpod
-Future<Map<String, String>> signedReceiptUrls(SignedReceiptUrlsRef ref) async {
+Future<Map<String, String>> signedReceiptUrls(Ref ref) async {
   final receipts = await ref.watch(receiptsProvider.future);
   if (receipts.isEmpty) return const {};
   final repo = ref.watch(receiptsRepositoryProvider);
@@ -75,10 +75,7 @@ Future<Map<String, String>> signedReceiptUrls(SignedReceiptUrlsRef ref) async {
 /// been fetched, or for a brand-new receipt that hasn't propagated
 /// into the cached `receiptsProvider` value yet).
 @riverpod
-Future<String> receiptImageUrl(
-  ReceiptImageUrlRef ref,
-  String storagePath,
-) async {
+Future<String> receiptImageUrl(Ref ref, String storagePath) async {
   final batched = await ref.watch(signedReceiptUrlsProvider.future);
   final hit = batched[storagePath];
   if (hit != null) return hit;

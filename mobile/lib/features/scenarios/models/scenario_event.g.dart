@@ -6,8 +6,8 @@ part of 'scenario_event.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$ScenarioEventImpl _$$ScenarioEventImplFromJson(Map<String, dynamic> json) =>
-    _$ScenarioEventImpl(
+_ScenarioEvent _$ScenarioEventFromJson(Map<String, dynamic> json) =>
+    _ScenarioEvent(
       id: json['id'] as String,
       scenarioId: json['scenario_id'] as String,
       eventType: $enumDecode(_$EventTypeEnumMap, json['event_type']),
@@ -22,7 +22,7 @@ _$ScenarioEventImpl _$$ScenarioEventImplFromJson(Map<String, dynamic> json) =>
       paymentAprBps: (json['payoff_apr_bps'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$$ScenarioEventImplToJson(_$ScenarioEventImpl instance) =>
+Map<String, dynamic> _$ScenarioEventToJson(_ScenarioEvent instance) =>
     <String, dynamic>{
       'id': instance.id,
       'scenario_id': instance.scenarioId,

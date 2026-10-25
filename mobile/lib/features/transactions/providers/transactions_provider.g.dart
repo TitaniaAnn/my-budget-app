@@ -6,45 +6,132 @@ part of 'transactions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transactionsHash() => r'a59d338ed0b672692df6ab6b5afdff5b9059963f';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Fetches transactions for the current household with optional filters.
+///
+/// All params form the family key — each unique combination gets its own
+/// cached AsyncValue so filter changes don't clear unrelated caches.
+///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+@ProviderFor(transactions)
+final transactionsProvider = TransactionsFamily._();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+/// Fetches transactions for the current household with optional filters.
+///
+/// All params form the family key — each unique combination gets its own
+/// cached AsyncValue so filter changes don't clear unrelated caches.
+///
+/// Audit L6: [limit] is part of the family key so the
+/// transactions screen's "Load more" affordance can bump it
+/// without colliding with the dashboard / scenarios callers that
+/// always want the default. Underlying [fetchTransactions]
+/// defaults to 1000; pre-fix a year-3 power user silently lost
+/// transactions off the end of that page. Now the UI can grow the
+/// page by re-keying the family.
+
+final class TransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          FutureOr<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $FutureProvider<List<Transaction>> {
+  /// Fetches transactions for the current household with optional filters.
+  ///
+  /// All params form the family key — each unique combination gets its own
+  /// cached AsyncValue so filter changes don't clear unrelated caches.
+  ///
+  /// Audit L6: [limit] is part of the family key so the
+  /// transactions screen's "Load more" affordance can bump it
+  /// without colliding with the dashboard / scenarios callers that
+  /// always want the default. Underlying [fetchTransactions]
+  /// defaults to 1000; pre-fix a year-3 power user silently lost
+  /// transactions off the end of that page. Now the UI can grow the
+  /// page by re-keying the family.
+  TransactionsProvider._({
+    required TransactionsFamily super.from,
+    required ({
+      String? accountId,
+      String? categoryId,
+      String? tagId,
+      String? search,
+      DateTime? dateFrom,
+      DateTime? dateTo,
+      int limit,
+    })
+    super.argument,
+  }) : super(
+         retry: null,
+         name: r'transactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionsHash();
+
+  @override
+  String toString() {
+    return r'transactionsProvider'
+        ''
+        '$argument';
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @$internal
+  @override
+  $FutureProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Transaction>> create(Ref ref) {
+    final argument =
+        this.argument
+            as ({
+              String? accountId,
+              String? categoryId,
+              String? tagId,
+              String? search,
+              DateTime? dateFrom,
+              DateTime? dateTo,
+              int limit,
+            });
+    return transactions(
+      ref,
+      accountId: argument.accountId,
+      categoryId: argument.categoryId,
+      tagId: argument.tagId,
+      search: argument.search,
+      dateFrom: argument.dateFrom,
+      dateTo: argument.dateTo,
+      limit: argument.limit,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransactionsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-/// Fetches transactions for the current household with optional filters.
-///
-/// All params form the family key — each unique combination gets its own
-/// cached AsyncValue so filter changes don't clear unrelated caches.
-///
-/// Audit L6: [limit] is part of the family key so the
-/// transactions screen's "Load more" affordance can bump it
-/// without colliding with the dashboard / scenarios callers that
-/// always want the default. Underlying [fetchTransactions]
-/// defaults to 1000; pre-fix a year-3 power user silently lost
-/// transactions off the end of that page. Now the UI can grow the
-/// page by re-keying the family.
-///
-/// Copied from [transactions].
-@ProviderFor(transactions)
-const transactionsProvider = TransactionsFamily();
+String _$transactionsHash() => r'172ba378b5e26e6d12c43de73152962a28b11d3a';
 
 /// Fetches transactions for the current household with optional filters.
 ///
@@ -58,24 +145,29 @@ const transactionsProvider = TransactionsFamily();
 /// defaults to 1000; pre-fix a year-3 power user silently lost
 /// transactions off the end of that page. Now the UI can grow the
 /// page by re-keying the family.
-///
-/// Copied from [transactions].
-class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
-  /// Fetches transactions for the current household with optional filters.
-  ///
-  /// All params form the family key — each unique combination gets its own
-  /// cached AsyncValue so filter changes don't clear unrelated caches.
-  ///
-  /// Audit L6: [limit] is part of the family key so the
-  /// transactions screen's "Load more" affordance can bump it
-  /// without colliding with the dashboard / scenarios callers that
-  /// always want the default. Underlying [fetchTransactions]
-  /// defaults to 1000; pre-fix a year-3 power user silently lost
-  /// transactions off the end of that page. Now the UI can grow the
-  /// page by re-keying the family.
-  ///
-  /// Copied from [transactions].
-  const TransactionsFamily();
+
+final class TransactionsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<Transaction>>,
+          ({
+            String? accountId,
+            String? categoryId,
+            String? tagId,
+            String? search,
+            DateTime? dateFrom,
+            DateTime? dateTo,
+            int limit,
+          })
+        > {
+  TransactionsFamily._()
+    : super(
+        retry: null,
+        name: r'transactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
 
   /// Fetches transactions for the current household with optional filters.
   ///
@@ -89,8 +181,7 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
   /// defaults to 1000; pre-fix a year-3 power user silently lost
   /// transactions off the end of that page. Now the UI can grow the
   /// page by re-keying the family.
-  ///
-  /// Copied from [transactions].
+
   TransactionsProvider call({
     String? accountId,
     String? categoryId,
@@ -99,8 +190,8 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
     DateTime? dateFrom,
     DateTime? dateTo,
     int limit = 1000,
-  }) {
-    return TransactionsProvider(
+  }) => TransactionsProvider._(
+    argument: (
       accountId: accountId,
       categoryId: categoryId,
       tagId: tagId,
@@ -108,432 +199,216 @@ class TransactionsFamily extends Family<AsyncValue<List<Transaction>>> {
       dateFrom: dateFrom,
       dateTo: dateTo,
       limit: limit,
-    );
-  }
+    ),
+    from: this,
+  );
 
   @override
-  TransactionsProvider getProviderOverride(
-    covariant TransactionsProvider provider,
-  ) {
-    return call(
-      accountId: provider.accountId,
-      categoryId: provider.categoryId,
-      tagId: provider.tagId,
-      search: provider.search,
-      dateFrom: provider.dateFrom,
-      dateTo: provider.dateTo,
-      limit: provider.limit,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'transactionsProvider';
+  String toString() => r'transactionsProvider';
 }
-
-/// Fetches transactions for the current household with optional filters.
-///
-/// All params form the family key — each unique combination gets its own
-/// cached AsyncValue so filter changes don't clear unrelated caches.
-///
-/// Audit L6: [limit] is part of the family key so the
-/// transactions screen's "Load more" affordance can bump it
-/// without colliding with the dashboard / scenarios callers that
-/// always want the default. Underlying [fetchTransactions]
-/// defaults to 1000; pre-fix a year-3 power user silently lost
-/// transactions off the end of that page. Now the UI can grow the
-/// page by re-keying the family.
-///
-/// Copied from [transactions].
-class TransactionsProvider
-    extends AutoDisposeFutureProvider<List<Transaction>> {
-  /// Fetches transactions for the current household with optional filters.
-  ///
-  /// All params form the family key — each unique combination gets its own
-  /// cached AsyncValue so filter changes don't clear unrelated caches.
-  ///
-  /// Audit L6: [limit] is part of the family key so the
-  /// transactions screen's "Load more" affordance can bump it
-  /// without colliding with the dashboard / scenarios callers that
-  /// always want the default. Underlying [fetchTransactions]
-  /// defaults to 1000; pre-fix a year-3 power user silently lost
-  /// transactions off the end of that page. Now the UI can grow the
-  /// page by re-keying the family.
-  ///
-  /// Copied from [transactions].
-  TransactionsProvider({
-    String? accountId,
-    String? categoryId,
-    String? tagId,
-    String? search,
-    DateTime? dateFrom,
-    DateTime? dateTo,
-    int limit = 1000,
-  }) : this._internal(
-         (ref) => transactions(
-           ref as TransactionsRef,
-           accountId: accountId,
-           categoryId: categoryId,
-           tagId: tagId,
-           search: search,
-           dateFrom: dateFrom,
-           dateTo: dateTo,
-           limit: limit,
-         ),
-         from: transactionsProvider,
-         name: r'transactionsProvider',
-         debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-             ? null
-             : _$transactionsHash,
-         dependencies: TransactionsFamily._dependencies,
-         allTransitiveDependencies:
-             TransactionsFamily._allTransitiveDependencies,
-         accountId: accountId,
-         categoryId: categoryId,
-         tagId: tagId,
-         search: search,
-         dateFrom: dateFrom,
-         dateTo: dateTo,
-         limit: limit,
-       );
-
-  TransactionsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.accountId,
-    required this.categoryId,
-    required this.tagId,
-    required this.search,
-    required this.dateFrom,
-    required this.dateTo,
-    required this.limit,
-  }) : super.internal();
-
-  final String? accountId;
-  final String? categoryId;
-  final String? tagId;
-  final String? search;
-  final DateTime? dateFrom;
-  final DateTime? dateTo;
-  final int limit;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<Transaction>> Function(TransactionsRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: TransactionsProvider._internal(
-        (ref) => create(ref as TransactionsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        accountId: accountId,
-        categoryId: categoryId,
-        tagId: tagId,
-        search: search,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-        limit: limit,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<Transaction>> createElement() {
-    return _TransactionsProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is TransactionsProvider &&
-        other.accountId == accountId &&
-        other.categoryId == categoryId &&
-        other.tagId == tagId &&
-        other.search == search &&
-        other.dateFrom == dateFrom &&
-        other.dateTo == dateTo &&
-        other.limit == limit;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, accountId.hashCode);
-    hash = _SystemHash.combine(hash, categoryId.hashCode);
-    hash = _SystemHash.combine(hash, tagId.hashCode);
-    hash = _SystemHash.combine(hash, search.hashCode);
-    hash = _SystemHash.combine(hash, dateFrom.hashCode);
-    hash = _SystemHash.combine(hash, dateTo.hashCode);
-    hash = _SystemHash.combine(hash, limit.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin TransactionsRef on AutoDisposeFutureProviderRef<List<Transaction>> {
-  /// The parameter `accountId` of this provider.
-  String? get accountId;
-
-  /// The parameter `categoryId` of this provider.
-  String? get categoryId;
-
-  /// The parameter `tagId` of this provider.
-  String? get tagId;
-
-  /// The parameter `search` of this provider.
-  String? get search;
-
-  /// The parameter `dateFrom` of this provider.
-  DateTime? get dateFrom;
-
-  /// The parameter `dateTo` of this provider.
-  DateTime? get dateTo;
-
-  /// The parameter `limit` of this provider.
-  int get limit;
-}
-
-class _TransactionsProviderElement
-    extends AutoDisposeFutureProviderElement<List<Transaction>>
-    with TransactionsRef {
-  _TransactionsProviderElement(super.provider);
-
-  @override
-  String? get accountId => (origin as TransactionsProvider).accountId;
-  @override
-  String? get categoryId => (origin as TransactionsProvider).categoryId;
-  @override
-  String? get tagId => (origin as TransactionsProvider).tagId;
-  @override
-  String? get search => (origin as TransactionsProvider).search;
-  @override
-  DateTime? get dateFrom => (origin as TransactionsProvider).dateFrom;
-  @override
-  DateTime? get dateTo => (origin as TransactionsProvider).dateTo;
-  @override
-  int get limit => (origin as TransactionsProvider).limit;
-}
-
-String _$categoriesHash() => r'495a36b56b3907af2518121c5ae4d7d87f29c30f';
 
 /// Fetches all categories (system + household).
 /// Cached independently so it doesn't re-fetch every time transactions refresh.
-///
-/// Copied from [categories].
+
 @ProviderFor(categories)
-final categoriesProvider = AutoDisposeFutureProvider<List<Category>>.internal(
-  categories,
-  name: r'categoriesProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$categoriesHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final categoriesProvider = CategoriesProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CategoriesRef = AutoDisposeFutureProviderRef<List<Category>>;
-String _$transactionsForReceiptHash() =>
-    r'7a5650635af83ea0d7267abdf152b5c667ded86f';
+/// Fetches all categories (system + household).
+/// Cached independently so it doesn't re-fetch every time transactions refresh.
 
-/// Transactions currently paired to a specific receipt. Powers the
-/// receipt detail screen's "Paired Transactions" section so the user
-/// can see and unpair existing links without re-querying the global
-/// transactions list.
-///
-/// Copied from [transactionsForReceipt].
-@ProviderFor(transactionsForReceipt)
-const transactionsForReceiptProvider = TransactionsForReceiptFamily();
-
-/// Transactions currently paired to a specific receipt. Powers the
-/// receipt detail screen's "Paired Transactions" section so the user
-/// can see and unpair existing links without re-querying the global
-/// transactions list.
-///
-/// Copied from [transactionsForReceipt].
-class TransactionsForReceiptFamily
-    extends Family<AsyncValue<List<Transaction>>> {
-  /// Transactions currently paired to a specific receipt. Powers the
-  /// receipt detail screen's "Paired Transactions" section so the user
-  /// can see and unpair existing links without re-querying the global
-  /// transactions list.
-  ///
-  /// Copied from [transactionsForReceipt].
-  const TransactionsForReceiptFamily();
-
-  /// Transactions currently paired to a specific receipt. Powers the
-  /// receipt detail screen's "Paired Transactions" section so the user
-  /// can see and unpair existing links without re-querying the global
-  /// transactions list.
-  ///
-  /// Copied from [transactionsForReceipt].
-  TransactionsForReceiptProvider call(String receiptId) {
-    return TransactionsForReceiptProvider(receiptId);
-  }
-
-  @override
-  TransactionsForReceiptProvider getProviderOverride(
-    covariant TransactionsForReceiptProvider provider,
-  ) {
-    return call(provider.receiptId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'transactionsForReceiptProvider';
-}
-
-/// Transactions currently paired to a specific receipt. Powers the
-/// receipt detail screen's "Paired Transactions" section so the user
-/// can see and unpair existing links without re-querying the global
-/// transactions list.
-///
-/// Copied from [transactionsForReceipt].
-class TransactionsForReceiptProvider
-    extends AutoDisposeFutureProvider<List<Transaction>> {
-  /// Transactions currently paired to a specific receipt. Powers the
-  /// receipt detail screen's "Paired Transactions" section so the user
-  /// can see and unpair existing links without re-querying the global
-  /// transactions list.
-  ///
-  /// Copied from [transactionsForReceipt].
-  TransactionsForReceiptProvider(String receiptId)
-    : this._internal(
-        (ref) =>
-            transactionsForReceipt(ref as TransactionsForReceiptRef, receiptId),
-        from: transactionsForReceiptProvider,
-        name: r'transactionsForReceiptProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$transactionsForReceiptHash,
-        dependencies: TransactionsForReceiptFamily._dependencies,
-        allTransitiveDependencies:
-            TransactionsForReceiptFamily._allTransitiveDependencies,
-        receiptId: receiptId,
+final class CategoriesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Category>>,
+          List<Category>,
+          FutureOr<List<Category>>
+        >
+    with $FutureModifier<List<Category>>, $FutureProvider<List<Category>> {
+  /// Fetches all categories (system + household).
+  /// Cached independently so it doesn't re-fetch every time transactions refresh.
+  CategoriesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'categoriesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  TransactionsForReceiptProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.receiptId,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$categoriesHash();
 
-  final String receiptId;
+  @$internal
+  @override
+  $FutureProviderElement<List<Category>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<List<Transaction>> Function(TransactionsForReceiptRef provider)
-    create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: TransactionsForReceiptProvider._internal(
-        (ref) => create(ref as TransactionsForReceiptRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        receiptId: receiptId,
-      ),
-    );
+  FutureOr<List<Category>> create(Ref ref) {
+    return categories(ref);
+  }
+}
+
+String _$categoriesHash() => r'12b34e3b4663652b0544ee5960c51df92d7b9da5';
+
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+
+@ProviderFor(transactionsForReceipt)
+final transactionsForReceiptProvider = TransactionsForReceiptFamily._();
+
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+
+final class TransactionsForReceiptProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          FutureOr<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $FutureProvider<List<Transaction>> {
+  /// Transactions currently paired to a specific receipt. Powers the
+  /// receipt detail screen's "Paired Transactions" section so the user
+  /// can see and unpair existing links without re-querying the global
+  /// transactions list.
+  TransactionsForReceiptProvider._({
+    required TransactionsForReceiptFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'transactionsForReceiptProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionsForReceiptHash();
+
+  @override
+  String toString() {
+    return r'transactionsForReceiptProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<List<Transaction>> createElement() {
-    return _TransactionsForReceiptProviderElement(this);
+  $FutureProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Transaction>> create(Ref ref) {
+    final argument = this.argument as String;
+    return transactionsForReceipt(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
     return other is TransactionsForReceiptProvider &&
-        other.receiptId == receiptId;
+        other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, receiptId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin TransactionsForReceiptRef
-    on AutoDisposeFutureProviderRef<List<Transaction>> {
-  /// The parameter `receiptId` of this provider.
-  String get receiptId;
-}
+String _$transactionsForReceiptHash() =>
+    r'ab48fa47dad32ec63429238604fb99e17ded2024';
 
-class _TransactionsForReceiptProviderElement
-    extends AutoDisposeFutureProviderElement<List<Transaction>>
-    with TransactionsForReceiptRef {
-  _TransactionsForReceiptProviderElement(super.provider);
+/// Transactions currently paired to a specific receipt. Powers the
+/// receipt detail screen's "Paired Transactions" section so the user
+/// can see and unpair existing links without re-querying the global
+/// transactions list.
+
+final class TransactionsForReceiptFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<Transaction>>, String> {
+  TransactionsForReceiptFamily._()
+    : super(
+        retry: null,
+        name: r'transactionsForReceiptProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Transactions currently paired to a specific receipt. Powers the
+  /// receipt detail screen's "Paired Transactions" section so the user
+  /// can see and unpair existing links without re-querying the global
+  /// transactions list.
+
+  TransactionsForReceiptProvider call(String receiptId) =>
+      TransactionsForReceiptProvider._(argument: receiptId, from: this);
 
   @override
-  String get receiptId => (origin as TransactionsForReceiptProvider).receiptId;
+  String toString() => r'transactionsForReceiptProvider';
 }
-
-String _$uncertainTransactionsHash() =>
-    r'8cb7367a91b95bbcc764949be6f78e5ea279f87e';
 
 /// Fetches ML-categorised transactions whose confidence fell in the
 /// uncertain band. Backs the "Review categorisations" surface — the user
 /// confirms or corrects each row, which flips `category_assigned_by` to
 /// 'user' and feeds the next retrain.
-///
-/// Copied from [uncertainTransactions].
-@ProviderFor(uncertainTransactions)
-final uncertainTransactionsProvider =
-    AutoDisposeFutureProvider<List<Transaction>>.internal(
-      uncertainTransactions,
-      name: r'uncertainTransactionsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$uncertainTransactionsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef UncertainTransactionsRef =
-    AutoDisposeFutureProviderRef<List<Transaction>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(uncertainTransactions)
+final uncertainTransactionsProvider = UncertainTransactionsProvider._();
+
+/// Fetches ML-categorised transactions whose confidence fell in the
+/// uncertain band. Backs the "Review categorisations" surface — the user
+/// confirms or corrects each row, which flips `category_assigned_by` to
+/// 'user' and feeds the next retrain.
+
+final class UncertainTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          FutureOr<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $FutureProvider<List<Transaction>> {
+  /// Fetches ML-categorised transactions whose confidence fell in the
+  /// uncertain band. Backs the "Review categorisations" surface — the user
+  /// confirms or corrects each row, which flips `category_assigned_by` to
+  /// 'user' and feeds the next retrain.
+  UncertainTransactionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'uncertainTransactionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$uncertainTransactionsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Transaction>> create(Ref ref) {
+    return uncertainTransactions(ref);
+  }
+}
+
+String _$uncertainTransactionsHash() =>
+    r'dee3bffe3584d161138f984867dff6f5a488968a';

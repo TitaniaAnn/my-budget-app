@@ -6,58 +6,131 @@ part of 'settings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$settingsRepositoryHash() =>
-    r'0203e31bb994214ce864bf95a7afa14a8a14b812';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [settingsRepository].
 @ProviderFor(settingsRepository)
-final settingsRepositoryProvider =
-    AutoDisposeProvider<SettingsRepository>.internal(
-      settingsRepository,
-      name: r'settingsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$settingsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+final settingsRepositoryProvider = SettingsRepositoryProvider._();
+
+final class SettingsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          SettingsRepository,
+          SettingsRepository,
+          SettingsRepository
+        >
+    with $Provider<SettingsRepository> {
+  SettingsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'settingsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$settingsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<SettingsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SettingsRepository create(Ref ref) {
+    return settingsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SettingsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SettingsRepository>(value),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SettingsRepositoryRef = AutoDisposeProviderRef<SettingsRepository>;
-String _$profileHash() => r'8bbecf7ac1101c7c40d1c7d03d3ad832fbf86883';
+String _$settingsRepositoryHash() =>
+    r'5849d89f9468753266ce5aa638352968fc190910';
 
-/// See also [profile].
 @ProviderFor(profile)
-final profileProvider = AutoDisposeFutureProvider<UserProfile>.internal(
-  profile,
-  name: r'profileProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$profileHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final profileProvider = ProfileProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ProfileRef = AutoDisposeFutureProviderRef<UserProfile>;
-String _$householdInfoHash() => r'1b609d18cf562cefe6a18cea60c5d9a4d24f2bd3';
+final class ProfileProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<UserProfile>,
+          UserProfile,
+          FutureOr<UserProfile>
+        >
+    with $FutureModifier<UserProfile>, $FutureProvider<UserProfile> {
+  ProfileProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profileProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [householdInfo].
+  @override
+  String debugGetCreateSourceHash() => _$profileHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<UserProfile> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<UserProfile> create(Ref ref) {
+    return profile(ref);
+  }
+}
+
+String _$profileHash() => r'0269dee8699ffac7fecfbfdaed6aef9c24974cc1';
+
 @ProviderFor(householdInfo)
-final householdInfoProvider = AutoDisposeFutureProvider<HouseholdInfo>.internal(
-  householdInfo,
-  name: r'householdInfoProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$householdInfoHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final householdInfoProvider = HouseholdInfoProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef HouseholdInfoRef = AutoDisposeFutureProviderRef<HouseholdInfo>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class HouseholdInfoProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<HouseholdInfo>,
+          HouseholdInfo,
+          FutureOr<HouseholdInfo>
+        >
+    with $FutureModifier<HouseholdInfo>, $FutureProvider<HouseholdInfo> {
+  HouseholdInfoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'householdInfoProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$householdInfoHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<HouseholdInfo> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<HouseholdInfo> create(Ref ref) {
+    return householdInfo(ref);
+  }
+}
+
+String _$householdInfoHash() => r'99c31e0f1103a00124c3d7e9eb41dadc9a6cc7d7';

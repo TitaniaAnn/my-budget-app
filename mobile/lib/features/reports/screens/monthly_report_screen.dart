@@ -108,13 +108,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           )
         : Future<List<Transaction>>.value(const []);
 
-    final (
-      transactions,
-      spending,
-      categories,
-      accounts,
-      postMonthTx,
-    ) = await (
+    final (transactions, spending, categories, accounts, postMonthTx) = await (
       transactionsFuture,
       spendingFuture,
       categoriesFuture,
@@ -164,7 +158,8 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       await Printing.sharePdf(
         bytes: bytes,
         filename: 'monthly-report-$monthSlug.pdf',
-        subject: 'Monthly report — '
+        subject:
+            'Monthly report — '
             '${DateFormat.yMMMM().format(data.monthStart)}',
       );
     } finally {
@@ -276,10 +271,7 @@ class _Preview extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'totals in ${data.displayCurrency}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: colors.textSubtle,
-                  ),
+                  style: TextStyle(fontSize: 10, color: colors.textSubtle),
                 ),
               ],
             ),
@@ -330,10 +322,7 @@ class _Preview extends StatelessWidget {
                   ? 'Balances as of '
                         '${DateFormat.yMMMd().format(data.closingAsOf)}'
                   : 'Balances at month end',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
           ...data.closingBalances.map(
@@ -414,10 +403,7 @@ class _SummaryCell extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: context.appColors.textSubtle,
-          ),
+          style: TextStyle(fontSize: 11, color: context.appColors.textSubtle),
         ),
         const SizedBox(height: 4),
         Text(

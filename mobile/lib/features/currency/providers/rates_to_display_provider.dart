@@ -39,7 +39,7 @@ part 'rates_to_display_provider.g.dart';
 /// missing entries as "exclude this currency, don't lie at rate=1"
 /// per the project-wide multi-currency contract.
 @riverpod
-Future<Map<String, double>> ratesToDisplay(RatesToDisplayRef ref) async {
+Future<Map<String, double>> ratesToDisplay(Ref ref) async {
   final info = await ref.watch(householdInfoProvider.future);
   final allRates = await ref
       .read(fxRatesRepositoryProvider)

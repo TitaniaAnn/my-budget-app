@@ -74,7 +74,7 @@ enum AssetClass {
 /// double; the SQL column is NUMERIC(20,8) so the model accepts the
 /// usual double precision loss past ~15 sig figs (see migration 027).
 @freezed
-class Holding with _$Holding {
+abstract class Holding with _$Holding {
   const factory Holding({
     required String id,
     required String householdId,

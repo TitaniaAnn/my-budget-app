@@ -13,9 +13,7 @@ import '../models/target_allocation.dart';
 part 'target_allocations_repository.g.dart';
 
 @riverpod
-TargetAllocationsRepository targetAllocationsRepository(
-  TargetAllocationsRepositoryRef ref,
-) {
+TargetAllocationsRepository targetAllocationsRepository(Ref ref) {
   return TargetAllocationsRepository();
 }
 
@@ -41,17 +39,12 @@ class TargetAllocationsRepository {
     required int targetPctBp,
     required String createdBy,
   }) async {
-    await supabase
-        .from('target_allocations')
-        .upsert(
-          {
-            'household_id': householdId,
-            'asset_class': assetClass.dbValue,
-            'target_pct_bp': targetPctBp,
-            'created_by': createdBy,
-          },
-          onConflict: 'household_id,asset_class',
-        );
+    await supabase.from('target_allocations').upsert({
+      'household_id': householdId,
+      'asset_class': assetClass.dbValue,
+      'target_pct_bp': targetPctBp,
+      'created_by': createdBy,
+    }, onConflict: 'household_id,asset_class');
   }
 
   /// Removes a single (household, asset_class) row. Distinct from

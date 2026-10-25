@@ -67,9 +67,7 @@ void main() {
     test('purges prior budgets for the household before inserting', () async {
       await db.upsertBudget(sampleBudget(id: 'b-old-1'));
       await db.upsertBudget(sampleBudget(id: 'b-old-2'));
-      await db.replaceBudgetsForHousehold('hh-1', [
-        sampleBudget(id: 'b-new'),
-      ]);
+      await db.replaceBudgetsForHousehold('hh-1', [sampleBudget(id: 'b-new')]);
       final rows = await db.loadBudgetsForHousehold('hh-1');
       expect(rows.map((r) => r.id), ['b-new']);
     });
@@ -137,10 +135,7 @@ void main() {
       await db.upsertFxRate(sampleFx(householdId: 'hh-1'));
       await db.upsertFxRate(sampleFx(householdId: 'hh-2'));
       await db.replaceFxRatesForHousehold('hh-1', [
-        sampleFx(
-          householdId: 'hh-1',
-          asOfDate: DateTime.utc(2026, 5, 5),
-        ),
+        sampleFx(householdId: 'hh-1', asOfDate: DateTime.utc(2026, 5, 5)),
       ]);
       final hh2 = await db.loadFxRatesForHousehold('hh-2');
       expect(hh2, hasLength(1));
@@ -149,18 +144,15 @@ void main() {
 
   group('AppDatabase.loadLatestFxRate', () {
     test('returns the most recent rate at or before [asOf]', () async {
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 1, 15),
-        rate: 1.05,
-      ));
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 3, 15),
-        rate: 1.08,
-      ));
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 5, 15),
-        rate: 1.12,
-      ));
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 1, 15), rate: 1.05),
+      );
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 3, 15), rate: 1.08),
+      );
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 5, 15), rate: 1.12),
+      );
       final result = await db.loadLatestFxRate(
         householdId: 'hh-1',
         fromCurrency: 'EUR',
@@ -172,10 +164,7 @@ void main() {
     });
 
     test('returns null when no rate exists for the pair', () async {
-      await db.upsertFxRate(sampleFx(
-        fromCurrency: 'EUR',
-        toCurrency: 'USD',
-      ));
+      await db.upsertFxRate(sampleFx(fromCurrency: 'EUR', toCurrency: 'USD'));
       final result = await db.loadLatestFxRate(
         householdId: 'hh-1',
         fromCurrency: 'GBP',
@@ -187,11 +176,9 @@ void main() {
 
     test('respects (fromCurrency, toCurrency) directionality', () async {
       // Symmetry isn't assumed — storing EUR→USD doesn't imply USD→EUR.
-      await db.upsertFxRate(sampleFx(
-        fromCurrency: 'EUR',
-        toCurrency: 'USD',
-        rate: 1.08,
-      ));
+      await db.upsertFxRate(
+        sampleFx(fromCurrency: 'EUR', toCurrency: 'USD', rate: 1.08),
+      );
       final reverse = await db.loadLatestFxRate(
         householdId: 'hh-1',
         fromCurrency: 'USD',
@@ -219,14 +206,12 @@ void main() {
     });
 
     test('defaults asOf to now() — picks the most recent rate', () async {
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 1, 1),
-        rate: 1.05,
-      ));
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 4, 1),
-        rate: 1.08,
-      ));
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 1, 1), rate: 1.05),
+      );
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 4, 1), rate: 1.08),
+      );
       final result = await db.loadLatestFxRate(
         householdId: 'hh-1',
         fromCurrency: 'EUR',
@@ -239,23 +224,18 @@ void main() {
   group('AppDatabase fx surface', () {
     test('loadFxRatesForHousehold sorts by as_of_date DESC', () async {
       await db.upsertFxRate(sampleFx(asOfDate: DateTime.utc(2026, 1, 1)));
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 5, 1),
-        fromCurrency: 'GBP',
-      ));
-      await db.upsertFxRate(sampleFx(
-        asOfDate: DateTime.utc(2026, 3, 1),
-        fromCurrency: 'CAD',
-      ));
-      final rows = await db.loadFxRatesForHousehold('hh-1');
-      expect(
-        rows.map((r) => r.asOfDate).toList(),
-        [
-          DateTime.utc(2026, 5, 1),
-          DateTime.utc(2026, 3, 1),
-          DateTime.utc(2026, 1, 1),
-        ],
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 5, 1), fromCurrency: 'GBP'),
       );
+      await db.upsertFxRate(
+        sampleFx(asOfDate: DateTime.utc(2026, 3, 1), fromCurrency: 'CAD'),
+      );
+      final rows = await db.loadFxRatesForHousehold('hh-1');
+      expect(rows.map((r) => r.asOfDate).toList(), [
+        DateTime.utc(2026, 5, 1),
+        DateTime.utc(2026, 3, 1),
+        DateTime.utc(2026, 1, 1),
+      ]);
     });
 
     test('upsertFxRate replaces on composite PK conflict', () async {

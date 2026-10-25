@@ -188,7 +188,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
       // batch (all rows belong to the same account here).
       final selectedAccount = ref
           .read(accountsProvider)
-          .valueOrNull
+          .value
           ?.firstWhere(
             (a) => a.id == _selectedAccountId,
             orElse: () => throw Exception('Selected account not found'),
@@ -413,9 +413,7 @@ class _ImportStatementSheetState extends ConsumerState<ImportStatementSheet> {
             LoadingButton(
               loading: _importing,
               onPressed: _import,
-              child: Text(
-                'Import ${plural(_preview.length, "Transaction")}',
-              ),
+              child: Text('Import ${plural(_preview.length, "Transaction")}'),
             ),
           ],
           const SizedBox(height: 8),

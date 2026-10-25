@@ -11,7 +11,7 @@ part 'settings_provider.g.dart';
 // ── Models ────────────────────────────────────────────────────────────────────
 
 @freezed
-class UserProfile with _$UserProfile {
+abstract class UserProfile with _$UserProfile {
   const factory UserProfile({
     required String userId,
     required String displayName,
@@ -19,7 +19,7 @@ class UserProfile with _$UserProfile {
 }
 
 @freezed
-class HouseholdMember with _$HouseholdMember {
+abstract class HouseholdMember with _$HouseholdMember {
   const factory HouseholdMember({
     required String userId,
     required String displayName,
@@ -29,7 +29,7 @@ class HouseholdMember with _$HouseholdMember {
 }
 
 @freezed
-class HouseholdInfo with _$HouseholdInfo {
+abstract class HouseholdInfo with _$HouseholdInfo {
   const factory HouseholdInfo({
     required String householdId,
     required String householdName,
@@ -111,14 +111,14 @@ class SettingsRepository {
 }
 
 @riverpod
-SettingsRepository settingsRepository(SettingsRepositoryRef ref) {
+SettingsRepository settingsRepository(Ref ref) {
   return SettingsRepository();
 }
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
 @riverpod
-Future<UserProfile> profile(ProfileRef ref) async {
+Future<UserProfile> profile(Ref ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) throw Exception('Not authenticated');
 
@@ -135,7 +135,7 @@ Future<UserProfile> profile(ProfileRef ref) async {
 }
 
 @riverpod
-Future<HouseholdInfo> householdInfo(HouseholdInfoRef ref) async {
+Future<HouseholdInfo> householdInfo(Ref ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) throw Exception('Not authenticated');
 
@@ -173,7 +173,6 @@ Future<HouseholdInfo> householdInfo(HouseholdInfoRef ref) async {
     householdName: (householdRow['name'] as String?) ?? '',
     isOwner: isOwner,
     members: members,
-    displayCurrency:
-        (householdRow['display_currency'] as String?) ?? 'USD',
+    displayCurrency: (householdRow['display_currency'] as String?) ?? 'USD',
   );
 }

@@ -14,9 +14,7 @@ import '../models/device_push_token.dart';
 part 'device_push_tokens_repository.g.dart';
 
 @riverpod
-DevicePushTokensRepository devicePushTokensRepository(
-  DevicePushTokensRepositoryRef ref,
-) {
+DevicePushTokensRepository devicePushTokensRepository(Ref ref) {
   return DevicePushTokensRepository();
 }
 

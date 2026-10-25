@@ -30,10 +30,8 @@ class RecurringTransactionsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Recurring Transactions')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showAppSheet<void>(
-          context,
-          child: const AddRecurringSheet(),
-        ),
+        onPressed: () =>
+            showAppSheet<void>(context, child: const AddRecurringSheet()),
         icon: const Icon(Icons.add),
         label: const Text('New Rule'),
       ),
@@ -58,8 +56,7 @@ class RecurringTransactionsScreen extends ConsumerWidget {
           // raw UUID. Tolerant of a still-loading or errored fetch —
           // tiles fall back to "—" rather than blocking the whole list.
           final accountNames = {
-            for (final a in accountsAsync.valueOrNull ?? const [])
-              a.id: a.name,
+            for (final a in accountsAsync.value ?? const []) a.id: a.name,
           };
           return ListView.separated(
             padding: const EdgeInsets.only(bottom: 96),
@@ -98,7 +95,8 @@ class _RecurringTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isExpense = rule.amountCents < 0;
-    final isPaused = !rule.isActive ||
+    final isPaused =
+        !rule.isActive ||
         (rule.skippedUntilDate != null &&
             !rule.skippedUntilDate!.isBefore(DateTime.now()));
 

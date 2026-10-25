@@ -6,91 +6,188 @@ part of 'last_synced_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$lastSyncedAtHash() => r'becf985286ddbdd95f04ae89ed5a51b72f4e4a49';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [lastSyncedAt].
 @ProviderFor(lastSyncedAt)
-final lastSyncedAtProvider = AutoDisposeFutureProvider<DateTime?>.internal(
-  lastSyncedAt,
-  name: r'lastSyncedAtProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$lastSyncedAtHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final lastSyncedAtProvider = LastSyncedAtProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef LastSyncedAtRef = AutoDisposeFutureProviderRef<DateTime?>;
-String _$pendingWritesCountValueHash() =>
-    r'cfc997ee9425049fe2d1cedf0244c0f846a48a6d';
+final class LastSyncedAtProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<DateTime?>,
+          DateTime?,
+          FutureOr<DateTime?>
+        >
+    with $FutureModifier<DateTime?>, $FutureProvider<DateTime?> {
+  LastSyncedAtProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lastSyncedAtProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastSyncedAtHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<DateTime?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<DateTime?> create(Ref ref) {
+    return lastSyncedAt(ref);
+  }
+}
+
+String _$lastSyncedAtHash() => r'ccf6c4bcbccd1c9db646427107c966e22f10619b';
 
 /// Pending-writes count for the Settings sync surface (Phase 5c).
 /// Plain (not keepAlive) so each settings open gets a fresh read.
-///
-/// Copied from [pendingWritesCountValue].
-@ProviderFor(pendingWritesCountValue)
-final pendingWritesCountValueProvider = AutoDisposeFutureProvider<int>.internal(
-  pendingWritesCountValue,
-  name: r'pendingWritesCountValueProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pendingWritesCountValueHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PendingWritesCountValueRef = AutoDisposeFutureProviderRef<int>;
-String _$pendingStorageUploadsCountValueHash() =>
-    r'1aa0acf78645dcd3b1801d54f5bef7a7e36e87c3';
+@ProviderFor(pendingWritesCountValue)
+final pendingWritesCountValueProvider = PendingWritesCountValueProvider._();
+
+/// Pending-writes count for the Settings sync surface (Phase 5c).
+/// Plain (not keepAlive) so each settings open gets a fresh read.
+
+final class PendingWritesCountValueProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Pending-writes count for the Settings sync surface (Phase 5c).
+  /// Plain (not keepAlive) so each settings open gets a fresh read.
+  PendingWritesCountValueProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pendingWritesCountValueProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pendingWritesCountValueHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return pendingWritesCountValue(ref);
+  }
+}
+
+String _$pendingWritesCountValueHash() =>
+    r'3149ab2b9b04cac7d7fb5b5833f8480cf0e1b30d';
 
 /// Pending storage-upload count for the Settings sync surface
 /// (Phase 4b polish). Mirrors pendingWritesCountValue for the
 /// receipt-image queue.
-///
-/// Copied from [pendingStorageUploadsCountValue].
+
 @ProviderFor(pendingStorageUploadsCountValue)
 final pendingStorageUploadsCountValueProvider =
-    AutoDisposeFutureProvider<int>.internal(
-      pendingStorageUploadsCountValue,
-      name: r'pendingStorageUploadsCountValueProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$pendingStorageUploadsCountValueHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+    PendingStorageUploadsCountValueProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PendingStorageUploadsCountValueRef = AutoDisposeFutureProviderRef<int>;
-String _$pendingStorageUploadIdsHash() =>
-    r'64d4e9159c4aeeecad3163d117b5a0c5678c1216';
+/// Pending storage-upload count for the Settings sync surface
+/// (Phase 4b polish). Mirrors pendingWritesCountValue for the
+/// receipt-image queue.
+
+final class PendingStorageUploadsCountValueProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Pending storage-upload count for the Settings sync surface
+  /// (Phase 4b polish). Mirrors pendingWritesCountValue for the
+  /// receipt-image queue.
+  PendingStorageUploadsCountValueProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pendingStorageUploadsCountValueProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pendingStorageUploadsCountValueHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return pendingStorageUploadsCountValue(ref);
+  }
+}
+
+String _$pendingStorageUploadsCountValueHash() =>
+    r'789703a13bfd45f690736e734e8bf1fd346a92c6';
 
 /// Set of receipt ids currently sitting in the storage upload
 /// queue (Phase 4b polish). Powers the "pending upload" badge on
 /// the receipts grid. Plain (not keepAlive) so each grid render
 /// gets a fresh read; the result is a tiny set (typically zero or
 /// single-digit rows) so the read is cheap.
-///
-/// Copied from [pendingStorageUploadIds].
-@ProviderFor(pendingStorageUploadIds)
-final pendingStorageUploadIdsProvider =
-    AutoDisposeFutureProvider<Set<String>>.internal(
-      pendingStorageUploadIds,
-      name: r'pendingStorageUploadIdsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$pendingStorageUploadIdsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PendingStorageUploadIdsRef = AutoDisposeFutureProviderRef<Set<String>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(pendingStorageUploadIds)
+final pendingStorageUploadIdsProvider = PendingStorageUploadIdsProvider._();
+
+/// Set of receipt ids currently sitting in the storage upload
+/// queue (Phase 4b polish). Powers the "pending upload" badge on
+/// the receipts grid. Plain (not keepAlive) so each grid render
+/// gets a fresh read; the result is a tiny set (typically zero or
+/// single-digit rows) so the read is cheap.
+
+final class PendingStorageUploadIdsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Set<String>>,
+          Set<String>,
+          FutureOr<Set<String>>
+        >
+    with $FutureModifier<Set<String>>, $FutureProvider<Set<String>> {
+  /// Set of receipt ids currently sitting in the storage upload
+  /// queue (Phase 4b polish). Powers the "pending upload" badge on
+  /// the receipts grid. Plain (not keepAlive) so each grid render
+  /// gets a fresh read; the result is a tiny set (typically zero or
+  /// single-digit rows) so the read is cheap.
+  PendingStorageUploadIdsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pendingStorageUploadIdsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pendingStorageUploadIdsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Set<String>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Set<String>> create(Ref ref) {
+    return pendingStorageUploadIds(ref);
+  }
+}
+
+String _$pendingStorageUploadIdsHash() =>
+    r'b5f172bb186d2d0306ad83bcc9944131f543ccd5';

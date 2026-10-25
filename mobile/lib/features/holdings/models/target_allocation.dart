@@ -10,7 +10,7 @@ part 'target_allocation.freezed.dart';
 part 'target_allocation.g.dart';
 
 @freezed
-class TargetAllocation with _$TargetAllocation {
+abstract class TargetAllocation with _$TargetAllocation {
   const factory TargetAllocation({
     required String householdId,
     required AssetClass assetClass,

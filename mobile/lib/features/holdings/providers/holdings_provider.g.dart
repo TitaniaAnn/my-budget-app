@@ -6,216 +6,198 @@ part of 'holdings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$holdingsForAccountHash() =>
-    r'4c9ea4c5db844aaa94704282860c632dd7a2fc62';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 /// All holdings inside [accountId]. Family-keyed so navigating
 /// between two investment accounts gets each its own cache slot.
-///
-/// Copied from [holdingsForAccount].
+
 @ProviderFor(holdingsForAccount)
-const holdingsForAccountProvider = HoldingsForAccountFamily();
+final holdingsForAccountProvider = HoldingsForAccountFamily._();
 
 /// All holdings inside [accountId]. Family-keyed so navigating
 /// between two investment accounts gets each its own cache slot.
-///
-/// Copied from [holdingsForAccount].
-class HoldingsForAccountFamily extends Family<AsyncValue<List<Holding>>> {
+
+final class HoldingsForAccountProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Holding>>,
+          List<Holding>,
+          FutureOr<List<Holding>>
+        >
+    with $FutureModifier<List<Holding>>, $FutureProvider<List<Holding>> {
   /// All holdings inside [accountId]. Family-keyed so navigating
   /// between two investment accounts gets each its own cache slot.
-  ///
-  /// Copied from [holdingsForAccount].
-  const HoldingsForAccountFamily();
+  HoldingsForAccountProvider._({
+    required HoldingsForAccountFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'holdingsForAccountProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// All holdings inside [accountId]. Family-keyed so navigating
-  /// between two investment accounts gets each its own cache slot.
-  ///
-  /// Copied from [holdingsForAccount].
-  HoldingsForAccountProvider call(String accountId) {
-    return HoldingsForAccountProvider(accountId);
+  @override
+  String debugGetCreateSourceHash() => _$holdingsForAccountHash();
+
+  @override
+  String toString() {
+    return r'holdingsForAccountProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  HoldingsForAccountProvider getProviderOverride(
-    covariant HoldingsForAccountProvider provider,
-  ) {
-    return call(provider.accountId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<List<Holding>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'holdingsForAccountProvider';
-}
-
-/// All holdings inside [accountId]. Family-keyed so navigating
-/// between two investment accounts gets each its own cache slot.
-///
-/// Copied from [holdingsForAccount].
-class HoldingsForAccountProvider
-    extends AutoDisposeFutureProvider<List<Holding>> {
-  /// All holdings inside [accountId]. Family-keyed so navigating
-  /// between two investment accounts gets each its own cache slot.
-  ///
-  /// Copied from [holdingsForAccount].
-  HoldingsForAccountProvider(String accountId)
-    : this._internal(
-        (ref) => holdingsForAccount(ref as HoldingsForAccountRef, accountId),
-        from: holdingsForAccountProvider,
-        name: r'holdingsForAccountProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$holdingsForAccountHash,
-        dependencies: HoldingsForAccountFamily._dependencies,
-        allTransitiveDependencies:
-            HoldingsForAccountFamily._allTransitiveDependencies,
-        accountId: accountId,
-      );
-
-  HoldingsForAccountProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.accountId,
-  }) : super.internal();
-
-  final String accountId;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<Holding>> Function(HoldingsForAccountRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: HoldingsForAccountProvider._internal(
-        (ref) => create(ref as HoldingsForAccountRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        accountId: accountId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<Holding>> createElement() {
-    return _HoldingsForAccountProviderElement(this);
+  FutureOr<List<Holding>> create(Ref ref) {
+    final argument = this.argument as String;
+    return holdingsForAccount(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is HoldingsForAccountProvider && other.accountId == accountId;
+    return other is HoldingsForAccountProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, accountId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin HoldingsForAccountRef on AutoDisposeFutureProviderRef<List<Holding>> {
-  /// The parameter `accountId` of this provider.
-  String get accountId;
-}
+String _$holdingsForAccountHash() =>
+    r'3a8369a904ed69505dfff0feee463d32b8eb85f9';
 
-class _HoldingsForAccountProviderElement
-    extends AutoDisposeFutureProviderElement<List<Holding>>
-    with HoldingsForAccountRef {
-  _HoldingsForAccountProviderElement(super.provider);
+/// All holdings inside [accountId]. Family-keyed so navigating
+/// between two investment accounts gets each its own cache slot.
+
+final class HoldingsForAccountFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<Holding>>, String> {
+  HoldingsForAccountFamily._()
+    : super(
+        retry: null,
+        name: r'holdingsForAccountProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// All holdings inside [accountId]. Family-keyed so navigating
+  /// between two investment accounts gets each its own cache slot.
+
+  HoldingsForAccountProvider call(String accountId) =>
+      HoldingsForAccountProvider._(argument: accountId, from: this);
 
   @override
-  String get accountId => (origin as HoldingsForAccountProvider).accountId;
+  String toString() => r'holdingsForAccountProvider';
 }
-
-String _$householdHoldingsHash() => r'c3238dacc39755389bf0caa6c2f402fbeb24bf2a';
 
 /// Every holding across every investment account in the current
 /// household. Powers the dashboard's asset-allocation donut.
-///
-/// Copied from [householdHoldings].
-@ProviderFor(householdHoldings)
-final householdHoldingsProvider =
-    AutoDisposeFutureProvider<List<Holding>>.internal(
-      householdHoldings,
-      name: r'householdHoldingsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$householdHoldingsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef HouseholdHoldingsRef = AutoDisposeFutureProviderRef<List<Holding>>;
-String _$assetAllocationHash() => r'd5351d07e423dd30a4a30240bed433dc3805bb66';
+@ProviderFor(householdHoldings)
+final householdHoldingsProvider = HouseholdHoldingsProvider._();
+
+/// Every holding across every investment account in the current
+/// household. Powers the dashboard's asset-allocation donut.
+
+final class HouseholdHoldingsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Holding>>,
+          List<Holding>,
+          FutureOr<List<Holding>>
+        >
+    with $FutureModifier<List<Holding>>, $FutureProvider<List<Holding>> {
+  /// Every holding across every investment account in the current
+  /// household. Powers the dashboard's asset-allocation donut.
+  HouseholdHoldingsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'householdHoldingsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$householdHoldingsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Holding>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Holding>> create(Ref ref) {
+    return householdHoldings(ref);
+  }
+}
+
+String _$householdHoldingsHash() => r'4781bf5d346b1df31576e59071e743be999f7b51';
 
 /// Total current value (cents) per [AssetClass], computed from
 /// [householdHoldingsProvider]. Holdings with no asset_class are
 /// bucketed under [AssetClass.other] so the donut never has an
 /// unlabelled slice. Returned as a sorted list (largest slice
 /// first) — that's the convention the donut renders against.
-///
-/// Copied from [assetAllocation].
-@ProviderFor(assetAllocation)
-final assetAllocationProvider =
-    AutoDisposeFutureProvider<
-      List<({AssetClass assetClass, int totalCents})>
-    >.internal(
-      assetAllocation,
-      name: r'assetAllocationProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$assetAllocationHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AssetAllocationRef =
-    AutoDisposeFutureProviderRef<
-      List<({AssetClass assetClass, int totalCents})>
-    >;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(assetAllocation)
+final assetAllocationProvider = AssetAllocationProvider._();
+
+/// Total current value (cents) per [AssetClass], computed from
+/// [householdHoldingsProvider]. Holdings with no asset_class are
+/// bucketed under [AssetClass.other] so the donut never has an
+/// unlabelled slice. Returned as a sorted list (largest slice
+/// first) — that's the convention the donut renders against.
+
+final class AssetAllocationProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<({AssetClass assetClass, int totalCents})>>,
+          List<({AssetClass assetClass, int totalCents})>,
+          FutureOr<List<({AssetClass assetClass, int totalCents})>>
+        >
+    with
+        $FutureModifier<List<({AssetClass assetClass, int totalCents})>>,
+        $FutureProvider<List<({AssetClass assetClass, int totalCents})>> {
+  /// Total current value (cents) per [AssetClass], computed from
+  /// [householdHoldingsProvider]. Holdings with no asset_class are
+  /// bucketed under [AssetClass.other] so the donut never has an
+  /// unlabelled slice. Returned as a sorted list (largest slice
+  /// first) — that's the convention the donut renders against.
+  AssetAllocationProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetAllocationProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetAllocationHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<({AssetClass assetClass, int totalCents})>>
+  $createElement($ProviderPointer pointer) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<({AssetClass assetClass, int totalCents})>> create(Ref ref) {
+    return assetAllocation(ref);
+  }
+}
+
+String _$assetAllocationHash() => r'fc8181a66525b8cb1a8637060b2eabbaf450712e';

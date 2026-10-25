@@ -21,7 +21,7 @@ import '../models/fx_rate.dart';
 part 'fx_rates_repository.g.dart';
 
 @riverpod
-FxRatesRepository fxRatesRepository(FxRatesRepositoryRef ref) {
+FxRatesRepository fxRatesRepository(Ref ref) {
   return FxRatesRepository(db: ref.watch(appDatabaseProvider));
 }
 
@@ -66,9 +66,10 @@ class FxRatesRepository {
     required String toCurrency,
     DateTime? asOf,
   }) async {
-    final cutoff = (asOf ?? DateTime.now().toUtc())
-        .toIso8601String()
-        .substring(0, 10);
+    final cutoff = (asOf ?? DateTime.now().toUtc()).toIso8601String().substring(
+      0,
+      10,
+    );
     try {
       final data = await supabase
           .from('fx_rates')
@@ -111,19 +112,14 @@ class FxRatesRepository {
     required DateTime asOfDate,
     required String createdBy,
   }) async {
-    await supabase
-        .from('fx_rates')
-        .upsert(
-          {
-            'household_id': householdId,
-            'from_currency': fromCurrency,
-            'to_currency': toCurrency,
-            'as_of_date': asOfDate.toIso8601String().substring(0, 10),
-            'rate': rate,
-            'created_by': createdBy,
-          },
-          onConflict: 'household_id,from_currency,to_currency,as_of_date',
-        );
+    await supabase.from('fx_rates').upsert({
+      'household_id': householdId,
+      'from_currency': fromCurrency,
+      'to_currency': toCurrency,
+      'as_of_date': asOfDate.toIso8601String().substring(0, 10),
+      'rate': rate,
+      'created_by': createdBy,
+    }, onConflict: 'household_id,from_currency,to_currency,as_of_date');
     // Write-through: the server didn't return the row so we
     // build the cache companion from the inputs + now() for the
     // tracking timestamps. The next fetchAll() will overwrite
@@ -147,7 +143,9 @@ class FxRatesRepository {
             cachedAt: Value(now),
           ),
         );
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -177,16 +175,15 @@ class FxRatesRepository {
           // M10: DATE column — no .toUtc().
           asOfDate: asOfDate,
         );
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
   // ── Cache helpers ──────────────────────────────────────────
 
-  Future<void> _refreshFxCache(
-    String householdId,
-    List<FxRate> rates,
-  ) async {
+  Future<void> _refreshFxCache(String householdId, List<FxRate> rates) async {
     final db = _db;
     if (db == null) return;
     try {
@@ -194,7 +191,9 @@ class FxRatesRepository {
         householdId,
         rates.map(_fxToCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeFxCacheRow(FxRate r) async {
@@ -202,7 +201,9 @@ class FxRatesRepository {
     if (db == null) return;
     try {
       await db.upsertFxRate(_fxToCompanion(r));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<FxRate>?> _loadFromCache(String householdId) async {

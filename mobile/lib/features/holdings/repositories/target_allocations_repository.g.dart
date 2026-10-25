@@ -6,25 +6,54 @@ part of 'target_allocations_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$targetAllocationsRepositoryHash() =>
-    r'c56398a2900c2360b6f23ce307d0689ff91aaf00';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [targetAllocationsRepository].
 @ProviderFor(targetAllocationsRepository)
 final targetAllocationsRepositoryProvider =
-    AutoDisposeProvider<TargetAllocationsRepository>.internal(
-      targetAllocationsRepository,
-      name: r'targetAllocationsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$targetAllocationsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+    TargetAllocationsRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TargetAllocationsRepositoryRef =
-    AutoDisposeProviderRef<TargetAllocationsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class TargetAllocationsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          TargetAllocationsRepository,
+          TargetAllocationsRepository,
+          TargetAllocationsRepository
+        >
+    with $Provider<TargetAllocationsRepository> {
+  TargetAllocationsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'targetAllocationsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$targetAllocationsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TargetAllocationsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TargetAllocationsRepository create(Ref ref) {
+    return targetAllocationsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TargetAllocationsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TargetAllocationsRepository>(value),
+    );
+  }
+}
+
+String _$targetAllocationsRepositoryHash() =>
+    r'8e6701b1db3c410dd2ddae423541a442f0cbbe11';

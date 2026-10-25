@@ -28,7 +28,7 @@ part 'receipts_repository.g.dart';
 const _bucket = 'receipts';
 
 @riverpod
-ReceiptsRepository receiptsRepository(ReceiptsRepositoryRef ref) {
+ReceiptsRepository receiptsRepository(Ref ref) {
   return ReceiptsRepository(
     db: ref.watch(appDatabaseProvider),
     storageQueue: ref.watch(storageUploadQueueProvider),
@@ -383,7 +383,9 @@ class ReceiptsRepository {
     if (db != null) {
       try {
         await db.upsertLineItem(_lineItemToCompanion(updated));
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -531,7 +533,9 @@ class ReceiptsRepository {
         householdId,
         receipts.map(_receiptToCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeReceiptCacheRow(Receipt r) async {
@@ -539,7 +543,9 @@ class ReceiptsRepository {
     if (db == null) return;
     try {
       await db.upsertReceipt(_receiptToCompanion(r));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteReceiptCacheRow(String id) async {
@@ -547,7 +553,9 @@ class ReceiptsRepository {
     if (db == null) return;
     try {
       await db.deleteReceipt(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<Receipt>?> _loadReceiptsFromCache(String householdId) async {
@@ -585,7 +593,9 @@ class ReceiptsRepository {
         receiptId,
         items.map(_lineItemToCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<ReceiptLineItem>?> _loadLineItemsFromCache(
