@@ -205,6 +205,21 @@ The workflow builds from `mobile/` and runs `build_runner` first, like CI. iOS h
 
 ---
 
+### Android builds in the cloud (Codemagic → Google Play)
+
+The **Android -> Play internal** workflow in `codemagic.yaml` builds a signed `.aab` and uploads it to the Play **internal testing** track.
+
+One-time setup:
+
+1. **Play Console:** create the app with package `com.mybudgetapp.mobile` and upload the very first `.aab` by hand (Play's API can't create an app or take its first upload). Build it locally with your upload key (`flutter build appbundle --release` with `android/key.properties` in place).
+2. **Service account:** in Google Cloud create a service account with a JSON key, then in Play Console → Users and permissions, invite its email with release permissions for this app. Put the JSON in a Codemagic variable group named `google_play` as `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS` (one account and group can serve every app).
+3. **Upload key:** Codemagic → Team settings → Code signing identities → Android keystores → add the upload keystore with reference name `mybudgetapp_upload`. Keep a backup; with Play App Signing, a lost upload key can be reset through Play support, but it takes days.
+4. **App values:** the `mybudgetapp` group already holds `SUPABASE_URL` / `SUPABASE_ANON_KEY`; the Android workflow uses the same ones. It builds `--flavor prod`.
+
+Each release: bump `version:` if the visible version should change, then start **Android -> Play internal**. The version code is picked automatically (one more than Play's highest). Promote the build from internal testing to production in Play Console.
+
+The workflow uploads releases as drafts (`submit_as_draft: true`) while the app has never been published; switch that to `false` in `codemagic.yaml` after its first release goes live.
+
 ## Development
 
 ### Code generation
