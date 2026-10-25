@@ -6,37 +6,36 @@ part of 'transaction.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$TransactionImpl _$$TransactionImplFromJson(Map<String, dynamic> json) =>
-    _$TransactionImpl(
-      id: json['id'] as String,
-      householdId: json['household_id'] as String,
-      accountId: json['account_id'] as String,
-      amount: (json['amount'] as num).toInt(),
-      currency: json['currency'] as String,
-      description: json['description'] as String,
-      merchant: json['merchant'] as String?,
-      categoryId: json['category_id'] as String?,
-      transactionDate: DateTime.parse(json['transaction_date'] as String),
-      postedDate: json['posted_date'] == null
-          ? null
-          : DateTime.parse(json['posted_date'] as String),
-      pending: json['pending'] as bool,
-      source: json['source'] as String,
-      enteredBy: json['entered_by'] as String?,
-      receiptId: json['receipt_id'] as String?,
-      rateId: json['rate_id'] as String?,
-      notes: json['notes'] as String?,
-      externalId: json['external_id'] as String?,
-      transferId: json['transfer_id'] as String?,
-      mlModelConfidence: (json['ml_model_confidence'] as num?)?.toInt(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      category: json['category'] == null
-          ? null
-          : Category.fromJson(json['category'] as Map<String, dynamic>),
-    );
+_Transaction _$TransactionFromJson(Map<String, dynamic> json) => _Transaction(
+  id: json['id'] as String,
+  householdId: json['household_id'] as String,
+  accountId: json['account_id'] as String,
+  amount: (json['amount'] as num).toInt(),
+  currency: json['currency'] as String,
+  description: json['description'] as String,
+  merchant: json['merchant'] as String?,
+  categoryId: json['category_id'] as String?,
+  transactionDate: DateTime.parse(json['transaction_date'] as String),
+  postedDate: json['posted_date'] == null
+      ? null
+      : DateTime.parse(json['posted_date'] as String),
+  pending: json['pending'] as bool,
+  source: json['source'] as String,
+  enteredBy: json['entered_by'] as String?,
+  receiptId: json['receipt_id'] as String?,
+  rateId: json['rate_id'] as String?,
+  notes: json['notes'] as String?,
+  externalId: json['external_id'] as String?,
+  transferId: json['transfer_id'] as String?,
+  mlModelConfidence: (json['ml_model_confidence'] as num?)?.toInt(),
+  createdAt: DateTime.parse(json['created_at'] as String),
+  updatedAt: DateTime.parse(json['updated_at'] as String),
+  category: json['category'] == null
+      ? null
+      : Category.fromJson(json['category'] as Map<String, dynamic>),
+);
 
-Map<String, dynamic> _$$TransactionImplToJson(_$TransactionImpl instance) =>
+Map<String, dynamic> _$TransactionToJson(_Transaction instance) =>
     <String, dynamic>{
       'id': instance.id,
       'household_id': instance.householdId,

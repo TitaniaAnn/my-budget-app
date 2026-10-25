@@ -50,28 +50,25 @@ BudgetWithSpending _bws({
 
 void main() {
   group('classifyBudgetAlerts', () {
-    test(
-      'drops budgets that are fine: under budget AND not projected over '
-      'AND below 80% progress',
-      () {
-        final result = classifyBudgetAlerts([
-          _bws(id: 'a', budgetCents: 50000, spentCents: 1000),
-          _bws(
-            id: 'b',
-            budgetCents: 50000,
-            spentCents: 30000,
-            projectedCents: 35000,
-          ),
-        ]);
-        expect(
-          result,
-          isEmpty,
-          reason:
-              'budgets at 2% and 60% projected to 70% are healthy and '
-              'must not surface — the alert list is for actionable items.',
-        );
-      },
-    );
+    test('drops budgets that are fine: under budget AND not projected over '
+        'AND below 80% progress', () {
+      final result = classifyBudgetAlerts([
+        _bws(id: 'a', budgetCents: 50000, spentCents: 1000),
+        _bws(
+          id: 'b',
+          budgetCents: 50000,
+          spentCents: 30000,
+          projectedCents: 35000,
+        ),
+      ]);
+      expect(
+        result,
+        isEmpty,
+        reason:
+            'budgets at 2% and 60% projected to 70% are healthy and '
+            'must not surface — the alert list is for actionable items.',
+      );
+    });
 
     test('over-budget sorts ahead of projected-over and approaching-limit', () {
       final result = classifyBudgetAlerts([
@@ -137,109 +134,97 @@ void main() {
       expect(result.map((a) => a.budget.budget.id), ['ninety', 'eighty']);
     });
 
-    test(
-      'an already-over budget that is also projected even higher appears '
-      'ONLY in the over bucket',
-      () {
-        // A row that satisfies both conditions must not be double-counted
-        // — otherwise the same category would render twice on the
-        // dashboard with different framing.
-        final result = classifyBudgetAlerts([
-          _bws(
-            id: 'over+proj',
-            budgetCents: 10000,
-            spentCents: 11000,
-            projectedCents: 15000,
-          ),
-        ]);
-        expect(result, hasLength(1));
-        expect(result.single.state, BudgetAlertState.overBudget);
-      },
-    );
+    test('an already-over budget that is also projected even higher appears '
+        'ONLY in the over bucket', () {
+      // A row that satisfies both conditions must not be double-counted
+      // — otherwise the same category would render twice on the
+      // dashboard with different framing.
+      final result = classifyBudgetAlerts([
+        _bws(
+          id: 'over+proj',
+          budgetCents: 10000,
+          spentCents: 11000,
+          projectedCents: 15000,
+        ),
+      ]);
+      expect(result, hasLength(1));
+      expect(result.single.state, BudgetAlertState.overBudget);
+    });
 
-    test(
-      'multi-currency: overage sort uses capCents (display), not raw '
-      'budget.amount',
-      () {
-        // Regression for audit M1. Two over-budget rows:
-        //   * Foreign: amount=€100 (raw 10000 in EUR cents), but the
-        //     display-currency cap is $120 (12000 USD cents); spent is
-        //     $130. Real overage is $10.
-        //   * Local:   amount=$25 = cap=$25 (2500 USD cents); spent is
-        //     $45. Real overage is $20.
-        // Raw-amount sort sees Foreign at 13000-10000=3000 vs Local at
-        // 4500-2500=2000 and puts Foreign first — wrong. Cap-aware
-        // sort sees Foreign at 1000 vs Local at 2000 and puts Local
-        // first.
-        final result = classifyBudgetAlerts([
-          _bws(
-            id: 'foreign',
-            budgetCents: 10000, // €100 in EUR cents
-            capCents: 12000, // $120 after EUR→USD
-            spentCents: 13000, // $130
-          ),
-          _bws(
-            id: 'local',
-            budgetCents: 2500, // $25
-            capCents: 2500,
-            spentCents: 4500, // $45
-          ),
-        ]);
-        expect(
-          result.map((a) => a.budget.budget.id),
-          ['local', 'foreign'],
-          reason:
-              'local is over by \$20 in display currency; foreign is over '
-              'by \$10. The bigger real overage sorts first.',
-        );
-      },
-    );
+    test('multi-currency: overage sort uses capCents (display), not raw '
+        'budget.amount', () {
+      // Regression for audit M1. Two over-budget rows:
+      //   * Foreign: amount=€100 (raw 10000 in EUR cents), but the
+      //     display-currency cap is $120 (12000 USD cents); spent is
+      //     $130. Real overage is $10.
+      //   * Local:   amount=$25 = cap=$25 (2500 USD cents); spent is
+      //     $45. Real overage is $20.
+      // Raw-amount sort sees Foreign at 13000-10000=3000 vs Local at
+      // 4500-2500=2000 and puts Foreign first — wrong. Cap-aware
+      // sort sees Foreign at 1000 vs Local at 2000 and puts Local
+      // first.
+      final result = classifyBudgetAlerts([
+        _bws(
+          id: 'foreign',
+          budgetCents: 10000, // €100 in EUR cents
+          capCents: 12000, // $120 after EUR→USD
+          spentCents: 13000, // $130
+        ),
+        _bws(
+          id: 'local',
+          budgetCents: 2500, // $25
+          capCents: 2500,
+          spentCents: 4500, // $45
+        ),
+      ]);
+      expect(
+        result.map((a) => a.budget.budget.id),
+        ['local', 'foreign'],
+        reason:
+            'local is over by \$20 in display currency; foreign is over '
+            'by \$10. The bigger real overage sorts first.',
+      );
+    });
 
-    test(
-      'multi-currency: projected-overage sort uses capCents (display)',
-      () {
-        // Same shape as the over-budget regression but in the
-        // projected-over bucket. Pin: both currencies are within their
-        // caps now but pace puts them over by different amounts in
-        // display currency.
-        final result = classifyBudgetAlerts([
-          _bws(
-            id: 'foreign',
-            budgetCents: 10000, // €100
-            capCents: 12000, // $120 after FX
-            spentCents: 5000,
-            projectedCents: 13000, // projected $130, $10 over
-          ),
-          _bws(
-            id: 'local',
-            budgetCents: 2500, // $25
-            capCents: 2500,
-            spentCents: 1000,
-            projectedCents: 4500, // projected $45, $20 over
-          ),
-        ]);
-        expect(result.map((a) => a.budget.budget.id), ['local', 'foreign']);
-      },
-    );
+    test('multi-currency: projected-overage sort uses capCents (display)', () {
+      // Same shape as the over-budget regression but in the
+      // projected-over bucket. Pin: both currencies are within their
+      // caps now but pace puts them over by different amounts in
+      // display currency.
+      final result = classifyBudgetAlerts([
+        _bws(
+          id: 'foreign',
+          budgetCents: 10000, // €100
+          capCents: 12000, // $120 after FX
+          spentCents: 5000,
+          projectedCents: 13000, // projected $130, $10 over
+        ),
+        _bws(
+          id: 'local',
+          budgetCents: 2500, // $25
+          capCents: 2500,
+          spentCents: 1000,
+          projectedCents: 4500, // projected $45, $20 over
+        ),
+      ]);
+      expect(result.map((a) => a.budget.budget.id), ['local', 'foreign']);
+    });
 
-    test(
-      'a budget at 85% with no projection overrun lands in approaching, '
-      'not projectedOver',
-      () {
-        // Defaulting projectedCents = spentCents (a user with no time
-        // elapsed) used to silently pass the projected-over check when
-        // the budget was already at the limit. Pin: 85% spent with
-        // projected == spent must land in approachingLimit.
-        final result = classifyBudgetAlerts([
-          _bws(
-            id: 'still-ok',
-            budgetCents: 10000,
-            spentCents: 8500,
-            projectedCents: 8500,
-          ),
-        ]);
-        expect(result.single.state, BudgetAlertState.approachingLimit);
-      },
-    );
+    test('a budget at 85% with no projection overrun lands in approaching, '
+        'not projectedOver', () {
+      // Defaulting projectedCents = spentCents (a user with no time
+      // elapsed) used to silently pass the projected-over check when
+      // the budget was already at the limit. Pin: 85% spent with
+      // projected == spent must land in approachingLimit.
+      final result = classifyBudgetAlerts([
+        _bws(
+          id: 'still-ok',
+          budgetCents: 10000,
+          spentCents: 8500,
+          projectedCents: 8500,
+        ),
+      ]);
+      expect(result.single.state, BudgetAlertState.approachingLimit);
+    });
   });
 }

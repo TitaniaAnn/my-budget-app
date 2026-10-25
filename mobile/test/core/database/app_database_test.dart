@@ -149,13 +149,8 @@ void main() {
 
   group('AppDatabase.replaceAccountsForHousehold', () {
     test('purges prior rows for the household before inserting', () async {
-      await db.upsertAccounts([
-        sampleRow(id: 'old-1'),
-        sampleRow(id: 'old-2'),
-      ]);
-      await db.replaceAccountsForHousehold('hh-1', [
-        sampleRow(id: 'fresh-1'),
-      ]);
+      await db.upsertAccounts([sampleRow(id: 'old-1'), sampleRow(id: 'old-2')]);
+      await db.replaceAccountsForHousehold('hh-1', [sampleRow(id: 'fresh-1')]);
       final rows = await db.loadAccountsForHousehold('hh-1');
       expect(rows.map((r) => r.id), ['fresh-1']);
     });
@@ -182,10 +177,7 @@ void main() {
 
   group('AppDatabase.deleteAccount', () {
     test('removes a single row by id', () async {
-      await db.upsertAccounts([
-        sampleRow(id: 'a-1'),
-        sampleRow(id: 'a-2'),
-      ]);
+      await db.upsertAccounts([sampleRow(id: 'a-1'), sampleRow(id: 'a-2')]);
       await db.deleteAccount('a-1');
       final rows = await db.loadAccountsForHousehold('hh-1');
       expect(rows.map((r) => r.id), ['a-2']);

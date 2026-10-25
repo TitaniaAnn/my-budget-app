@@ -85,10 +85,7 @@ void main() {
       // formatter just picks the local calendar day. We assert the
       // shape (matches YYYY-MM-DD).
       final formatted = formatLastSynced(tenDaysAgo, now);
-      expect(
-        formatted,
-        matches(RegExp(r'^\d{4}-\d{2}-\d{2}$')),
-      );
+      expect(formatted, matches(RegExp(r'^\d{4}-\d{2}-\d{2}$')));
     });
 
     test('input in UTC vs local: comparison is timezone-safe', () {

@@ -40,9 +40,7 @@ import '../models/transaction_tag.dart';
 part 'transaction_tags_repository.g.dart';
 
 @riverpod
-TransactionTagsRepository transactionTagsRepository(
-  TransactionTagsRepositoryRef ref,
-) {
+TransactionTagsRepository transactionTagsRepository(Ref ref) {
   return TransactionTagsRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -56,6 +54,7 @@ class TransactionTagsRepository {
   final AppDatabase? _db;
   final PendingWritesQueue? _queue;
   final _uuid = const Uuid();
+
   /// Returns every tag in [householdId], alphabetically by name. The
   /// dictionary is small (dozens of rows at most) so we don't bother
   /// paginating.
@@ -406,7 +405,9 @@ class TransactionTagsRepository {
           lineItemId: lineItemId,
           tagIds: tagIds,
         );
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -447,7 +448,9 @@ class TransactionTagsRepository {
           transactionId: transactionId,
           tagIds: tagIds,
         );
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -500,8 +503,12 @@ class TransactionTagsRepository {
     final db = _db;
     if (db != null) {
       try {
-        await db.deleteTransactionTagAssignmentsByTransactionIds(transactionIds);
-      } catch (_) {/**/}
+        await db.deleteTransactionTagAssignmentsByTransactionIds(
+          transactionIds,
+        );
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -518,7 +525,9 @@ class TransactionTagsRepository {
         householdId,
         tags.map(_tagToCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeTagCacheRow(TransactionTag t) async {
@@ -526,7 +535,9 @@ class TransactionTagsRepository {
     if (db == null) return;
     try {
       await db.upsertTag(_tagToCompanion(t));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteTagCacheRow(String id) async {
@@ -534,7 +545,9 @@ class TransactionTagsRepository {
     if (db == null) return;
     try {
       await db.deleteTag(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteAssignmentsForTag(String tagId) async {
@@ -548,7 +561,9 @@ class TransactionTagsRepository {
       if (txIds.isNotEmpty) {
         await db.deleteTransactionTagAssignmentsByTransactionIds(txIds);
       }
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   /// Phase 3c: read-by-id for the optimistic-update path. Scans
@@ -597,7 +612,9 @@ class TransactionTagsRepository {
             ),
       ];
       await db.replaceAllTransactionTagAssignments(rows);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<Map<String, Set<String>>?> _loadAllAssignmentsFromCache() async {
@@ -612,9 +629,7 @@ class TransactionTagsRepository {
     }
   }
 
-  Future<List<String>?> _loadTransactionIdsForTagFromCache(
-    String tagId,
-  ) async {
+  Future<List<String>?> _loadTransactionIdsForTagFromCache(String tagId) async {
     final db = _db;
     if (db == null) return null;
     try {

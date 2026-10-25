@@ -113,10 +113,10 @@ class _OfflineBanner extends ConsumerWidget {
     // AsyncValue from the lastSyncedAtProvider — render
     // optimistically: while the timestamp is loading, hide
     // the trailing label and just show the offline message.
-    final lastSynced = ref.watch(lastSyncedAtProvider).valueOrNull;
-    final captionStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-      color: colors.textMuted,
-    );
+    final lastSynced = ref.watch(lastSyncedAtProvider).value;
+    final captionStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: colors.textMuted);
     return SafeArea(
       bottom: false,
       child: Material(
@@ -131,10 +131,7 @@ class _OfflineBanner extends ConsumerWidget {
               Text("You're offline", style: captionStyle),
               if (lastSynced != null) ...[
                 Text(' · synced ', style: captionStyle),
-                LastSyncedLabel(
-                  lastSyncedAt: lastSynced,
-                  style: captionStyle,
-                ),
+                LastSyncedLabel(lastSyncedAt: lastSynced, style: captionStyle),
               ],
             ],
           ),

@@ -135,7 +135,7 @@ enum AccountGroup {
 /// [currentBalance] and [creditLimit] are in cents (integer).
 /// [color] is an optional hex string (e.g. "#3B82F6") for custom account colors.
 @freezed
-class Account with _$Account {
+abstract class Account with _$Account {
   const factory Account({
     required String id,
     required String householdId,

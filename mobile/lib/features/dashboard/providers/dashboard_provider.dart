@@ -248,7 +248,7 @@ class DashboardData {
 /// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
 /// it refreshes automatically when the household changes.
 @riverpod
-Future<DashboardData> dashboardData(DashboardDataRef ref) async {
+Future<DashboardData> dashboardData(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) {
     return const DashboardData(

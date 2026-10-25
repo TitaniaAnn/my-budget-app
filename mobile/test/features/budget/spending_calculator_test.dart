@@ -157,16 +157,8 @@ void main() {
     test('boundary days included on both ends', () {
       final result = computeCategorySpending(
         transactions: [
-          makeTx(
-            id: 't-start',
-            amount: -1000,
-            transactionDate: from,
-          ),
-          makeTx(
-            id: 't-end',
-            amount: -2000,
-            transactionDate: to,
-          ),
+          makeTx(id: 't-start', amount: -1000, transactionDate: from),
+          makeTx(id: 't-end', amount: -2000, transactionDate: to),
         ],
         lineItemsByReceiptId: const {},
         from: from,
@@ -207,25 +199,27 @@ void main() {
       expect(result, {'cat-groceries': 3000, 'cat-household': 2000});
     });
 
-    test('one receipt paired with multiple in-range transactions counts once',
-        () {
-      // Installments: one receipt, two paired transactions.
-      // The receipt's line items should contribute exactly once.
-      final result = computeCategorySpending(
-        transactions: [
-          makeTx(id: 't-leg1', amount: -2500, receiptId: 'r-1'),
-          makeTx(id: 't-leg2', amount: -2500, receiptId: 'r-1'),
-        ],
-        lineItemsByReceiptId: {
-          'r-1': [makeLi(amount: 5000, categoryId: 'cat-furniture')],
-        },
-        from: from,
-        to: to,
-        ratesToDisplay: null,
-        displayCurrency: 'USD',
-      );
-      expect(result, {'cat-furniture': 5000});
-    });
+    test(
+      'one receipt paired with multiple in-range transactions counts once',
+      () {
+        // Installments: one receipt, two paired transactions.
+        // The receipt's line items should contribute exactly once.
+        final result = computeCategorySpending(
+          transactions: [
+            makeTx(id: 't-leg1', amount: -2500, receiptId: 'r-1'),
+            makeTx(id: 't-leg2', amount: -2500, receiptId: 'r-1'),
+          ],
+          lineItemsByReceiptId: {
+            'r-1': [makeLi(amount: 5000, categoryId: 'cat-furniture')],
+          },
+          from: from,
+          to: to,
+          ratesToDisplay: null,
+          displayCurrency: 'USD',
+        );
+        expect(result, {'cat-furniture': 5000});
+      },
+    );
 
     test('discount line item flips sign', () {
       final result = computeCategorySpending(
@@ -300,9 +294,7 @@ void main() {
 
     test('display-currency rows use 1.0 identity even when not in map', () {
       final result = computeCategorySpending(
-        transactions: [
-          makeTx(id: 't-usd', amount: -1000, currency: 'USD'),
-        ],
+        transactions: [makeTx(id: 't-usd', amount: -1000, currency: 'USD')],
         lineItemsByReceiptId: const {},
         from: from,
         to: to,

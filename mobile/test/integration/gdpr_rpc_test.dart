@@ -42,8 +42,7 @@ void main() {
           // seeded transaction sits in 'transactions').
           final households = data['households'] as List<dynamic>;
           expect(households, hasLength(1));
-          final firstHousehold =
-              households.first as Map<String, dynamic>;
+          final firstHousehold = households.first as Map<String, dynamic>;
           expect(
             firstHousehold.keys,
             containsAll([

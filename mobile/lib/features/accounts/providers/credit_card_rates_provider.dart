@@ -5,9 +5,6 @@ import '../repositories/credit_card_rates_repository.dart';
 part 'credit_card_rates_provider.g.dart';
 
 @riverpod
-Future<List<CreditCardRate>> creditCardRates(
-  CreditCardRatesRef ref,
-  String accountId,
-) async {
+Future<List<CreditCardRate>> creditCardRates(Ref ref, String accountId) async {
   return ref.watch(creditCardRatesRepositoryProvider).fetchRates(accountId);
 }

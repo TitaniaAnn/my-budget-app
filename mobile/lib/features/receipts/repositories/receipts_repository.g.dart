@@ -6,24 +6,53 @@ part of 'receipts_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$receiptsRepositoryHash() =>
-    r'125ca30ae17f5b7d1b42ecf456a8f8cc71d13051';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [receiptsRepository].
 @ProviderFor(receiptsRepository)
-final receiptsRepositoryProvider =
-    AutoDisposeProvider<ReceiptsRepository>.internal(
-      receiptsRepository,
-      name: r'receiptsRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$receiptsRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final receiptsRepositoryProvider = ReceiptsRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ReceiptsRepositoryRef = AutoDisposeProviderRef<ReceiptsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class ReceiptsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ReceiptsRepository,
+          ReceiptsRepository,
+          ReceiptsRepository
+        >
+    with $Provider<ReceiptsRepository> {
+  ReceiptsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'receiptsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$receiptsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ReceiptsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ReceiptsRepository create(Ref ref) {
+    return receiptsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ReceiptsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ReceiptsRepository>(value),
+    );
+  }
+}
+
+String _$receiptsRepositoryHash() =>
+    r'da8f52200277f1ee5be8ab6149895b6c028d6fd4';

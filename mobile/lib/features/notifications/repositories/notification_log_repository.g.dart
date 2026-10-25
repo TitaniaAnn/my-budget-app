@@ -6,25 +6,53 @@ part of 'notification_log_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$notificationLogRepositoryHash() =>
-    r'5215637355efecaf3a614c2450d01b59c1dad8aa';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [notificationLogRepository].
 @ProviderFor(notificationLogRepository)
-final notificationLogRepositoryProvider =
-    AutoDisposeProvider<NotificationLogRepository>.internal(
-      notificationLogRepository,
-      name: r'notificationLogRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$notificationLogRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final notificationLogRepositoryProvider = NotificationLogRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NotificationLogRepositoryRef =
-    AutoDisposeProviderRef<NotificationLogRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class NotificationLogRepositoryProvider
+    extends
+        $FunctionalProvider<
+          NotificationLogRepository,
+          NotificationLogRepository,
+          NotificationLogRepository
+        >
+    with $Provider<NotificationLogRepository> {
+  NotificationLogRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'notificationLogRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$notificationLogRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<NotificationLogRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  NotificationLogRepository create(Ref ref) {
+    return notificationLogRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(NotificationLogRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<NotificationLogRepository>(value),
+    );
+  }
+}
+
+String _$notificationLogRepositoryHash() =>
+    r'05cebce6a656a7c6150f49e17d148dcc55712a60';

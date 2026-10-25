@@ -6,28 +6,62 @@ part of 'app_router.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$appRouterHash() => r'204f5393b69ab98c472135d44afc1a0df66beeb8';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Builds and returns the [GoRouter] instance.
+///
+/// The [redirect] callback runs on every navigation event and enforces:
+/// - Unauthenticated users → /login
+/// - Authenticated users on auth routes → /dashboard (prevents back-nav to login)
+
+@ProviderFor(appRouter)
+final appRouterProvider = AppRouterProvider._();
 
 /// Builds and returns the [GoRouter] instance.
 ///
 /// The [redirect] callback runs on every navigation event and enforces:
 /// - Unauthenticated users → /login
 /// - Authenticated users on auth routes → /dashboard (prevents back-nav to login)
-///
-/// Copied from [appRouter].
-@ProviderFor(appRouter)
-final appRouterProvider = AutoDisposeProvider<GoRouter>.internal(
-  appRouter,
-  name: r'appRouterProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$appRouterHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AppRouterRef = AutoDisposeProviderRef<GoRouter>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class AppRouterProvider
+    extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
+    with $Provider<GoRouter> {
+  /// Builds and returns the [GoRouter] instance.
+  ///
+  /// The [redirect] callback runs on every navigation event and enforces:
+  /// - Unauthenticated users → /login
+  /// - Authenticated users on auth routes → /dashboard (prevents back-nav to login)
+  AppRouterProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appRouterProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appRouterHash();
+
+  @$internal
+  @override
+  $ProviderElement<GoRouter> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  GoRouter create(Ref ref) {
+    return appRouter(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(GoRouter value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<GoRouter>(value),
+    );
+  }
+}
+
+String _$appRouterHash() => r'62eff8bcd37c7bac8ac995589df0c3b84c3d9d7c';

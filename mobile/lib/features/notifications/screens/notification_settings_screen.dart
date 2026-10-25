@@ -24,8 +24,8 @@ class NotificationSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(notificationSettingsNotifierProvider);
-    final notifier = ref.read(notificationSettingsNotifierProvider.notifier);
+    final settings = ref.watch(notificationSettingsProvider);
+    final notifier = ref.read(notificationSettingsProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
@@ -136,7 +136,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
 
   Future<void> _editThreshold(BuildContext context, WidgetRef ref) async {
     final current = ref
-        .read(notificationSettingsNotifierProvider)
+        .read(notificationSettingsProvider)
         .largeTxThresholdCents;
     final controller = TextEditingController(text: (current / 100).toString());
     try {
@@ -174,7 +174,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
       );
       if (result != null) {
         await ref
-            .read(notificationSettingsNotifierProvider.notifier)
+            .read(notificationSettingsProvider.notifier)
             .setLargeTxThresholdCents(result);
       }
     } finally {

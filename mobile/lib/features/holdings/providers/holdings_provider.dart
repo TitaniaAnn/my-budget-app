@@ -11,10 +11,7 @@ part 'holdings_provider.g.dart';
 /// All holdings inside [accountId]. Family-keyed so navigating
 /// between two investment accounts gets each its own cache slot.
 @riverpod
-Future<List<Holding>> holdingsForAccount(
-  HoldingsForAccountRef ref,
-  String accountId,
-) async {
+Future<List<Holding>> holdingsForAccount(Ref ref, String accountId) async {
   final repo = ref.watch(holdingsRepositoryProvider);
   return repo.fetchForAccount(accountId);
 }
@@ -22,7 +19,7 @@ Future<List<Holding>> holdingsForAccount(
 /// Every holding across every investment account in the current
 /// household. Powers the dashboard's asset-allocation donut.
 @riverpod
-Future<List<Holding>> householdHoldings(HouseholdHoldingsRef ref) async {
+Future<List<Holding>> householdHoldings(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return const [];
   final repo = ref.watch(holdingsRepositoryProvider);
@@ -36,7 +33,7 @@ Future<List<Holding>> householdHoldings(HouseholdHoldingsRef ref) async {
 /// first) — that's the convention the donut renders against.
 @riverpod
 Future<List<({AssetClass assetClass, int totalCents})>> assetAllocation(
-  AssetAllocationRef ref,
+  Ref ref,
 ) async {
   final holdings = await ref.watch(householdHoldingsProvider.future);
   final totals = <AssetClass, int>{};

@@ -267,11 +267,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   data: (cats) => CategoryFilterBar(
                     categories: cats.where((c) => c.parentId == null).toList(),
                     selectedId: _selectedCategoryId,
-                    onSelected: (id) =>
-                        setState(() {
-                          _selectedCategoryId = id;
-                          _resetPagination();
-                        }),
+                    onSelected: (id) => setState(() {
+                      _selectedCategoryId = id;
+                      _resetPagination();
+                    }),
                   ),
                 ) ??
             const SizedBox.shrink(),
@@ -305,11 +304,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               // providers, and we want a single dictionary lookup
               // per row rather than O(rows × tags) scans.
               final tagsByName = {
-                for (final tag in tagsAsync.valueOrNull ?? const [])
-                  tag.id: tag,
+                for (final tag in tagsAsync.value ?? const []) tag.id: tag,
               };
               final assignments =
-                  assignmentsAsync.valueOrNull ?? const <String, Set<String>>{};
+                  assignmentsAsync.value ?? const <String, Set<String>>{};
               final perTxTags = <String, List<TransactionTag>>{
                 for (final tx in transactions)
                   tx.id: [
@@ -1080,7 +1078,9 @@ class _CategoryPickerSheet extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: c.color != null ? colorFromHex(c.color) : context.appColors.textSubtle,
+                  color: c.color != null
+                      ? colorFromHex(c.color)
+                      : context.appColors.textSubtle,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1122,7 +1122,9 @@ class _TagPickerSheet extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: t.color != null ? colorFromHex(t.color) : context.appColors.textSubtle,
+                  color: t.color != null
+                      ? colorFromHex(t.color)
+                      : context.appColors.textSubtle,
                   shape: BoxShape.circle,
                 ),
               ),

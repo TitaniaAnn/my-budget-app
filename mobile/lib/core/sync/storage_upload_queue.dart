@@ -66,7 +66,7 @@ class StorageDrainResult {
 enum _StorageOutcome { success, transient, permanent }
 
 @Riverpod(keepAlive: true)
-StorageUploadQueue storageUploadQueue(StorageUploadQueueRef ref) {
+StorageUploadQueue storageUploadQueue(Ref ref) {
   return StorageUploadQueue(db: ref.watch(appDatabaseProvider));
 }
 
@@ -126,11 +126,7 @@ class StorageUploadQueue {
   /// PendingWritesQueue.drain.
   Future<StorageDrainResult> drain() async {
     if (_draining) {
-      return const StorageDrainResult(
-        attempted: 0,
-        succeeded: 0,
-        failed: 0,
-      );
+      return const StorageDrainResult(attempted: 0, succeeded: 0, failed: 0);
     }
     _draining = true;
     try {
@@ -238,13 +234,17 @@ class StorageUploadQueue {
     try {
       final file = File(row.localFilePath);
       if (await file.exists()) await file.delete();
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
     final thumb = row.thumbnailLocalPath;
     if (thumb != null) {
       try {
         final thumbFile = File(thumb);
         if (await thumbFile.exists()) await thumbFile.delete();
-      } catch (_) {/**/}
+      } catch (_) {
+        /**/
+      }
     }
   }
 
@@ -271,15 +271,12 @@ class StorageUploadAutoDrain extends _$StorageUploadAutoDrain {
 
   @override
   void build() {
-    _sub = ref.listen<bool>(
-      isOnlineProvider,
-      (prev, next) {
-        if (prev == false && next == true) {
-          // ignore: unawaited_futures
-          ref.read(storageUploadQueueProvider).drain();
-        }
-      },
-    );
+    _sub = ref.listen<bool>(isOnlineProvider, (prev, next) {
+      if (prev == false && next == true) {
+        // ignore: unawaited_futures
+        ref.read(storageUploadQueueProvider).drain();
+      }
+    });
     ref.onDispose(() => _sub?.close());
   }
 }

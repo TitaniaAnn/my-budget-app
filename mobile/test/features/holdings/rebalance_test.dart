@@ -58,10 +58,7 @@ void main() {
           _h(currentValueCents: 600000, assetClass: AssetClass.usEquity),
           _h(currentValueCents: 400000, assetClass: AssetClass.bond),
         ],
-        targets: [
-          _t(AssetClass.usEquity, 6000),
-          _t(AssetClass.bond, 4000),
-        ],
+        targets: [_t(AssetClass.usEquity, 6000), _t(AssetClass.bond, 4000)],
       );
       expect(report.totalCents, 1000000);
       expect(report.rows.every((r) => r.driftBp == 0), isTrue);
@@ -75,10 +72,7 @@ void main() {
           _h(currentValueCents: 700000, assetClass: AssetClass.usEquity),
           _h(currentValueCents: 300000, assetClass: AssetClass.bond),
         ],
-        targets: [
-          _t(AssetClass.usEquity, 6000),
-          _t(AssetClass.bond, 4000),
-        ],
+        targets: [_t(AssetClass.usEquity, 6000), _t(AssetClass.bond, 4000)],
       );
       final equity = report.rows.firstWhere(
         (r) => r.assetClass == AssetClass.usEquity,
@@ -120,10 +114,7 @@ void main() {
           holdings: [
             _h(currentValueCents: 500000, assetClass: AssetClass.usEquity),
           ],
-          targets: [
-            _t(AssetClass.usEquity, 7000),
-            _t(AssetClass.bond, 3000),
-          ],
+          targets: [_t(AssetClass.usEquity, 7000), _t(AssetClass.bond, 3000)],
         );
         final bonds = report.rows.firstWhere(
           (r) => r.assetClass == AssetClass.bond,
@@ -138,11 +129,7 @@ void main() {
     test('holdings with null asset_class fall under AssetClass.other', () {
       final report = evaluateRebalance(
         holdings: [
-          _h(
-            currentValueCents: 250000,
-            assetClass: null,
-            id: 'unclassified',
-          ),
+          _h(currentValueCents: 250000, assetClass: null, id: 'unclassified'),
         ],
         targets: const [],
       );
@@ -167,10 +154,11 @@ void main() {
       );
       // Actual: 20/30/50, targets 25/50/25 → drifts -5 / -20 / +25.
       // |25| > |20| > |5|, so crypto first, bond second, equity third.
-      expect(
-        report.rows.map((r) => r.assetClass),
-        [AssetClass.crypto, AssetClass.bond, AssetClass.usEquity],
-      );
+      expect(report.rows.map((r) => r.assetClass), [
+        AssetClass.crypto,
+        AssetClass.bond,
+        AssetClass.usEquity,
+      ]);
     });
 
     test('empty portfolio with no targets returns empty rows', () {
@@ -179,22 +167,19 @@ void main() {
       expect(report.rows, isEmpty);
     });
 
-    test(
-      'empty portfolio with a target still surfaces the target row',
-      () {
-        // Total is zero, so divide-by-zero is a real risk. The
-        // function must NOT crash; current% is 0, target% surfaces.
-        final report = evaluateRebalance(
-          holdings: const [],
-          targets: [_t(AssetClass.usEquity, 6000)],
-        );
-        expect(report.totalCents, 0);
-        expect(report.rows, hasLength(1));
-        expect(report.rows.single.currentPctBp, 0);
-        expect(report.rows.single.targetPctBp, 6000);
-        expect(report.rows.single.driftBp, -6000);
-      },
-    );
+    test('empty portfolio with a target still surfaces the target row', () {
+      // Total is zero, so divide-by-zero is a real risk. The
+      // function must NOT crash; current% is 0, target% surfaces.
+      final report = evaluateRebalance(
+        holdings: const [],
+        targets: [_t(AssetClass.usEquity, 6000)],
+      );
+      expect(report.totalCents, 0);
+      expect(report.rows, hasLength(1));
+      expect(report.rows.single.currentPctBp, 0);
+      expect(report.rows.single.targetPctBp, 6000);
+      expect(report.rows.single.driftBp, -6000);
+    });
 
     test('rowsDriftedBy filters rows by absolute threshold', () {
       // Total 300k → each holding is 33.33% (3333bp) actual.
@@ -221,7 +206,8 @@ void main() {
       expect(
         drifted.any((r) => r.assetClass == AssetClass.cash),
         isFalse,
-        reason: 'the 1.3pp cash drift is below the 5pp threshold and '
+        reason:
+            'the 1.3pp cash drift is below the 5pp threshold and '
             'must not surface as a noisy "almost on target" alert.',
       );
     });

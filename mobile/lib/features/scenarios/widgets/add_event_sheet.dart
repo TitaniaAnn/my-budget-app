@@ -279,7 +279,7 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
   int? get _payoffAccountBalance {
     if (_payoffAccountId == null) return null;
     final accountsAsync = ref.read(accountsProvider);
-    final list = accountsAsync.valueOrNull;
+    final list = accountsAsync.value;
     if (list == null) return null;
     for (final a in list) {
       if (a.id == _payoffAccountId && a.currentBalance < 0) {
@@ -341,7 +341,7 @@ class _AddEventSheetState extends ConsumerState<AddEventSheet> {
   /// runs simulatePayoff to show payoff date + total interest.
   List<Widget> _payoffFields(ThemeData theme, ColorScheme cs) {
     final accountsAsync = ref.watch(accountsProvider);
-    final debtAccounts = (accountsAsync.valueOrNull ?? const <Account>[])
+    final debtAccounts = (accountsAsync.value ?? const <Account>[])
         .where(
           (a) =>
               a.isActive &&

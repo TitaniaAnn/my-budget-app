@@ -25,7 +25,7 @@ import '../services/spending_calculator.dart';
 part 'budget_repository.g.dart';
 
 @riverpod
-BudgetRepository budgetRepository(BudgetRepositoryRef ref) {
+BudgetRepository budgetRepository(Ref ref) {
   return BudgetRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -131,11 +131,7 @@ class BudgetRepository {
       // "you're under budget" signal to notifications. Throw a
       // typed exception so the budget screen can render
       // "spending unavailable while offline" instead.
-      throw OfflineSpendingUnavailableException(
-        from: from,
-        to: to,
-        cause: e,
-      );
+      throw OfflineSpendingUnavailableException(from: from, to: to, cause: e);
     }
   }
 
@@ -279,7 +275,9 @@ class BudgetRepository {
         householdId,
         budgets.map(_budgetToCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeBudgetCacheRow(Budget b) async {
@@ -287,7 +285,9 @@ class BudgetRepository {
     if (db == null) return;
     try {
       await db.upsertBudget(_budgetToCompanion(b));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteBudgetCacheRow(String id) async {
@@ -295,7 +295,9 @@ class BudgetRepository {
     if (db == null) return;
     try {
       await db.deleteBudget(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   /// Phase 3c: read-by-id helper for the optimistic-update
@@ -375,8 +377,9 @@ class BudgetRepository {
       final lineItemsByReceiptId = <String, List<ReceiptLineItem>>{};
       for (final li in liRows) {
         final converted = _liFromCacheRow(li);
-        (lineItemsByReceiptId[li.receiptId] ??= <ReceiptLineItem>[])
-            .add(converted);
+        (lineItemsByReceiptId[li.receiptId] ??= <ReceiptLineItem>[]).add(
+          converted,
+        );
       }
 
       return computeCategorySpending(

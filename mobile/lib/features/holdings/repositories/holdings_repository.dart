@@ -22,7 +22,7 @@ import '../models/holding.dart';
 part 'holdings_repository.g.dart';
 
 @riverpod
-HoldingsRepository holdingsRepository(HoldingsRepositoryRef ref) {
+HoldingsRepository holdingsRepository(Ref ref) {
   return HoldingsRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -258,7 +258,9 @@ class HoldingsRepository {
         householdId,
         holdings.map(_toCompanion).toList(),
       );
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeHoldingsCache(List<Holding> holdings) async {
@@ -268,7 +270,9 @@ class HoldingsRepository {
       for (final h in holdings) {
         await db.upsertHolding(_toCompanion(h));
       }
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteHoldingCacheRow(String id) async {
@@ -276,7 +280,9 @@ class HoldingsRepository {
     if (db == null) return;
     try {
       await db.deleteHolding(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   /// Phase 3c: read-by-id for the optimistic-update path. Scans

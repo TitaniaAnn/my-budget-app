@@ -19,7 +19,7 @@ import 'storage_upload_queue.dart';
 part 'last_synced_provider.g.dart';
 
 @riverpod
-Future<DateTime?> lastSyncedAt(LastSyncedAtRef ref) {
+Future<DateTime?> lastSyncedAt(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
   return db.latestCacheTimestamp();
 }
@@ -27,7 +27,7 @@ Future<DateTime?> lastSyncedAt(LastSyncedAtRef ref) {
 /// Pending-writes count for the Settings sync surface (Phase 5c).
 /// Plain (not keepAlive) so each settings open gets a fresh read.
 @riverpod
-Future<int> pendingWritesCountValue(PendingWritesCountValueRef ref) {
+Future<int> pendingWritesCountValue(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
   return db.pendingWritesCount();
 }
@@ -36,9 +36,7 @@ Future<int> pendingWritesCountValue(PendingWritesCountValueRef ref) {
 /// (Phase 4b polish). Mirrors pendingWritesCountValue for the
 /// receipt-image queue.
 @riverpod
-Future<int> pendingStorageUploadsCountValue(
-  PendingStorageUploadsCountValueRef ref,
-) {
+Future<int> pendingStorageUploadsCountValue(Ref ref) {
   final queue = ref.watch(storageUploadQueueProvider);
   return queue.pendingCount();
 }
@@ -49,9 +47,7 @@ Future<int> pendingStorageUploadsCountValue(
 /// gets a fresh read; the result is a tiny set (typically zero or
 /// single-digit rows) so the read is cheap.
 @riverpod
-Future<Set<String>> pendingStorageUploadIds(
-  PendingStorageUploadIdsRef ref,
-) async {
+Future<Set<String>> pendingStorageUploadIds(Ref ref) async {
   final db = ref.watch(appDatabaseProvider);
   final rows = await db.loadPendingStorageUploads();
   return rows.map((r) => r.id).toSet();
@@ -88,20 +84,13 @@ String formatLastSynced(DateTime? lastSyncedUtc, DateTime now) {
 /// Convenience widget the banner consumes. Kept small + plain
 /// so the banner file stays focused on layout.
 class LastSyncedLabel extends StatelessWidget {
-  const LastSyncedLabel({
-    super.key,
-    required this.lastSyncedAt,
-    this.style,
-  });
+  const LastSyncedLabel({super.key, required this.lastSyncedAt, this.style});
 
   final DateTime? lastSyncedAt;
   final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      formatLastSynced(lastSyncedAt, DateTime.now()),
-      style: style,
-    );
+    return Text(formatLastSynced(lastSyncedAt, DateTime.now()), style: style);
   }
 }

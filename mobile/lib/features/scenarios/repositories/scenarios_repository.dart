@@ -7,7 +7,7 @@ import '../models/scenario_event.dart';
 part 'scenarios_repository.g.dart';
 
 @riverpod
-ScenariosRepository scenariosRepository(ScenariosRepositoryRef ref) {
+ScenariosRepository scenariosRepository(Ref ref) {
   return ScenariosRepository();
 }
 

@@ -61,11 +61,7 @@ void main() {
               body: {'household_id': other.householdId},
             ),
             throwsA(
-              isA<FunctionException>().having(
-                (e) => e.status,
-                'status',
-                403,
-              ),
+              isA<FunctionException>().having((e) => e.status, 'status', 403),
             ),
             reason:
                 'A signed-in user passing another household\'s id must '
@@ -99,10 +95,7 @@ void main() {
           body: {'household_id': harness.householdId},
         );
         expect(response.status, 200);
-        expect(
-          (response.data as Map)['household_id'],
-          harness.householdId,
-        );
+        expect((response.data as Map)['household_id'], harness.householdId);
       },
       skip: reason,
     );

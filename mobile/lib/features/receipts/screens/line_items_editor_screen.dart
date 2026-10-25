@@ -348,7 +348,7 @@ class _LineItemRowState extends ConsumerState<_LineItemRow> {
     // Hide the chip row entirely when the household has no tags
     // defined — adding a tag is a transaction-side concern in v1,
     // so the empty state on a line item editor would be confusing.
-    final tags = tagsAsync.valueOrNull ?? const <TransactionTag>[];
+    final tags = tagsAsync.value ?? const <TransactionTag>[];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

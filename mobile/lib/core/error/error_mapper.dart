@@ -48,10 +48,7 @@ class CategoryHasBudgetsException implements Exception {
 
 /// Result of mapping a raw exception to user-facing copy.
 class MappedError {
-  const MappedError({
-    required this.userMessage,
-    this.requiresReauth = false,
-  });
+  const MappedError({required this.userMessage, this.requiresReauth = false});
 
   /// Short, copy-ready message to display in a SnackBar. Never
   /// contains stack traces, error codes, or framework jargon.
@@ -101,9 +98,7 @@ MappedError mapError(Object error) {
         // RLS / insufficient_privilege. The row exists but the
         // caller's claims don't grant access. Most user-facing
         // path: stale household membership, foreign-account write.
-        return const MappedError(
-          userMessage: "You don't have access to this.",
-        );
+        return const MappedError(userMessage: "You don't have access to this.");
       case 'PGRST116':
         // "JSON object requested, multiple (or no) rows returned" —
         // usually `.single()` against an empty/over-filtered query.
@@ -114,9 +109,7 @@ MappedError mapError(Object error) {
       case '23505':
         // unique_violation — surfaces on duplicate inserts (e.g.
         // re-creating an invite for an already-invited email).
-        return const MappedError(
-          userMessage: 'That already exists.',
-        );
+        return const MappedError(userMessage: 'That already exists.');
       case '23503':
         // foreign_key_violation — usually a stale id in a write.
         return const MappedError(

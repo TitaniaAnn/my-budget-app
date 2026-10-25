@@ -94,10 +94,7 @@ void main() {
 
     test('unknown Postgrest code falls through to generic copy', () {
       final mapped = mapError(
-        const PostgrestException(
-          message: 'something exotic',
-          code: 'XX999',
-        ),
+        const PostgrestException(message: 'something exotic', code: 'XX999'),
       );
       expect(mapped.userMessage, 'Something went wrong.');
       expect(mapped.requiresReauth, isFalse);
@@ -118,10 +115,7 @@ void main() {
 
     test('invalid_jwt code flips requiresReauth', () {
       final mapped = mapError(
-        const AuthException(
-          'JWT verification failed',
-          code: 'invalid_jwt',
-        ),
+        const AuthException('JWT verification failed', code: 'invalid_jwt'),
       );
       expect(mapped.requiresReauth, isTrue);
     });
@@ -151,7 +145,9 @@ void main() {
     });
 
     test('TimeoutException becomes connection copy', () {
-      final mapped = mapError(TimeoutException('slow API', Duration(seconds: 30)));
+      final mapped = mapError(
+        TimeoutException('slow API', Duration(seconds: 30)),
+      );
       expect(mapped.userMessage, contains('Check your connection'));
     });
   });

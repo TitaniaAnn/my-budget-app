@@ -6,9 +6,9 @@ part of 'plaid_link_result.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$PlaidExchangeResultImpl _$$PlaidExchangeResultImplFromJson(
+_PlaidExchangeResult _$PlaidExchangeResultFromJson(
   Map<String, dynamic> json,
-) => _$PlaidExchangeResultImpl(
+) => _PlaidExchangeResult(
   plaidItemId: json['plaid_item_id'] as String,
   institution: PlaidInstitutionRef.fromJson(
     json['institution'] as Map<String, dynamic>,
@@ -25,8 +25,8 @@ _$PlaidExchangeResultImpl _$$PlaidExchangeResultImplFromJson(
       const [],
 );
 
-Map<String, dynamic> _$$PlaidExchangeResultImplToJson(
-  _$PlaidExchangeResultImpl instance,
+Map<String, dynamic> _$PlaidExchangeResultToJson(
+  _PlaidExchangeResult instance,
 ) => <String, dynamic>{
   'plaid_item_id': instance.plaidItemId,
   'institution': instance.institution.toJson(),
@@ -36,28 +36,27 @@ Map<String, dynamic> _$$PlaidExchangeResultImplToJson(
   'skipped_accounts': instance.skippedAccounts.map((e) => e.toJson()).toList(),
 };
 
-_$PlaidInstitutionRefImpl _$$PlaidInstitutionRefImplFromJson(
-  Map<String, dynamic> json,
-) => _$PlaidInstitutionRefImpl(
-  id: json['id'] as String,
-  name: json['name'] as String,
-);
+_PlaidInstitutionRef _$PlaidInstitutionRefFromJson(Map<String, dynamic> json) =>
+    _PlaidInstitutionRef(
+      id: json['id'] as String,
+      name: json['name'] as String,
+    );
 
-Map<String, dynamic> _$$PlaidInstitutionRefImplToJson(
-  _$PlaidInstitutionRefImpl instance,
+Map<String, dynamic> _$PlaidInstitutionRefToJson(
+  _PlaidInstitutionRef instance,
 ) => <String, dynamic>{'id': instance.id, 'name': instance.name};
 
-_$PlaidInsertedAccountImpl _$$PlaidInsertedAccountImplFromJson(
+_PlaidInsertedAccount _$PlaidInsertedAccountFromJson(
   Map<String, dynamic> json,
-) => _$PlaidInsertedAccountImpl(
+) => _PlaidInsertedAccount(
   accountId: json['account_id'] as String,
   plaidAccountId: json['plaid_account_id'] as String,
   accountType: json['account_type'] as String,
   name: json['name'] as String,
 );
 
-Map<String, dynamic> _$$PlaidInsertedAccountImplToJson(
-  _$PlaidInsertedAccountImpl instance,
+Map<String, dynamic> _$PlaidInsertedAccountToJson(
+  _PlaidInsertedAccount instance,
 ) => <String, dynamic>{
   'account_id': instance.accountId,
   'plaid_account_id': instance.plaidAccountId,
@@ -65,18 +64,17 @@ Map<String, dynamic> _$$PlaidInsertedAccountImplToJson(
   'name': instance.name,
 };
 
-_$PlaidSkippedAccountImpl _$$PlaidSkippedAccountImplFromJson(
-  Map<String, dynamic> json,
-) => _$PlaidSkippedAccountImpl(
-  plaidAccountId: json['plaid_account_id'] as String,
-  name: json['name'] as String,
-  plaidType: json['plaid_type'] as String,
-  plaidSubtype: json['plaid_subtype'] as String,
-  reason: json['reason'] as String,
-);
+_PlaidSkippedAccount _$PlaidSkippedAccountFromJson(Map<String, dynamic> json) =>
+    _PlaidSkippedAccount(
+      plaidAccountId: json['plaid_account_id'] as String,
+      name: json['name'] as String,
+      plaidType: json['plaid_type'] as String,
+      plaidSubtype: json['plaid_subtype'] as String,
+      reason: json['reason'] as String,
+    );
 
-Map<String, dynamic> _$$PlaidSkippedAccountImplToJson(
-  _$PlaidSkippedAccountImpl instance,
+Map<String, dynamic> _$PlaidSkippedAccountToJson(
+  _PlaidSkippedAccount instance,
 ) => <String, dynamic>{
   'plaid_account_id': instance.plaidAccountId,
   'name': instance.name,
@@ -85,38 +83,36 @@ Map<String, dynamic> _$$PlaidSkippedAccountImplToJson(
   'reason': instance.reason,
 };
 
-_$PlaidSyncResultImpl _$$PlaidSyncResultImplFromJson(
-  Map<String, dynamic> json,
-) => _$PlaidSyncResultImpl(
-  added: (json['added'] as num?)?.toInt() ?? 0,
-  modified: (json['modified'] as num?)?.toInt() ?? 0,
-  removed: (json['removed'] as num?)?.toInt() ?? 0,
-  merged: (json['merged'] as num?)?.toInt() ?? 0,
-  accountsSynced:
-      (json['accounts_synced'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  failedAccountIds:
-      (json['failed_account_ids'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  requiresReauth: json['requires_reauth'] as bool? ?? false,
-  partialFailure: json['partial_failure'] as bool? ?? false,
-  errorCode: json['error_code'] as String?,
-);
+_PlaidSyncResult _$PlaidSyncResultFromJson(Map<String, dynamic> json) =>
+    _PlaidSyncResult(
+      added: (json['added'] as num?)?.toInt() ?? 0,
+      modified: (json['modified'] as num?)?.toInt() ?? 0,
+      removed: (json['removed'] as num?)?.toInt() ?? 0,
+      merged: (json['merged'] as num?)?.toInt() ?? 0,
+      accountsSynced:
+          (json['accounts_synced'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      failedAccountIds:
+          (json['failed_account_ids'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      requiresReauth: json['requires_reauth'] as bool? ?? false,
+      partialFailure: json['partial_failure'] as bool? ?? false,
+      errorCode: json['error_code'] as String?,
+    );
 
-Map<String, dynamic> _$$PlaidSyncResultImplToJson(
-  _$PlaidSyncResultImpl instance,
-) => <String, dynamic>{
-  'added': instance.added,
-  'modified': instance.modified,
-  'removed': instance.removed,
-  'merged': instance.merged,
-  'accounts_synced': instance.accountsSynced,
-  'failed_account_ids': instance.failedAccountIds,
-  'requires_reauth': instance.requiresReauth,
-  'partial_failure': instance.partialFailure,
-  'error_code': instance.errorCode,
-};
+Map<String, dynamic> _$PlaidSyncResultToJson(_PlaidSyncResult instance) =>
+    <String, dynamic>{
+      'added': instance.added,
+      'modified': instance.modified,
+      'removed': instance.removed,
+      'merged': instance.merged,
+      'accounts_synced': instance.accountsSynced,
+      'failed_account_ids': instance.failedAccountIds,
+      'requires_reauth': instance.requiresReauth,
+      'partial_failure': instance.partialFailure,
+      'error_code': instance.errorCode,
+    };

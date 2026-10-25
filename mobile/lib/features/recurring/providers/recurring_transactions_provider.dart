@@ -18,9 +18,7 @@ import '../repositories/recurring_transactions_repository.dart';
 part 'recurring_transactions_provider.g.dart';
 
 @riverpod
-Future<List<RecurringTransaction>> recurringTransactions(
-  RecurringTransactionsRef ref,
-) async {
+Future<List<RecurringTransaction>> recurringTransactions(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return const [];
   final repo = ref.read(recurringTransactionsRepositoryProvider);

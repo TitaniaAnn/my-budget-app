@@ -42,9 +42,7 @@ class _PlaidReauthBannerState extends ConsumerState<PlaidReauthBanner> {
         // Update mode reuses the existing access_token — no
         // exchange roundtrip needed. Re-sync to clear the
         // `last_sync_error` flag if Plaid is happy again.
-        await ref
-            .read(plaidSyncOrchestratorProvider)
-            .syncOne(item.id);
+        await ref.read(plaidSyncOrchestratorProvider).syncOne(item.id);
         ref.invalidate(plaidItemsProvider);
         invalidateLedger(ref);
         if (mounted) {
@@ -52,7 +50,8 @@ class _PlaidReauthBannerState extends ConsumerState<PlaidReauthBanner> {
             'Reconnected ${item.institutionName ?? "your bank"}.',
           );
         }
-      } else if (outcome is PlaidLinkExitOutcome && !outcome.isUserCancellation) {
+      } else if (outcome is PlaidLinkExitOutcome &&
+          !outcome.isUserCancellation) {
         if (mounted) {
           context.showErrorSnackBar(
             'Reconnect failed (${outcome.errorCode ?? "unknown"}).',

@@ -31,7 +31,7 @@ part 'app_router.g.dart';
 /// - Unauthenticated users → /login
 /// - Authenticated users on auth routes → /dashboard (prevents back-nav to login)
 @riverpod
-GoRouter appRouter(AppRouterRef ref) {
+GoRouter appRouter(Ref ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
@@ -41,8 +41,7 @@ GoRouter appRouter(AppRouterRef ref) {
       // to the persisted session from supabase.auth.currentSession. This
       // prevents already-logged-in users from briefly seeing /login.
       final isLoggedIn =
-          (authState.valueOrNull?.session ?? supabase.auth.currentSession) !=
-          null;
+          (authState.value?.session ?? supabase.auth.currentSession) != null;
       final isAuthRoute =
           state.matchedLocation.startsWith('/login') ||
           state.matchedLocation.startsWith('/register');
@@ -111,10 +110,7 @@ GoRouter appRouter(AppRouterRef ref) {
             ],
           ),
           GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-          GoRoute(
-            path: '/plaid',
-            builder: (_, _) => const PlaidItemsScreen(),
-          ),
+          GoRoute(path: '/plaid', builder: (_, _) => const PlaidItemsScreen()),
         ],
       ),
     ],

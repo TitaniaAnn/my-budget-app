@@ -32,7 +32,7 @@ part 'recurring_scheduler_provider.g.dart';
 /// and we don't want the dashboard provider to be blocked by an
 /// auth-state race.
 @Riverpod(keepAlive: true)
-Future<int> runRecurringScheduler(RunRecurringSchedulerRef ref) async {
+Future<int> runRecurringScheduler(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return 0;
   final repo = ref.read(recurringTransactionsRepositoryProvider);

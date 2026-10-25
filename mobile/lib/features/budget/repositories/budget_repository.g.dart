@@ -6,22 +6,51 @@ part of 'budget_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$budgetRepositoryHash() => r'e1585e731fced2820c40e16d62aeb85ce88459f5';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [budgetRepository].
 @ProviderFor(budgetRepository)
-final budgetRepositoryProvider = AutoDisposeProvider<BudgetRepository>.internal(
-  budgetRepository,
-  name: r'budgetRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$budgetRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final budgetRepositoryProvider = BudgetRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef BudgetRepositoryRef = AutoDisposeProviderRef<BudgetRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class BudgetRepositoryProvider
+    extends
+        $FunctionalProvider<
+          BudgetRepository,
+          BudgetRepository,
+          BudgetRepository
+        >
+    with $Provider<BudgetRepository> {
+  BudgetRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BudgetRepository create(Ref ref) {
+    return budgetRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetRepository>(value),
+    );
+  }
+}
+
+String _$budgetRepositoryHash() => r'88ff6bade6d4e37177d4d0506f67a25ba5f25b89';

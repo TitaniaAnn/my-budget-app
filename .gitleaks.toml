@@ -34,6 +34,14 @@ description = "Plaid sandbox/dev/prod secret"
 # Plaid secrets are 30-character hex (per their docs).
 regex = '''[0-9a-f]{30}'''
 keywords = ["plaid_secret", "PLAID_SECRET", "plaid", "PLAID"]
+# riverpod_generator writes a 40-hex source hash into each provider
+# (`String _$plaidItemsHash() => r'...';`, sometimes wrapped onto its own
+# line). In the Plaid feature that line contains "plaid" and the hash
+# matches the regex above. A real secret is 30 hex, so it can't match a
+# raw string of exactly 40.
+[[rules.allowlists]]
+regexTarget = "line"
+regexes = ['''r'[0-9a-f]{40}';''']
 
 [[rules]]
 id = "supabase-service-role-key"

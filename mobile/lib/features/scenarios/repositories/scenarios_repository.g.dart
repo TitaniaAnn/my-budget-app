@@ -6,24 +6,53 @@ part of 'scenarios_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$scenariosRepositoryHash() =>
-    r'e4e475071866765506771add3f731957fa283b5b';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [scenariosRepository].
 @ProviderFor(scenariosRepository)
-final scenariosRepositoryProvider =
-    AutoDisposeProvider<ScenariosRepository>.internal(
-      scenariosRepository,
-      name: r'scenariosRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$scenariosRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final scenariosRepositoryProvider = ScenariosRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ScenariosRepositoryRef = AutoDisposeProviderRef<ScenariosRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class ScenariosRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ScenariosRepository,
+          ScenariosRepository,
+          ScenariosRepository
+        >
+    with $Provider<ScenariosRepository> {
+  ScenariosRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'scenariosRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$scenariosRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ScenariosRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ScenariosRepository create(Ref ref) {
+    return scenariosRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ScenariosRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ScenariosRepository>(value),
+    );
+  }
+}
+
+String _$scenariosRepositoryHash() =>
+    r'9d9ad1c4fb914164be91045807ed56aa58ad8249';

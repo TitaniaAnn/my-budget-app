@@ -34,13 +34,13 @@ import '../services/plaid_sync_orchestrator.dart';
 part 'plaid_providers.g.dart';
 
 @riverpod
-Future<List<PlaidItem>> plaidItems(PlaidItemsRef ref) async {
+Future<List<PlaidItem>> plaidItems(Ref ref) async {
   final repo = ref.watch(plaidRepositoryProvider);
   return repo.fetchActiveItems();
 }
 
 @Riverpod(keepAlive: true)
-PlaidSyncOrchestrator plaidSyncOrchestrator(PlaidSyncOrchestratorRef ref) {
+PlaidSyncOrchestrator plaidSyncOrchestrator(Ref ref) {
   return PlaidSyncOrchestrator(repository: ref.watch(plaidRepositoryProvider));
 }
 
@@ -62,7 +62,7 @@ PlaidSyncOrchestrator plaidSyncOrchestrator(PlaidSyncOrchestratorRef ref) {
 /// session and the cursor-held deltas would only retry on a
 /// full app restart.
 @Riverpod(keepAlive: true)
-Future<PlaidSyncSummary?> plaidSyncTrigger(PlaidSyncTriggerRef ref) async {
+Future<PlaidSyncSummary?> plaidSyncTrigger(Ref ref) async {
   final orchestrator = ref.watch(plaidSyncOrchestratorProvider);
   final summary = await orchestrator.syncAll();
   // Any sync that wrote rows means the cached items + cached

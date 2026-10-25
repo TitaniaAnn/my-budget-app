@@ -6,29 +6,62 @@ part of 'budget_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$budgetDataHash() => r'5b8acec456f1ea3280196f9b54edfb7819efbf64';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// All budgets for the current household, each paired with correct-period
+/// spending and an end-of-period projection.
+///
+/// Spending is fetched per-budget using its own [BudgetPeriod.currentRange]
+/// so weekly budgets aren't inflated with a full year of transactions.
+
+@ProviderFor(budgetData)
+final budgetDataProvider = BudgetDataProvider._();
 
 /// All budgets for the current household, each paired with correct-period
 /// spending and an end-of-period projection.
 ///
 /// Spending is fetched per-budget using its own [BudgetPeriod.currentRange]
 /// so weekly budgets aren't inflated with a full year of transactions.
-///
-/// Copied from [budgetData].
-@ProviderFor(budgetData)
-final budgetDataProvider =
-    AutoDisposeFutureProvider<List<BudgetWithSpending>>.internal(
-      budgetData,
-      name: r'budgetDataProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$budgetDataHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef BudgetDataRef = AutoDisposeFutureProviderRef<List<BudgetWithSpending>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class BudgetDataProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<BudgetWithSpending>>,
+          List<BudgetWithSpending>,
+          FutureOr<List<BudgetWithSpending>>
+        >
+    with
+        $FutureModifier<List<BudgetWithSpending>>,
+        $FutureProvider<List<BudgetWithSpending>> {
+  /// All budgets for the current household, each paired with correct-period
+  /// spending and an end-of-period projection.
+  ///
+  /// Spending is fetched per-budget using its own [BudgetPeriod.currentRange]
+  /// so weekly budgets aren't inflated with a full year of transactions.
+  BudgetDataProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetDataProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetDataHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<BudgetWithSpending>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<BudgetWithSpending>> create(Ref ref) {
+    return budgetData(ref);
+  }
+}
+
+String _$budgetDataHash() => r'cb1536ed519bbf017c6a9f2caca6cb21add2a27a';

@@ -40,7 +40,7 @@ part 'transactions_repository.g.dart';
 
 /// Provides a singleton [TransactionsRepository] instance via Riverpod.
 @riverpod
-TransactionsRepository transactionsRepository(TransactionsRepositoryRef ref) {
+TransactionsRepository transactionsRepository(Ref ref) {
   return TransactionsRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -58,6 +58,7 @@ class TransactionsRepository {
   final AppDatabase? _db;
   final PendingWritesQueue? _queue;
   final _uuid = const Uuid();
+
   /// Fetches transactions for a household, optionally filtered by [accountId].
   ///
   /// Joins the categories table so [Transaction.category] is populated.
@@ -563,10 +564,7 @@ class TransactionsRepository {
         'category_assigned_at': DateTime.now().toUtc().toIso8601String(),
     };
     try {
-      var builder = supabase
-          .from('transactions')
-          .update(patch)
-          .eq('id', id);
+      var builder = supabase.from('transactions').update(patch).eq('id', id);
       if (expectedUpdatedAt != null) {
         builder = builder.eq(
           'updated_at',
@@ -979,7 +977,9 @@ class TransactionsRepository {
     if (db == null) return;
     try {
       await db.deleteTransaction(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteTransactionsCacheByIds(List<String> ids) async {
@@ -987,7 +987,9 @@ class TransactionsRepository {
     if (db == null || ids.isEmpty) return;
     try {
       await db.deleteTransactionsByIds(ids);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<Transaction>?> _loadTransactionsFromCache({
@@ -1026,10 +1028,10 @@ class TransactionsRepository {
     final db = _db;
     if (db == null) return;
     try {
-      await db.replaceCategories(
-        categories.map(_categoryToCompanion).toList(),
-      );
-    } catch (_) {/**/}
+      await db.replaceCategories(categories.map(_categoryToCompanion).toList());
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _writeCategoryCacheRow(Category category) async {
@@ -1037,7 +1039,9 @@ class TransactionsRepository {
     if (db == null) return;
     try {
       await db.upsertCategory(_categoryToCompanion(category));
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<void> _deleteCategoryCacheRow(String id) async {
@@ -1045,7 +1049,9 @@ class TransactionsRepository {
     if (db == null) return;
     try {
       await db.deleteCategory(id);
-    } catch (_) {/**/}
+    } catch (_) {
+      /**/
+    }
   }
 
   Future<List<Category>?> _loadCategoriesFromCache() async {
@@ -1120,7 +1126,9 @@ Transaction _transactionFromCacheRow(TransactionWithCategoryRow row) {
     mlModelConfidence: r.mlModelConfidence,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
-    category: row.category == null ? null : _categoryFromCacheRow(row.category!),
+    category: row.category == null
+        ? null
+        : _categoryFromCacheRow(row.category!),
   );
 }
 

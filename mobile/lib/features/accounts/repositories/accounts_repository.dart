@@ -28,7 +28,7 @@ part 'accounts_repository.g.dart';
 
 /// Provides a singleton [AccountsRepository] instance via Riverpod.
 @riverpod
-AccountsRepository accountsRepository(AccountsRepositoryRef ref) {
+AccountsRepository accountsRepository(Ref ref) {
   return AccountsRepository(
     db: ref.watch(appDatabaseProvider),
     queue: ref.watch(pendingWritesQueueProvider),
@@ -414,7 +414,6 @@ class AccountsRepository {
     }
   }
 }
-
 
 /// Maps an Account model to the drift Companion for cache writes.
 ///

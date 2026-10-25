@@ -558,9 +558,7 @@ void main() {
               'storage_path':
                   '${harness.householdId}/uncertain-${DateTime.now().microsecondsSinceEpoch}.jpg',
               'ocr_status': 'complete',
-              'receipt_date': receiptDate
-                  ?.toIso8601String()
-                  .substring(0, 10),
+              'receipt_date': receiptDate?.toIso8601String().substring(0, 10),
               'merchant_name': 'CONFIDENCE TEST CO',
             })
             .select('id')
@@ -591,65 +589,62 @@ void main() {
         return row['id'] as String;
       }
 
-      test(
-        'fetchUncertainLineItems returns only rows below threshold, '
-        'most-uncertain first; null-confidence rows are excluded',
-        () async {
-          final receiptId = await insertReceipt(
-            receiptDate: DateTime.utc(2026, 5, 14),
-          );
-          // 25% — well below the 55% default threshold.
-          final lowId = await insertLineItem(
-            receiptId: receiptId,
-            description: 'fetch-low',
-            amount: 100,
-            confidenceBp: 2500,
-          );
-          // 50% — also below.
-          final midId = await insertLineItem(
-            receiptId: receiptId,
-            description: 'fetch-mid',
-            amount: 200,
-            confidenceBp: 5000,
-          );
-          // 75% — above. Must NOT surface.
-          await insertLineItem(
-            receiptId: receiptId,
-            description: 'fetch-high',
-            amount: 300,
-            confidenceBp: 7500,
-          );
-          // No confidence — user typed it manually. Must NOT surface.
-          await insertLineItem(
-            receiptId: receiptId,
-            description: 'fetch-manual',
-            amount: 400,
-            confidenceBp: null,
-          );
+      test('fetchUncertainLineItems returns only rows below threshold, '
+          'most-uncertain first; null-confidence rows are excluded', () async {
+        final receiptId = await insertReceipt(
+          receiptDate: DateTime.utc(2026, 5, 14),
+        );
+        // 25% — well below the 55% default threshold.
+        final lowId = await insertLineItem(
+          receiptId: receiptId,
+          description: 'fetch-low',
+          amount: 100,
+          confidenceBp: 2500,
+        );
+        // 50% — also below.
+        final midId = await insertLineItem(
+          receiptId: receiptId,
+          description: 'fetch-mid',
+          amount: 200,
+          confidenceBp: 5000,
+        );
+        // 75% — above. Must NOT surface.
+        await insertLineItem(
+          receiptId: receiptId,
+          description: 'fetch-high',
+          amount: 300,
+          confidenceBp: 7500,
+        );
+        // No confidence — user typed it manually. Must NOT surface.
+        await insertLineItem(
+          receiptId: receiptId,
+          description: 'fetch-manual',
+          amount: 400,
+          confidenceBp: null,
+        );
 
-          final result = await repo.fetchUncertainLineItems(
-            householdId: harness.householdId,
-          );
-          // Filter to the ids we created so sibling tests can't
-          // pollute the assertion.
-          final ours = result
-              .where((u) => [lowId, midId].contains(u.lineItem.id))
-              .toList();
-          expect(
-            ours.map((u) => u.lineItem.id),
-            [lowId, midId],
-            reason: 'ordered ascending by confidence — the lowest '
-                'confidence (most uncertain) row surfaces first.',
-          );
-          // Receipt context joined in.
-          expect(ours.first.merchant, 'CONFIDENCE TEST CO');
-          expect(
-            ours.first.receiptDate?.toIso8601String().substring(0, 10),
-            '2026-05-14',
-          );
-        },
-        skip: reason,
-      );
+        final result = await repo.fetchUncertainLineItems(
+          householdId: harness.householdId,
+        );
+        // Filter to the ids we created so sibling tests can't
+        // pollute the assertion.
+        final ours = result
+            .where((u) => [lowId, midId].contains(u.lineItem.id))
+            .toList();
+        expect(
+          ours.map((u) => u.lineItem.id),
+          [lowId, midId],
+          reason:
+              'ordered ascending by confidence — the lowest '
+              'confidence (most uncertain) row surfaces first.',
+        );
+        // Receipt context joined in.
+        expect(ours.first.merchant, 'CONFIDENCE TEST CO');
+        expect(
+          ours.first.receiptDate?.toIso8601String().substring(0, 10),
+          '2026-05-14',
+        );
+      }, skip: reason);
 
       test(
         'confirmLineItem clears confidence so the row stops surfacing',
@@ -670,7 +665,8 @@ void main() {
           expect(
             all.any((u) => u.lineItem.id == lineId),
             isFalse,
-            reason: 'the confirm action is the review — once cleared, '
+            reason:
+                'the confirm action is the review — once cleared, '
                 'the row must not resurface on the next fetch.',
           );
           // Verify the underlying column is actually NULL (and the
@@ -688,43 +684,40 @@ void main() {
         skip: reason,
       );
 
-      test(
-        'confirmLineItem applies field overrides when provided',
-        () async {
-          final groceriesId = await harness.systemCategoryIdByName('Groceries');
-          final receiptId = await insertReceipt();
-          final lineId = await insertLineItem(
-            receiptId: receiptId,
-            description: 'misspeled',
-            amount: 100,
-            confidenceBp: 3000,
-          );
+      test('confirmLineItem applies field overrides when provided', () async {
+        final groceriesId = await harness.systemCategoryIdByName('Groceries');
+        final receiptId = await insertReceipt();
+        final lineId = await insertLineItem(
+          receiptId: receiptId,
+          description: 'misspeled',
+          amount: 100,
+          confidenceBp: 3000,
+        );
 
-          await repo.confirmLineItem(
-            lineItemId: lineId,
-            description: 'corrected',
-            amountCents: 555,
-            categoryId: groceriesId,
-          );
+        await repo.confirmLineItem(
+          lineItemId: lineId,
+          description: 'corrected',
+          amountCents: 555,
+          categoryId: groceriesId,
+        );
 
-          final row = await harness.client
-              .from('receipt_line_items')
-              .select('description, amount, category_id, ocr_confidence_bp')
-              .eq('id', lineId)
-              .single();
-          expect(row['description'], 'corrected');
-          expect(row['amount'], 555);
-          expect(row['category_id'], groceriesId);
-          expect(
-            row['ocr_confidence_bp'],
-            isNull,
-            reason: 'a correction-with-overrides path must STILL clear '
-                'confidence — otherwise the row resurfaces and the '
-                'user re-corrects forever.',
-          );
-        },
-        skip: reason,
-      );
+        final row = await harness.client
+            .from('receipt_line_items')
+            .select('description, amount, category_id, ocr_confidence_bp')
+            .eq('id', lineId)
+            .single();
+        expect(row['description'], 'corrected');
+        expect(row['amount'], 555);
+        expect(row['category_id'], groceriesId);
+        expect(
+          row['ocr_confidence_bp'],
+          isNull,
+          reason:
+              'a correction-with-overrides path must STILL clear '
+              'confidence — otherwise the row resurfaces and the '
+              'user re-corrects forever.',
+        );
+      }, skip: reason);
     });
 
     // ── H5 (migration 047): storage_path household prefix ──────────────

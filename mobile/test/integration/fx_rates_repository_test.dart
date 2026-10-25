@@ -109,41 +109,35 @@ void main() {
         );
         expect(rate, isNotNull);
         expect(rate!.rate, 1.07);
-        expect(
-          rate.asOfDate.toIso8601String().substring(0, 10),
-          '2026-05-05',
-        );
+        expect(rate.asOfDate.toIso8601String().substring(0, 10), '2026-05-05');
       },
       skip: reason,
     );
 
-    test(
-      'latestRate returns null when no rate exists for the pair',
-      () async {
-        // Set EUR→USD; query for GBP→USD → no match, null.
-        await repo.setRate(
-          householdId: harness.householdId,
-          fromCurrency: 'EUR',
-          toCurrency: 'USD',
-          rate: 1.05,
-          asOfDate: DateTime.utc(2026, 5, 1),
-          createdBy: harness.userId,
-        );
-        final rate = await repo.latestRate(
-          householdId: harness.householdId,
-          fromCurrency: 'GBP',
-          toCurrency: 'USD',
-        );
-        expect(
-          rate,
-          isNull,
-          reason: 'a household with no GBP rate set must get null '
-              'back — the dashboard surfaces that as a missing-rate '
-              'warning, not a silent fall-through.',
-        );
-      },
-      skip: reason,
-    );
+    test('latestRate returns null when no rate exists for the pair', () async {
+      // Set EUR→USD; query for GBP→USD → no match, null.
+      await repo.setRate(
+        householdId: harness.householdId,
+        fromCurrency: 'EUR',
+        toCurrency: 'USD',
+        rate: 1.05,
+        asOfDate: DateTime.utc(2026, 5, 1),
+        createdBy: harness.userId,
+      );
+      final rate = await repo.latestRate(
+        householdId: harness.householdId,
+        fromCurrency: 'GBP',
+        toCurrency: 'USD',
+      );
+      expect(
+        rate,
+        isNull,
+        reason:
+            'a household with no GBP rate set must get null '
+            'back — the dashboard surfaces that as a missing-rate '
+            'warning, not a silent fall-through.',
+      );
+    }, skip: reason);
 
     test(
       'latestRate returns null when every rate is AFTER the cutoff',
@@ -169,85 +163,77 @@ void main() {
       skip: reason,
     );
 
-    test(
-      'deleteRate removes only the matched (pair, date) row',
-      () async {
-        await repo.setRate(
+    test('deleteRate removes only the matched (pair, date) row', () async {
+      await repo.setRate(
+        householdId: harness.householdId,
+        fromCurrency: 'EUR',
+        toCurrency: 'USD',
+        rate: 1.05,
+        asOfDate: DateTime.utc(2026, 5, 1),
+        createdBy: harness.userId,
+      );
+      await repo.setRate(
+        householdId: harness.householdId,
+        fromCurrency: 'EUR',
+        toCurrency: 'USD',
+        rate: 1.10,
+        asOfDate: DateTime.utc(2026, 5, 10),
+        createdBy: harness.userId,
+      );
+
+      await repo.deleteRate(
+        householdId: harness.householdId,
+        fromCurrency: 'EUR',
+        toCurrency: 'USD',
+        asOfDate: DateTime.utc(2026, 5, 1),
+      );
+
+      final rows = await repo.fetchAll(harness.householdId);
+      expect(rows, hasLength(1));
+      expect(
+        rows.single.asOfDate.toIso8601String().substring(0, 10),
+        '2026-05-10',
+      );
+    }, skip: reason);
+
+    test('DB CHECK rejects rate <= 0 and from == to', () async {
+      // Zero rate would make every conversion zero; negative
+      // rate would flip signs nonsensically. The CHECK rejects
+      // both. from == to is also rejected because identity
+      // rates are handled by the no-op short-circuit.
+      await expectLater(
+        repo.setRate(
           householdId: harness.householdId,
           fromCurrency: 'EUR',
           toCurrency: 'USD',
-          rate: 1.05,
+          rate: 0,
           asOfDate: DateTime.utc(2026, 5, 1),
           createdBy: harness.userId,
-        );
-        await repo.setRate(
+        ),
+        throwsA(anything),
+      );
+      await expectLater(
+        repo.setRate(
           householdId: harness.householdId,
           fromCurrency: 'EUR',
           toCurrency: 'USD',
-          rate: 1.10,
-          asOfDate: DateTime.utc(2026, 5, 10),
-          createdBy: harness.userId,
-        );
-
-        await repo.deleteRate(
-          householdId: harness.householdId,
-          fromCurrency: 'EUR',
-          toCurrency: 'USD',
+          rate: -1.05,
           asOfDate: DateTime.utc(2026, 5, 1),
-        );
-
-        final rows = await repo.fetchAll(harness.householdId);
-        expect(rows, hasLength(1));
-        expect(
-          rows.single.asOfDate.toIso8601String().substring(0, 10),
-          '2026-05-10',
-        );
-      },
-      skip: reason,
-    );
-
-    test(
-      'DB CHECK rejects rate <= 0 and from == to',
-      () async {
-        // Zero rate would make every conversion zero; negative
-        // rate would flip signs nonsensically. The CHECK rejects
-        // both. from == to is also rejected because identity
-        // rates are handled by the no-op short-circuit.
-        await expectLater(
-          repo.setRate(
-            householdId: harness.householdId,
-            fromCurrency: 'EUR',
-            toCurrency: 'USD',
-            rate: 0,
-            asOfDate: DateTime.utc(2026, 5, 1),
-            createdBy: harness.userId,
-          ),
-          throwsA(anything),
-        );
-        await expectLater(
-          repo.setRate(
-            householdId: harness.householdId,
-            fromCurrency: 'EUR',
-            toCurrency: 'USD',
-            rate: -1.05,
-            asOfDate: DateTime.utc(2026, 5, 1),
-            createdBy: harness.userId,
-          ),
-          throwsA(anything),
-        );
-        await expectLater(
-          repo.setRate(
-            householdId: harness.householdId,
-            fromCurrency: 'USD',
-            toCurrency: 'USD',
-            rate: 1.0,
-            asOfDate: DateTime.utc(2026, 5, 1),
-            createdBy: harness.userId,
-          ),
-          throwsA(anything),
-        );
-      },
-      skip: reason,
-    );
+          createdBy: harness.userId,
+        ),
+        throwsA(anything),
+      );
+      await expectLater(
+        repo.setRate(
+          householdId: harness.householdId,
+          fromCurrency: 'USD',
+          toCurrency: 'USD',
+          rate: 1.0,
+          asOfDate: DateTime.utc(2026, 5, 1),
+          createdBy: harness.userId,
+        ),
+        throwsA(anything),
+      );
+    }, skip: reason);
   });
 }

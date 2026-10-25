@@ -89,9 +89,7 @@ class _ReceiptCard extends ConsumerWidget {
     // Phase 4b polish: receipt is sitting in the storage upload
     // queue (offline capture, transient upload failure). The badge
     // signals "this won't render in other people's clients yet".
-    final pendingIds = ref
-        .watch(pendingStorageUploadIdsProvider)
-        .valueOrNull;
+    final pendingIds = ref.watch(pendingStorageUploadIdsProvider).value;
     final isPendingUpload = pendingIds?.contains(receipt.id) ?? false;
 
     return GestureDetector(

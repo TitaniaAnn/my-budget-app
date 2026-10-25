@@ -17,7 +17,7 @@ part 'plaid_link_result.g.dart';
 /// trigger an initial sync, and `skippedAccounts` to surface a
 /// "couldn't map these" prompt.
 @freezed
-class PlaidExchangeResult with _$PlaidExchangeResult {
+abstract class PlaidExchangeResult with _$PlaidExchangeResult {
   const factory PlaidExchangeResult({
     required String plaidItemId,
     required PlaidInstitutionRef institution,
@@ -30,7 +30,7 @@ class PlaidExchangeResult with _$PlaidExchangeResult {
 }
 
 @freezed
-class PlaidInstitutionRef with _$PlaidInstitutionRef {
+abstract class PlaidInstitutionRef with _$PlaidInstitutionRef {
   const factory PlaidInstitutionRef({
     required String id,
     required String name,
@@ -41,7 +41,7 @@ class PlaidInstitutionRef with _$PlaidInstitutionRef {
 }
 
 @freezed
-class PlaidInsertedAccount with _$PlaidInsertedAccount {
+abstract class PlaidInsertedAccount with _$PlaidInsertedAccount {
   const factory PlaidInsertedAccount({
     required String accountId,
     required String plaidAccountId,
@@ -54,7 +54,7 @@ class PlaidInsertedAccount with _$PlaidInsertedAccount {
 }
 
 @freezed
-class PlaidSkippedAccount with _$PlaidSkippedAccount {
+abstract class PlaidSkippedAccount with _$PlaidSkippedAccount {
   const factory PlaidSkippedAccount({
     required String plaidAccountId,
     required String name,
@@ -77,7 +77,7 @@ class PlaidSkippedAccount with _$PlaidSkippedAccount {
 /// failed account ids are surfaced in [failedAccountIds] so the
 /// UI can call them out specifically.
 @freezed
-class PlaidSyncResult with _$PlaidSyncResult {
+abstract class PlaidSyncResult with _$PlaidSyncResult {
   const factory PlaidSyncResult({
     @Default(0) int added,
     @Default(0) int modified,

@@ -35,7 +35,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderSubscription;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show ProviderSubscription;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -142,7 +143,7 @@ class DrainResult {
 
 /// Singleton-ish (per ProviderScope) queue exposed via Riverpod.
 @Riverpod(keepAlive: true)
-PendingWritesQueue pendingWritesQueue(PendingWritesQueueRef ref) {
+PendingWritesQueue pendingWritesQueue(Ref ref) {
   return PendingWritesQueue(db: ref.watch(appDatabaseProvider));
 }
 
@@ -190,7 +191,8 @@ class PendingWritesQueue {
             jsonEncode({
               'payload': payload,
               if (expectedUpdatedAt != null)
-                'expected_updated_at': expectedUpdatedAt.toUtc()
+                'expected_updated_at': expectedUpdatedAt
+                    .toUtc()
                     .toIso8601String(),
             }),
           ),
@@ -317,19 +319,14 @@ class PendingWritesQueue {
           // mark the row failed so it stops thrashing and
           // surfaces as "conflict" in the queue.
           final decoded = jsonDecode(row.payloadJson) as Map<String, dynamic>;
-          final updatePayload =
-              decoded['payload'] as Map<String, dynamic>;
-          final expectedUpdatedAt =
-              decoded['expected_updated_at'] as String?;
+          final updatePayload = decoded['payload'] as Map<String, dynamic>;
+          final expectedUpdatedAt = decoded['expected_updated_at'] as String?;
           var updateBuilder = supabase
               .from(row.targetTable!)
               .update(updatePayload)
               .eq('id', row.rowId!);
           if (expectedUpdatedAt != null) {
-            updateBuilder = updateBuilder.eq(
-              'updated_at',
-              expectedUpdatedAt,
-            );
+            updateBuilder = updateBuilder.eq('updated_at', expectedUpdatedAt);
           }
           final affected = await updateBuilder.select('id') as List;
           if (expectedUpdatedAt != null && affected.isEmpty) {
@@ -345,10 +342,7 @@ class PendingWritesQueue {
             return _ReplayOutcome.permanentFailure;
           }
         case 'delete':
-          await supabase
-              .from(row.targetTable!)
-              .delete()
-              .eq('id', row.rowId!);
+          await supabase.from(row.targetTable!).delete().eq('id', row.rowId!);
         case 'rpc':
           await supabase.rpc(
             row.rpcName!,
@@ -430,17 +424,14 @@ class PendingWritesAutoDrain extends _$PendingWritesAutoDrain {
 
   @override
   void build() {
-    _sub = ref.listen<bool>(
-      isOnlineProvider,
-      (prev, next) {
-        if (prev == false && next == true) {
-          // Don't await — autodrain is fire-and-forget. The
-          // result surfaces in pendingCount() for the UI to poll.
-          // ignore: discarded_futures
-          ref.read(pendingWritesQueueProvider).drain();
-        }
-      },
-    );
+    _sub = ref.listen<bool>(isOnlineProvider, (prev, next) {
+      if (prev == false && next == true) {
+        // Don't await — autodrain is fire-and-forget. The
+        // result surfaces in pendingCount() for the UI to poll.
+        // ignore: discarded_futures
+        ref.read(pendingWritesQueueProvider).drain();
+      }
+    });
     ref.onDispose(() => _sub?.close());
   }
 }

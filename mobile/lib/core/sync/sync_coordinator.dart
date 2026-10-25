@@ -35,7 +35,7 @@ class SyncResult {
 }
 
 @Riverpod(keepAlive: true)
-SyncCoordinator syncCoordinator(SyncCoordinatorRef ref) {
+SyncCoordinator syncCoordinator(Ref ref) {
   return SyncCoordinator(queue: ref.watch(pendingWritesQueueProvider));
 }
 

@@ -12,7 +12,7 @@ part 'category.g.dart';
 /// 002_seed_categories.sql. Households can create custom categories
 /// that reference a [parentId] for grouping.
 @freezed
-class Category with _$Category {
+abstract class Category with _$Category {
   const factory Category({
     required String id,
 

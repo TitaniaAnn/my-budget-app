@@ -6,7 +6,7 @@ part of 'budget.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$BudgetImpl _$$BudgetImplFromJson(Map<String, dynamic> json) => _$BudgetImpl(
+_Budget _$BudgetFromJson(Map<String, dynamic> json) => _Budget(
   id: json['id'] as String,
   householdId: json['household_id'] as String,
   categoryId: json['category_id'] as String,
@@ -20,18 +20,17 @@ _$BudgetImpl _$$BudgetImplFromJson(Map<String, dynamic> json) => _$BudgetImpl(
   createdBy: json['created_by'] as String,
 );
 
-Map<String, dynamic> _$$BudgetImplToJson(_$BudgetImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'household_id': instance.householdId,
-      'category_id': instance.categoryId,
-      'amount': instance.amount,
-      'currency': instance.currency,
-      'period': _$BudgetPeriodEnumMap[instance.period]!,
-      'start_date': instance.startDate.toIso8601String(),
-      'end_date': instance.endDate?.toIso8601String(),
-      'created_by': instance.createdBy,
-    };
+Map<String, dynamic> _$BudgetToJson(_Budget instance) => <String, dynamic>{
+  'id': instance.id,
+  'household_id': instance.householdId,
+  'category_id': instance.categoryId,
+  'amount': instance.amount,
+  'currency': instance.currency,
+  'period': _$BudgetPeriodEnumMap[instance.period]!,
+  'start_date': instance.startDate.toIso8601String(),
+  'end_date': instance.endDate?.toIso8601String(),
+  'created_by': instance.createdBy,
+};
 
 const _$BudgetPeriodEnumMap = {
   BudgetPeriod.weekly: 'weekly',

@@ -24,7 +24,7 @@ workflows:
     instance_type: mac_mini_m2
     working_directory: mobile
     environment:
-      flutter: stable
+      flutter: 3.47.8  # same as .github/workflows/ci.yaml
       xcode: latest
       cocoapods: default
       groups:
@@ -127,7 +127,7 @@ workflows:
     instance_type: linux_x2
     working_directory: mobile
     environment:
-      flutter: stable
+      flutter: 3.47.8  # same as .github/workflows/ci.yaml
       # The upload keystore, added once in Codemagic: Team settings ->
       # Code signing identities -> Android keystores, with this reference
       # name. Codemagic exposes it as CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD

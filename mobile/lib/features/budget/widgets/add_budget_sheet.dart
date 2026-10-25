@@ -34,6 +34,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
   final _amountCtrl = TextEditingController();
   String? _selectedCategoryId;
   BudgetPeriod _period = BudgetPeriod.monthly;
+
   /// 3-letter ISO code the cap is denominated in. Defaults to
   /// the household's display currency on first open; the user
   /// can override when they want a foreign-currency cap (e.g.
@@ -126,7 +127,7 @@ class _AddBudgetSheetState extends ConsumerState<AddBudgetSheet> {
     // we haven't initialised from an existing budget AND the
     // current value is still the placeholder default.
     if (!_isEditing && _currency == 'USD') {
-      final info = ref.read(householdInfoProvider).valueOrNull;
+      final info = ref.read(householdInfoProvider).value;
       if (info != null && info.displayCurrency != _currency) {
         // Schedule a state update for after this build frame —
         // mutating state during build would throw.

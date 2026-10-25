@@ -19,7 +19,7 @@ part 'notification_settings.freezed.dart';
 /// someone does, the selector would misfire on every prefs save.
 /// Converted to `@freezed` per project convention.
 @freezed
-class NotificationSettings with _$NotificationSettings {
+abstract class NotificationSettings with _$NotificationSettings {
   const factory NotificationSettings({
     /// Master switch. When false, the engine returns no notifications
     /// regardless of the per-trigger toggles. Lets the user silence

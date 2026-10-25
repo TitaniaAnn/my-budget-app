@@ -9,7 +9,7 @@ part 'receipt_line_item.g.dart';
 /// [amount] is in cents. Special lines (tax, tip, discount) are flagged
 /// with boolean fields so totals can be computed correctly.
 @freezed
-class ReceiptLineItem with _$ReceiptLineItem {
+abstract class ReceiptLineItem with _$ReceiptLineItem {
   const factory ReceiptLineItem({
     required String id,
     required String receiptId,

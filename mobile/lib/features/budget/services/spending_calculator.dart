@@ -69,8 +69,7 @@ Map<String, int> computeCategorySpending({
     // The cache stores dates with time 00:00 UTC (because the
     // server column is DATE), so a simple !isBefore/!isAfter
     // pair is exact at the day boundary.
-    if (tx.transactionDate.isBefore(from) ||
-        tx.transactionDate.isAfter(to)) {
+    if (tx.transactionDate.isBefore(from) || tx.transactionDate.isAfter(to)) {
       continue;
     }
 

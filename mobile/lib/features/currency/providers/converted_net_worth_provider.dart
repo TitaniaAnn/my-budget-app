@@ -16,7 +16,7 @@ import '../services/convert.dart';
 part 'converted_net_worth_provider.g.dart';
 
 @riverpod
-Future<ConvertedNetWorth> convertedNetWorth(ConvertedNetWorthRef ref) async {
+Future<ConvertedNetWorth> convertedNetWorth(Ref ref) async {
   final accounts = await ref.watch(accountsProvider.future);
   final info = await ref.watch(householdInfoProvider.future);
   final display = info.displayCurrency;

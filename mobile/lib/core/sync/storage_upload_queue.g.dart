@@ -6,24 +6,102 @@ part of 'storage_upload_queue.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$storageUploadQueueHash() =>
-    r'dad27339c5759e54077191dd4fe981a4216ca9db';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [storageUploadQueue].
 @ProviderFor(storageUploadQueue)
-final storageUploadQueueProvider = Provider<StorageUploadQueue>.internal(
-  storageUploadQueue,
-  name: r'storageUploadQueueProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storageUploadQueueHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final storageUploadQueueProvider = StorageUploadQueueProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef StorageUploadQueueRef = ProviderRef<StorageUploadQueue>;
+final class StorageUploadQueueProvider
+    extends
+        $FunctionalProvider<
+          StorageUploadQueue,
+          StorageUploadQueue,
+          StorageUploadQueue
+        >
+    with $Provider<StorageUploadQueue> {
+  StorageUploadQueueProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'storageUploadQueueProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$storageUploadQueueHash();
+
+  @$internal
+  @override
+  $ProviderElement<StorageUploadQueue> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  StorageUploadQueue create(Ref ref) {
+    return storageUploadQueue(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StorageUploadQueue value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StorageUploadQueue>(value),
+    );
+  }
+}
+
+String _$storageUploadQueueHash() =>
+    r'18085ff4e727867f0485c36c3032c45485072b7c';
+
+/// Side-effect provider: drains the storage queue on the
+/// false→true connectivity edge. keepAlive so the listener
+/// subscription is process-lifetime. Same pattern as
+/// PendingWritesAutoDrain.
+
+@ProviderFor(StorageUploadAutoDrain)
+final storageUploadAutoDrainProvider = StorageUploadAutoDrainProvider._();
+
+/// Side-effect provider: drains the storage queue on the
+/// false→true connectivity edge. keepAlive so the listener
+/// subscription is process-lifetime. Same pattern as
+/// PendingWritesAutoDrain.
+final class StorageUploadAutoDrainProvider
+    extends $NotifierProvider<StorageUploadAutoDrain, void> {
+  /// Side-effect provider: drains the storage queue on the
+  /// false→true connectivity edge. keepAlive so the listener
+  /// subscription is process-lifetime. Same pattern as
+  /// PendingWritesAutoDrain.
+  StorageUploadAutoDrainProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'storageUploadAutoDrainProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$storageUploadAutoDrainHash();
+
+  @$internal
+  @override
+  StorageUploadAutoDrain create() => StorageUploadAutoDrain();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+}
+
 String _$storageUploadAutoDrainHash() =>
     r'8590bfef81b2f22a464357d59802a6f68cdcbd20';
 
@@ -31,20 +109,21 @@ String _$storageUploadAutoDrainHash() =>
 /// false→true connectivity edge. keepAlive so the listener
 /// subscription is process-lifetime. Same pattern as
 /// PendingWritesAutoDrain.
-///
-/// Copied from [StorageUploadAutoDrain].
-@ProviderFor(StorageUploadAutoDrain)
-final storageUploadAutoDrainProvider =
-    NotifierProvider<StorageUploadAutoDrain, void>.internal(
-      StorageUploadAutoDrain.new,
-      name: r'storageUploadAutoDrainProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$storageUploadAutoDrainHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-typedef _$StorageUploadAutoDrain = Notifier<void>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$StorageUploadAutoDrain extends $Notifier<void> {
+  void build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<void, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<void, void>,
+              void,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

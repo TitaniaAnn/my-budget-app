@@ -175,7 +175,7 @@ ProviderContainer _buildContainer({
     overrides: [
       // Settings: use a notifier override so the runner's
       // ref.watch sees the value we want.
-      notificationSettingsNotifierProvider.overrideWith(
+      notificationSettingsProvider.overrideWith(
         () => _StubSettingsNotifier(settings),
       ),
       householdIdProvider.overrideWith((_) async => householdId),

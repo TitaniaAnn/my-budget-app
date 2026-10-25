@@ -19,7 +19,7 @@ import '../models/plaid_link_result.dart';
 part 'plaid_repository.g.dart';
 
 @riverpod
-PlaidRepository plaidRepository(PlaidRepositoryRef ref) {
+PlaidRepository plaidRepository(Ref ref) {
   return PlaidRepository();
 }
 

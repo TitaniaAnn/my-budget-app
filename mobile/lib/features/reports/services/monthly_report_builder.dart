@@ -102,11 +102,13 @@ MonthlyReportData buildMonthlyReport({
     if (entry.value <= 0) continue;
     final cat = categoryLookup[entry.key];
     if (cat == null) continue;
-    rows.add(MonthlyReportCategoryRow(
-      name: cat.name,
-      cents: entry.value,
-      colorHex: cat.color,
-    ));
+    rows.add(
+      MonthlyReportCategoryRow(
+        name: cat.name,
+        cents: entry.value,
+        colorHex: cat.color,
+      ),
+    );
   }
 
   // Uncategorised bucket — only counts unpaired transactions, mirroring
@@ -124,10 +126,9 @@ MonthlyReportData buildMonthlyReport({
     uncategorised += converted.abs();
   }
   if (uncategorised > 0) {
-    rows.add(MonthlyReportCategoryRow(
-      name: 'Uncategorized',
-      cents: uncategorised,
-    ));
+    rows.add(
+      MonthlyReportCategoryRow(name: 'Uncategorized', cents: uncategorised),
+    );
   }
 
   rows.sort((a, b) => b.cents.compareTo(a.cents));

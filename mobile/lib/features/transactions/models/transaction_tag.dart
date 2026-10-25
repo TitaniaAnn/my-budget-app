@@ -16,7 +16,7 @@ part 'transaction_tag.g.dart';
 /// schema enforces `UNIQUE (household_id, name)` so the picker can
 /// safely use `name` as a display key without disambiguation.
 @freezed
-class TransactionTag with _$TransactionTag {
+abstract class TransactionTag with _$TransactionTag {
   const factory TransactionTag({
     required String id,
     required String householdId,

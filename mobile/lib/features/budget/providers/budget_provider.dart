@@ -106,7 +106,7 @@ int projectEndOfPeriodSpend({
 /// Spending is fetched per-budget using its own [BudgetPeriod.currentRange]
 /// so weekly budgets aren't inflated with a full year of transactions.
 @riverpod
-Future<List<BudgetWithSpending>> budgetData(BudgetDataRef ref) async {
+Future<List<BudgetWithSpending>> budgetData(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
 

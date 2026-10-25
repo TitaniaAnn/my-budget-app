@@ -64,7 +64,7 @@ enum EventType {
 /// Recurring events use iCal RRULE syntax in [recurrenceRule], e.g.
 /// "FREQ=MONTHLY;COUNT=12" for 12 monthly payments.
 @freezed
-class ScenarioEvent with _$ScenarioEvent {
+abstract class ScenarioEvent with _$ScenarioEvent {
   const factory ScenarioEvent({
     required String id,
     required String scenarioId,

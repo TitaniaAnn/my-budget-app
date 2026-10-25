@@ -6,23 +6,46 @@ part of 'converted_net_worth_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$convertedNetWorthHash() => r'eaf8fa323b8428a352fdd7eb3edb5aba5080ed31';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [convertedNetWorth].
 @ProviderFor(convertedNetWorth)
-final convertedNetWorthProvider =
-    AutoDisposeFutureProvider<ConvertedNetWorth>.internal(
-      convertedNetWorth,
-      name: r'convertedNetWorthProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$convertedNetWorthHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final convertedNetWorthProvider = ConvertedNetWorthProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ConvertedNetWorthRef = AutoDisposeFutureProviderRef<ConvertedNetWorth>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class ConvertedNetWorthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ConvertedNetWorth>,
+          ConvertedNetWorth,
+          FutureOr<ConvertedNetWorth>
+        >
+    with
+        $FutureModifier<ConvertedNetWorth>,
+        $FutureProvider<ConvertedNetWorth> {
+  ConvertedNetWorthProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'convertedNetWorthProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$convertedNetWorthHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<ConvertedNetWorth> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<ConvertedNetWorth> create(Ref ref) {
+    return convertedNetWorth(ref);
+  }
+}
+
+String _$convertedNetWorthHash() => r'd7bbca5281a093f463d2ee489b0d612d423d7333';

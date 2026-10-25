@@ -6,25 +6,51 @@ part of 'dashboard_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dashboardDataHash() => r'b00a3855752ffe6567620aab81e4b5d9cb6d304e';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
+/// it refreshes automatically when the household changes.
+
+@ProviderFor(dashboardData)
+final dashboardDataProvider = DashboardDataProvider._();
 
 /// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
 /// it refreshes automatically when the household changes.
-///
-/// Copied from [dashboardData].
-@ProviderFor(dashboardData)
-final dashboardDataProvider = AutoDisposeFutureProvider<DashboardData>.internal(
-  dashboardData,
-  name: r'dashboardDataProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$dashboardDataHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef DashboardDataRef = AutoDisposeFutureProviderRef<DashboardData>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class DashboardDataProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<DashboardData>,
+          DashboardData,
+          FutureOr<DashboardData>
+        >
+    with $FutureModifier<DashboardData>, $FutureProvider<DashboardData> {
+  /// Fetches all dashboard data in parallel. Watches [householdIdProvider] so
+  /// it refreshes automatically when the household changes.
+  DashboardDataProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dashboardDataProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dashboardDataHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<DashboardData> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<DashboardData> create(Ref ref) {
+    return dashboardData(ref);
+  }
+}
+
+String _$dashboardDataHash() => r'443e094a5410707ad5153d95d13c0436bdd05385';

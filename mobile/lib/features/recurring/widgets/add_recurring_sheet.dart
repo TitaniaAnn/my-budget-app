@@ -96,7 +96,9 @@ class _AddRecurringSheetState extends ConsumerState<AddRecurringSheet> {
     final initial = _skippedUntil ?? _nextOccurrence;
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial.isBefore(_nextOccurrence) ? _nextOccurrence : initial,
+      initialDate: initial.isBefore(_nextOccurrence)
+          ? _nextOccurrence
+          : initial,
       firstDate: _nextOccurrence,
       lastDate: DateTime(2100),
       helpText: 'Skip emissions on or before',
@@ -179,9 +181,7 @@ class _AddRecurringSheetState extends ConsumerState<AddRecurringSheet> {
     if (!confirmed) return;
     setState(() => _loading = true);
     try {
-      await ref
-          .read(recurringTransactionsRepositoryProvider)
-          .delete(r.id);
+      await ref.read(recurringTransactionsRepositoryProvider).delete(r.id);
       ref.invalidate(recurringTransactionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -309,8 +309,7 @@ class _AddRecurringSheetState extends ConsumerState<AddRecurringSheet> {
           TextFormField(
             controller: _descriptionController,
             decoration: const InputDecoration(hintText: 'e.g. Spotify'),
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Required' : null,
+            validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
           ),
           const SizedBox(height: 14),
           const FieldLabel('Merchant (optional)'),
@@ -326,10 +325,7 @@ class _AddRecurringSheetState extends ConsumerState<AddRecurringSheet> {
             initialValue: _cadence,
             items: RecurrenceCadence.values
                 .map(
-                  (c) => DropdownMenuItem(
-                    value: c,
-                    child: Text(c.displayName),
-                  ),
+                  (c) => DropdownMenuItem(value: c, child: Text(c.displayName)),
                 )
                 .toList(),
             onChanged: (v) {

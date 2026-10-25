@@ -214,8 +214,12 @@ class FxRatesCache extends Table {
   DateTimeColumn get cachedAt => dateTime()();
 
   @override
-  Set<Column> get primaryKey =>
-      {householdId, fromCurrency, toCurrency, asOfDate};
+  Set<Column> get primaryKey => {
+    householdId,
+    fromCurrency,
+    toCurrency,
+    asOfDate,
+  };
 }
 
 /// Mirror of the Supabase `receipts` table.
@@ -452,7 +456,8 @@ class PendingStorageUploads extends Table {
   TextColumn get targetBucket => text()();
   TextColumn get targetStoragePath => text()();
   TextColumn get targetThumbnailPath => text().nullable()();
-  TextColumn get contentType => text().withDefault(const Constant('image/jpeg'))();
+  TextColumn get contentType =>
+      text().withDefault(const Constant('image/jpeg'))();
   TextColumn get receiptMetadataJson => text()();
   DateTimeColumn get createdAt => dateTime()();
   IntColumn get attemptCount => integer().withDefault(const Constant(0))();
@@ -616,9 +621,7 @@ class AppDatabase extends _$AppDatabase {
   /// is_active and sorting newest-first to match the server's
   /// AccountsRepository.fetchAccounts contract. Returns an empty
   /// list when nothing is cached.
-  Future<List<AccountsCacheRow>> loadAccountsForHousehold(
-    String householdId,
-  ) {
+  Future<List<AccountsCacheRow>> loadAccountsForHousehold(String householdId) {
     return (select(accountsCache)
           ..where((t) => t.householdId.equals(householdId) & t.isActive)
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
@@ -681,9 +684,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Bulk variant for the result of fetchTransactions. Wrapped in
   /// a batch so a partial failure rolls back.
-  Future<void> upsertTransactions(
-    List<TransactionsCacheCompanion> rows,
-  ) async {
+  Future<void> upsertTransactions(List<TransactionsCacheCompanion> rows) async {
     if (rows.isEmpty) return;
     await batch((b) {
       b.insertAll(transactionsCache, rows, mode: InsertMode.replace);
@@ -742,7 +743,9 @@ class AppDatabase extends _$AppDatabase {
     query.where(tx.householdId.equals(householdId));
     if (accountId != null) query.where(tx.accountId.equals(accountId));
     if (categoryId != null) query.where(tx.categoryId.equals(categoryId));
-    if (from != null) query.where(tx.transactionDate.isBiggerOrEqualValue(from));
+    if (from != null) {
+      query.where(tx.transactionDate.isBiggerOrEqualValue(from));
+    }
     if (to != null) query.where(tx.transactionDate.isSmallerOrEqualValue(to));
     if (idsFilter != null) query.where(tx.id.isIn(idsFilter));
     if (search != null && search.isNotEmpty) {
@@ -925,8 +928,9 @@ class AppDatabase extends _$AppDatabase {
   /// Read a single cached receipt by id, or null. Mirrors
   /// fetchReceipt(receiptId).
   Future<ReceiptsCacheRow?> loadReceiptById(String id) {
-    return (select(receiptsCache)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      receiptsCache,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   // ── Receipt line items cache surface ────────────────────────
@@ -1141,9 +1145,9 @@ class AppDatabase extends _$AppDatabase {
     required List<String> tagIds,
   }) async {
     await transaction(() async {
-      await (delete(transactionTagAssignmentsCache)
-            ..where((t) => t.transactionId.equals(transactionId)))
-          .go();
+      await (delete(
+        transactionTagAssignmentsCache,
+      )..where((t) => t.transactionId.equals(transactionId))).go();
       if (tagIds.isNotEmpty) {
         final now = DateTime.now().toUtc();
         await batch((b) {
@@ -1177,9 +1181,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// Tag-filter shape: which transactions carry [tagId]?
   Future<List<String>> loadTransactionIdsForTag(String tagId) async {
-    final rows = await (select(transactionTagAssignmentsCache)
-          ..where((t) => t.tagId.equals(tagId)))
-        .get();
+    final rows = await (select(
+      transactionTagAssignmentsCache,
+    )..where((t) => t.tagId.equals(tagId))).get();
     return rows.map((r) => r.transactionId).toList();
   }
 
@@ -1187,9 +1191,9 @@ class AppDatabase extends _$AppDatabase {
   /// cache table; lets fetchAssignedTagIds(transactionId) fall
   /// back to the cache without an extra query shape.
   Future<List<String>> loadAssignedTagIds(String transactionId) async {
-    final rows = await (select(transactionTagAssignmentsCache)
-          ..where((t) => t.transactionId.equals(transactionId)))
-        .get();
+    final rows = await (select(
+      transactionTagAssignmentsCache,
+    )..where((t) => t.transactionId.equals(transactionId))).get();
     return rows.map((r) => r.tagId).toList();
   }
 
@@ -1200,9 +1204,9 @@ class AppDatabase extends _$AppDatabase {
     List<String> transactionIds,
   ) async {
     if (transactionIds.isEmpty) return 0;
-    return (delete(transactionTagAssignmentsCache)
-          ..where((t) => t.transactionId.isIn(transactionIds)))
-        .go();
+    return (delete(
+      transactionTagAssignmentsCache,
+    )..where((t) => t.transactionId.isIn(transactionIds))).go();
   }
 
   // ── Receipt line item tag assignments cache ────────────────
@@ -1212,9 +1216,9 @@ class AppDatabase extends _$AppDatabase {
     required List<String> tagIds,
   }) async {
     await transaction(() async {
-      await (delete(receiptLineItemTagAssignmentsCache)
-            ..where((t) => t.lineItemId.equals(lineItemId)))
-          .go();
+      await (delete(
+        receiptLineItemTagAssignmentsCache,
+      )..where((t) => t.lineItemId.equals(lineItemId))).go();
       if (tagIds.isNotEmpty) {
         final now = DateTime.now().toUtc();
         await batch((b) {
@@ -1234,12 +1238,10 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<List<String>> loadAssignedTagIdsForLineItem(
-    String lineItemId,
-  ) async {
-    final rows = await (select(receiptLineItemTagAssignmentsCache)
-          ..where((t) => t.lineItemId.equals(lineItemId)))
-        .get();
+  Future<List<String>> loadAssignedTagIdsForLineItem(String lineItemId) async {
+    final rows = await (select(
+      receiptLineItemTagAssignmentsCache,
+    )..where((t) => t.lineItemId.equals(lineItemId))).get();
     return rows.map((r) => r.tagId).toList();
   }
 
@@ -1257,9 +1259,9 @@ class AppDatabase extends _$AppDatabase {
   /// this once, attempts each row, and records success/failure
   /// per-row.
   Future<List<PendingWritesRow>> loadPendingWrites() {
-    return (select(pendingWrites)
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .get();
+    return (select(
+      pendingWrites,
+    )..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).get();
   }
 
   Future<void> deletePendingWrite(String id) {
@@ -1293,18 +1295,16 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Pending storage uploads surface (Phase 4b) ──────────────
 
-  Future<void> enqueuePendingStorageUpload(
-    PendingStorageUploadsCompanion row,
-  ) {
+  Future<void> enqueuePendingStorageUpload(PendingStorageUploadsCompanion row) {
     return into(pendingStorageUploads).insert(row);
   }
 
   /// FIFO load of every pending storage upload. The drain loop
   /// reads this once per pass.
   Future<List<PendingStorageUploadsRow>> loadPendingStorageUploads() {
-    return (select(pendingStorageUploads)
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .get();
+    return (select(
+      pendingStorageUploads,
+    )..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).get();
   }
 
   Future<void> deletePendingStorageUpload(String id) {
@@ -1330,9 +1330,7 @@ class AppDatabase extends _$AppDatabase {
   Future<int> pendingStorageUploadsCount() {
     return (selectOnly(pendingStorageUploads)
           ..addColumns([pendingStorageUploads.id.count()]))
-        .map(
-          (row) => row.read<int>(pendingStorageUploads.id.count()) ?? 0,
-        )
+        .map((row) => row.read<int>(pendingStorageUploads.id.count()) ?? 0)
         .getSingle();
   }
 
@@ -1387,8 +1385,7 @@ class AppDatabase extends _$AppDatabase {
   /// user-visible data on their own and their cachedAt is
   /// dominated by the dictionary fetch anyway.
   Future<DateTime?> latestCacheTimestamp() async {
-    final result = await customSelect(
-      '''
+    final result = await customSelect('''
       SELECT MAX(ts) AS ts FROM (
         SELECT MAX(cached_at) AS ts FROM accounts_cache
         UNION ALL SELECT MAX(cached_at) FROM categories_cache
@@ -1401,8 +1398,7 @@ class AppDatabase extends _$AppDatabase {
         UNION ALL SELECT MAX(cached_at) FROM recurring_transactions_cache
         UNION ALL SELECT MAX(cached_at) FROM transaction_tags_cache
       )
-      ''',
-    ).getSingle();
+      ''').getSingle();
     final raw = result.data['ts'] as String?;
     if (raw == null) return null;
     return DateTime.parse(raw);

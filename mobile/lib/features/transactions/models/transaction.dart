@@ -15,7 +15,7 @@ part 'transaction.g.dart';
 /// [category] is an optional joined [Category] row, populated when the
 /// repository selects with `*, category:categories(*)`.
 @freezed
-class Transaction with _$Transaction {
+abstract class Transaction with _$Transaction {
   const factory Transaction({
     required String id,
     required String householdId,

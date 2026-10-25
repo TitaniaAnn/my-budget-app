@@ -12,7 +12,7 @@ import 'holdings_provider.dart';
 part 'rebalance_provider.g.dart';
 
 @riverpod
-Future<RebalanceReport> rebalanceReport(RebalanceReportRef ref) async {
+Future<RebalanceReport> rebalanceReport(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) {
     return const RebalanceReport(totalCents: 0, rows: []);

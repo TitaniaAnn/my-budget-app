@@ -24,10 +24,7 @@ import 'package:mybudget/features/transactions/repositories/transactions_reposit
   required DateTime date,
 }) => (id: id, date: date, amount: amount);
 
-Map<String, dynamic> _imp({
-  required int amount,
-  required DateTime date,
-}) => {
+Map<String, dynamic> _imp({required int amount, required DateTime date}) => {
   'amount': amount,
   'transaction_date': date.toIso8601String().substring(0, 10),
 };
@@ -36,9 +33,7 @@ void main() {
   group('matchRecurringDuplicates', () {
     test('matches same-amount same-date as the obvious case', () {
       final matches = matchRecurringDuplicates(
-        importRows: [
-          _imp(amount: -999, date: DateTime.utc(2026, 6, 1)),
-        ],
+        importRows: [_imp(amount: -999, date: DateTime.utc(2026, 6, 1))],
         recurringRows: [
           _r(id: 'spotify', amount: -999, date: DateTime.utc(2026, 6, 1)),
         ],
@@ -66,7 +61,8 @@ void main() {
       expect(
         byImportIdx.containsKey(1),
         isFalse,
-        reason: 'a 2-day gap is outside the default ±1-day tolerance; '
+        reason:
+            'a 2-day gap is outside the default ±1-day tolerance; '
             'matching it would risk reconciling unrelated charges.',
       );
     });
@@ -75,9 +71,7 @@ void main() {
       // A -$9.99 scheduler emission and a +$9.99 refund import are
       // structurally different events even though |amount| matches.
       final matches = matchRecurringDuplicates(
-        importRows: [
-          _imp(amount: 999, date: DateTime.utc(2026, 6, 1)),
-        ],
+        importRows: [_imp(amount: 999, date: DateTime.utc(2026, 6, 1))],
         recurringRows: [
           _r(id: 'charge', amount: -999, date: DateTime.utc(2026, 6, 1)),
         ],
@@ -107,9 +101,7 @@ void main() {
       // 1-day-off relative to the import row. The same-day one wins;
       // the 1-day-off one is left for a potential later import row.
       final matches = matchRecurringDuplicates(
-        importRows: [
-          _imp(amount: -999, date: DateTime.utc(2026, 6, 2)),
-        ],
+        importRows: [_imp(amount: -999, date: DateTime.utc(2026, 6, 2))],
         recurringRows: [
           _r(id: 'one-day-off', amount: -999, date: DateTime.utc(2026, 6, 1)),
           _r(id: 'same-day', amount: -999, date: DateTime.utc(2026, 6, 2)),
@@ -136,9 +128,7 @@ void main() {
 
     test('custom tolerance widens the match window', () {
       final matches = matchRecurringDuplicates(
-        importRows: [
-          _imp(amount: -999, date: DateTime.utc(2026, 6, 5)),
-        ],
+        importRows: [_imp(amount: -999, date: DateTime.utc(2026, 6, 5))],
         recurringRows: [
           _r(id: 'far', amount: -999, date: DateTime.utc(2026, 6, 1)),
         ],

@@ -80,184 +80,184 @@ class _DashboardBody extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () => ref.read(syncCoordinatorProvider).pullToRefresh(ref),
       child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      children: [
-        // ── Plaid re-auth banner ───────────────────────────────────────────
-        // Renders only when at least one linked Item returned
-        // requires_reauth on the most recent sync. Hidden in the
-        // happy path (no Plaid linked OR all healthy).
-        const PlaidReauthBanner(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        children: [
+          // ── Plaid re-auth banner ───────────────────────────────────────────
+          // Renders only when at least one linked Item returned
+          // requires_reauth on the most recent sync. Hidden in the
+          // happy path (no Plaid linked OR all healthy).
+          const PlaidReauthBanner(),
 
-        // ── Net Worth ──────────────────────────────────────────────────────
-        // Card consumes the multi-currency-aware provider directly so
-        // a USD-only household sees no extra cost and a multi-currency
-        // household sees the conversion (with a missing-rate warning
-        // when the rates aren't all set yet).
-        const _NetWorthCard(),
-        const SizedBox(height: 16),
+          // ── Net Worth ──────────────────────────────────────────────────────
+          // Card consumes the multi-currency-aware provider directly so
+          // a USD-only household sees no extra cost and a multi-currency
+          // household sees the conversion (with a missing-rate warning
+          // when the rates aren't all set yet).
+          const _NetWorthCard(),
+          const SizedBox(height: 16),
 
-        // ── Accounts ───────────────────────────────────────────────────────
-        if (data.accounts.isNotEmpty) ...[
-          _SectionHeader(
-            title: 'Accounts',
-            actionLabel: 'Manage',
-            onAction: (ctx) => ctx.go('/accounts'),
-          ),
-          const SizedBox(height: 10),
-          _AccountsRow(accounts: data.accounts),
-          const SizedBox(height: 24),
-        ],
-
-        // ── Suggestions ────────────────────────────────────────────────────
-        // Runs the rules-based growth advisor over [data]. Hidden
-        // entirely when no rule triggers — an empty header would look
-        // like the dashboard's broken.
-        ...(() {
-          final suggestions = const GrowthAdvisor().evaluate(data);
-          if (suggestions.isEmpty) return const <Widget>[];
-          return [
-            const _SectionHeader(title: 'Suggestions'),
+          // ── Accounts ───────────────────────────────────────────────────────
+          if (data.accounts.isNotEmpty) ...[
+            _SectionHeader(
+              title: 'Accounts',
+              actionLabel: 'Manage',
+              onAction: (ctx) => ctx.go('/accounts'),
+            ),
             const SizedBox(height: 10),
-            for (final s in suggestions) ...[
-              _SuggestionCard(suggestion: s),
-              const SizedBox(height: 8),
-            ],
-            const SizedBox(height: 16),
-          ];
-        })(),
-
-        // ── Monthly Summary ────────────────────────────────────────────────
-        _SectionHeader(title: '$monthName Summary'),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryTile(
-                label: 'Spent',
-                cents: data.monthlySpending,
-                currency: data.displayCurrency,
-                icon: Icons.arrow_upward_rounded,
-                color: context.appColors.expense,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryTile(
-                label: 'Income',
-                cents: data.monthlyIncome,
-                currency: data.displayCurrency,
-                icon: Icons.arrow_downward_rounded,
-                color: context.appColors.income,
-              ),
-            ),
+            _AccountsRow(accounts: data.accounts),
+            const SizedBox(height: 24),
           ],
-        ),
-        const SizedBox(height: 24),
 
-        // ── 30-day Spending Sparkline ──────────────────────────────────────
-        _SectionHeader(title: '30-Day Spending'),
-        const SizedBox(height: 10),
-        _SpendingSparkline(
-          spendingByDay: data.spendingByDay,
-          currency: data.displayCurrency,
-        ),
-        const SizedBox(height: 24),
-
-        // ── Budget Health ──────────────────────────────────────────────────
-        budgetsAsync.when(
-          loading: () => const SizedBox.shrink(),
-          error: (_, _) => const SizedBox.shrink(),
-          data: (budgets) {
-            final alerts = classifyBudgetAlerts(budgets);
-            if (alerts.isEmpty) return const SizedBox.shrink();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionHeader(
-                  title: 'Budget Health',
-                  actionLabel: 'See all',
-                  onAction: (ctx) => ctx.go('/budget'),
-                ),
-                const SizedBox(height: 10),
-                ...alerts
-                    .take(3)
-                    .map(
-                      (a) => _BudgetAlertTile(
-                        alert: a,
-                        currency: data.displayCurrency,
-                      ),
-                    ),
-                const SizedBox(height: 24),
+          // ── Suggestions ────────────────────────────────────────────────────
+          // Runs the rules-based growth advisor over [data]. Hidden
+          // entirely when no rule triggers — an empty header would look
+          // like the dashboard's broken.
+          ...(() {
+            final suggestions = const GrowthAdvisor().evaluate(data);
+            if (suggestions.isEmpty) return const <Widget>[];
+            return [
+              const _SectionHeader(title: 'Suggestions'),
+              const SizedBox(height: 10),
+              for (final s in suggestions) ...[
+                _SuggestionCard(suggestion: s),
+                const SizedBox(height: 8),
               ],
-            );
-          },
-        ),
+              const SizedBox(height: 16),
+            ];
+          })(),
 
-        // ── Asset Allocation ───────────────────────────────────────────────
-        // Donut + legend, hidden when no holdings are recorded so a
-        // household that doesn't use the holdings feature doesn't see
-        // an empty section header.
-        _AssetAllocationSection(currency: data.displayCurrency),
-
-        // ── Rebalance suggestions ──────────────────────────────────────────
-        // Surfaces any asset class drifted more than 5 percentage
-        // points from its user-set target. Quiet by default — only
-        // renders when targets are configured AND at least one class
-        // is out of band.
-        _RebalanceSection(currency: data.displayCurrency),
-
-        // ── Top Categories ─────────────────────────────────────────────────
-        if (data.topCategories.isNotEmpty) ...[
-          _SectionHeader(
-            title: 'Top Spending',
-            actionLabel: 'See budget',
-            onAction: (ctx) => ctx.go('/budget'),
-          ),
+          // ── Monthly Summary ────────────────────────────────────────────────
+          _SectionHeader(title: '$monthName Summary'),
           const SizedBox(height: 10),
-          _TopCategoriesCard(
-            categories: data.topCategories,
-            totalSpending: data.monthlySpending,
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryTile(
+                  label: 'Spent',
+                  cents: data.monthlySpending,
+                  currency: data.displayCurrency,
+                  icon: Icons.arrow_upward_rounded,
+                  color: context.appColors.expense,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryTile(
+                  label: 'Income',
+                  cents: data.monthlyIncome,
+                  currency: data.displayCurrency,
+                  icon: Icons.arrow_downward_rounded,
+                  color: context.appColors.income,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── 30-day Spending Sparkline ──────────────────────────────────────
+          _SectionHeader(title: '30-Day Spending'),
+          const SizedBox(height: 10),
+          _SpendingSparkline(
+            spendingByDay: data.spendingByDay,
             currency: data.displayCurrency,
           ),
           const SizedBox(height: 24),
-        ],
 
-        // ── Recent Transactions ────────────────────────────────────────────
-        if (data.recentTransactions.isNotEmpty) ...[
-          _SectionHeader(
-            title: 'Recent Transactions',
-            actionLabel: 'See all',
-            onAction: (ctx) => ctx.go('/transactions'),
+          // ── Budget Health ──────────────────────────────────────────────────
+          budgetsAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (budgets) {
+              final alerts = classifyBudgetAlerts(budgets);
+              if (alerts.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionHeader(
+                    title: 'Budget Health',
+                    actionLabel: 'See all',
+                    onAction: (ctx) => ctx.go('/budget'),
+                  ),
+                  const SizedBox(height: 10),
+                  ...alerts
+                      .take(3)
+                      .map(
+                        (a) => _BudgetAlertTile(
+                          alert: a,
+                          currency: data.displayCurrency,
+                        ),
+                      ),
+                  const SizedBox(height: 24),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerColor),
-            ),
-            clipBehavior: Clip.hardEdge,
-            child: Column(
-              children: data.recentTransactions
-                  .map((tx) => TransactionCard(transaction: tx))
-                  .toList(),
-            ),
-          ),
-        ],
 
-        // ── Empty state ────────────────────────────────────────────────────
-        if (data.accounts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48),
-            child: EmptyView(
-              icon: Icons.account_balance_outlined,
-              title: 'No accounts yet',
-              subtitle: 'Add accounts to start tracking your finances',
-              actionLabel: 'Add Account',
-              onAction: () => context.go('/accounts'),
+          // ── Asset Allocation ───────────────────────────────────────────────
+          // Donut + legend, hidden when no holdings are recorded so a
+          // household that doesn't use the holdings feature doesn't see
+          // an empty section header.
+          _AssetAllocationSection(currency: data.displayCurrency),
+
+          // ── Rebalance suggestions ──────────────────────────────────────────
+          // Surfaces any asset class drifted more than 5 percentage
+          // points from its user-set target. Quiet by default — only
+          // renders when targets are configured AND at least one class
+          // is out of band.
+          _RebalanceSection(currency: data.displayCurrency),
+
+          // ── Top Categories ─────────────────────────────────────────────────
+          if (data.topCategories.isNotEmpty) ...[
+            _SectionHeader(
+              title: 'Top Spending',
+              actionLabel: 'See budget',
+              onAction: (ctx) => ctx.go('/budget'),
             ),
-          ),
-      ],
+            const SizedBox(height: 10),
+            _TopCategoriesCard(
+              categories: data.topCategories,
+              totalSpending: data.monthlySpending,
+              currency: data.displayCurrency,
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // ── Recent Transactions ────────────────────────────────────────────
+          if (data.recentTransactions.isNotEmpty) ...[
+            _SectionHeader(
+              title: 'Recent Transactions',
+              actionLabel: 'See all',
+              onAction: (ctx) => ctx.go('/transactions'),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: Column(
+                children: data.recentTransactions
+                    .map((tx) => TransactionCard(transaction: tx))
+                    .toList(),
+              ),
+            ),
+          ],
+
+          // ── Empty state ────────────────────────────────────────────────────
+          if (data.accounts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: EmptyView(
+                icon: Icons.account_balance_outlined,
+                title: 'No accounts yet',
+                subtitle: 'Add accounts to start tracking your finances',
+                actionLabel: 'Add Account',
+                onAction: () => context.go('/accounts'),
+              ),
+            ),
+        ],
       ),
     );
   }

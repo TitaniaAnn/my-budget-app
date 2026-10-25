@@ -234,10 +234,14 @@ class _ClassRowState extends State<_ClassRow> {
             width: 88,
             child: TextField(
               controller: _controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.right,
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d{0,3}(\.\d{0,1})?')),
+                FilteringTextInputFormatter.allow(
+                  RegExp(r'^\d{0,3}(\.\d{0,1})?'),
+                ),
               ],
               decoration: const InputDecoration(suffixText: '%'),
               onChanged: (text) {

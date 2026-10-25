@@ -17,7 +17,7 @@ part 'household_provider.g.dart';
 /// without one). If the user belongs to multiple households (e.g. after a
 /// future household-switching feature), the most recently joined wins.
 @riverpod
-Future<String?> householdId(HouseholdIdRef ref) async {
+Future<String?> householdId(Ref ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
 

@@ -12,7 +12,7 @@ part 'accounts_provider.g.dart';
 /// Invalidating this provider (e.g. after creating or deleting an account)
 /// triggers a fresh fetch from Supabase automatically.
 @riverpod
-Future<List<Account>> accounts(AccountsRef ref) async {
+Future<List<Account>> accounts(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
 

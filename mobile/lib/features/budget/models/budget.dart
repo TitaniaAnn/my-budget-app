@@ -102,7 +102,11 @@ int _isoWeekNumber(DateTime date) {
   // Calendar math (DateTime constructor) keeps the start-of-week
   // anchor on a wall-clock midnight regardless of DST boundaries.
   final jan4 = DateTime(date.year, 1, 4);
-  final startOfWeek1 = DateTime(jan4.year, jan4.month, jan4.day - (jan4.weekday - 1));
+  final startOfWeek1 = DateTime(
+    jan4.year,
+    jan4.month,
+    jan4.day - (jan4.weekday - 1),
+  );
   final diff = date.difference(startOfWeek1).inDays;
   if (diff < 0) {
     // Date falls in the last week of the previous year.
@@ -116,7 +120,7 @@ int _isoWeekNumber(DateTime date) {
 /// [amount] is in cents. A budget is active when [endDate] is null or in
 /// the future. Use the repository to create / update / delete budgets.
 @freezed
-class Budget with _$Budget {
+abstract class Budget with _$Budget {
   const factory Budget({
     required String id,
     required String householdId,

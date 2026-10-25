@@ -73,189 +73,178 @@ void main() {
       return Map<String, dynamic>.from(result as Map);
     }
 
-    test(
-      'added rows land with source=plaid, sign-flipped cents, and the '
-      'count tuple matches',
-      () async {
-        final result = await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-add-1',
-              'amount_cents': -1999, // $19.99 outflow (project convention)
-              'currency': 'USD',
-              'description': 'COFFEE SHOP',
-              'merchant': 'Coffee Shop',
-              'date': '2026-05-20',
-              'pending': false,
-            },
-            {
-              'plaid_transaction_id': 'plaid-tx-add-2',
-              'amount_cents': 50000, // $500 inflow
-              'currency': 'USD',
-              'description': 'PAYCHECK',
-              'merchant': 'ACME Corp',
-              'date': '2026-05-19',
-              'pending': false,
-            },
-          ],
-        );
-        expect(result['added'], 2);
-        expect(result['modified'], 0);
-        expect(result['removed'], 0);
+    test('added rows land with source=plaid, sign-flipped cents, and the '
+        'count tuple matches', () async {
+      final result = await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-add-1',
+            'amount_cents': -1999, // $19.99 outflow (project convention)
+            'currency': 'USD',
+            'description': 'COFFEE SHOP',
+            'merchant': 'Coffee Shop',
+            'date': '2026-05-20',
+            'pending': false,
+          },
+          {
+            'plaid_transaction_id': 'plaid-tx-add-2',
+            'amount_cents': 50000, // $500 inflow
+            'currency': 'USD',
+            'description': 'PAYCHECK',
+            'merchant': 'ACME Corp',
+            'date': '2026-05-19',
+            'pending': false,
+          },
+        ],
+      );
+      expect(result['added'], 2);
+      expect(result['modified'], 0);
+      expect(result['removed'], 0);
 
-        final rows =
-            await harness.client
-                    .from('transactions')
-                    .select('amount, source, external_id, description')
-                    .eq('account_id', harness.accountId)
-                    .order('external_id', ascending: true)
-                as List;
-        expect(rows.length, 2);
-        // Sign convention: -1999 stored as-is (caller pre-flipped).
-        expect(rows[0]['external_id'], 'plaid-tx-add-1');
-        expect(rows[0]['amount'], -1999);
-        expect(rows[0]['source'], 'plaid');
-        expect(rows[1]['external_id'], 'plaid-tx-add-2');
-        expect(rows[1]['amount'], 50000);
-      },
-      skip: reason,
-    );
+      final rows =
+          await harness.client
+                  .from('transactions')
+                  .select('amount, source, external_id, description')
+                  .eq('account_id', harness.accountId)
+                  .order('external_id', ascending: true)
+              as List;
+      expect(rows.length, 2);
+      // Sign convention: -1999 stored as-is (caller pre-flipped).
+      expect(rows[0]['external_id'], 'plaid-tx-add-1');
+      expect(rows[0]['amount'], -1999);
+      expect(rows[0]['source'], 'plaid');
+      expect(rows[1]['external_id'], 'plaid-tx-add-2');
+      expect(rows[1]['amount'], 50000);
+    }, skip: reason);
 
-    test(
-      'replaying an `added` payload is idempotent — second call '
-      'reports 0 added (ON CONFLICT DO NOTHING)',
-      () async {
-        final first = await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-idem-1',
-              'amount_cents': -2500,
-              'description': 'GAS',
-              'date': '2026-05-20',
-            },
-          ],
-        );
-        expect(first['added'], 1);
+    test('replaying an `added` payload is idempotent — second call '
+        'reports 0 added (ON CONFLICT DO NOTHING)', () async {
+      final first = await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-idem-1',
+            'amount_cents': -2500,
+            'description': 'GAS',
+            'date': '2026-05-20',
+          },
+        ],
+      );
+      expect(first['added'], 1);
 
-        final second = await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-idem-1',
-              'amount_cents': -2500,
-              'description': 'GAS',
-              'date': '2026-05-20',
-            },
-          ],
-        );
-        expect(
-          second['added'],
-          0,
-          reason:
-              'a replayed sync must not double-insert; the unique '
-              '(account_id, external_id) constraint is what makes '
-              'cursor replays safe.',
-        );
-      },
-      skip: reason,
-    );
+      final second = await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-idem-1',
+            'amount_cents': -2500,
+            'description': 'GAS',
+            'date': '2026-05-20',
+          },
+        ],
+      );
+      expect(
+        second['added'],
+        0,
+        reason:
+            'a replayed sync must not double-insert; the unique '
+            '(account_id, external_id) constraint is what makes '
+            'cursor replays safe.',
+      );
+    }, skip: reason);
 
-    test(
-      'modified updates Plaid-owned columns AND preserves user state '
-      '(category_id, notes)',
-      () async {
-        // Add a row, then have the user categorise + annotate it.
-        await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-mod-1',
-              'amount_cents': -1000,
-              'description': 'OLD DESCRIPTION',
-              'merchant': 'Old Merchant',
-              'date': '2026-05-15',
-              'pending': true,
-            },
-          ],
-        );
-
-        final groceriesId = await harness.systemCategoryIdByName('Groceries');
-        await harness.client
-            .from('transactions')
-            .update({
-              'category_id': groceriesId,
-              'notes': 'user-added note',
-            })
-            .eq('account_id', harness.accountId)
-            .eq('external_id', 'plaid-tx-mod-1');
-
-        // Plaid sends the modified row with new amount + posted state.
-        final result = await invokeRpc(
-          modified: [
-            {
-              'plaid_transaction_id': 'plaid-tx-mod-1',
-              'amount_cents': -1234,
-              'description': 'NEW DESCRIPTION FROM PLAID',
-              'merchant': 'New Merchant',
-              'date': '2026-05-15',
-              'pending': false,
-            },
-          ],
-        );
-        expect(result['modified'], 1);
-
-        final row = await harness.client
-            .from('transactions')
-            .select('amount, description, merchant, pending, category_id, notes')
-            .eq('account_id', harness.accountId)
-            .eq('external_id', 'plaid-tx-mod-1')
-            .single();
-        // Plaid-owned fields refreshed.
-        expect(row['amount'], -1234);
-        expect(row['description'], 'NEW DESCRIPTION FROM PLAID');
-        expect(row['merchant'], 'New Merchant');
-        expect(row['pending'], false);
-        // User-owned fields preserved.
-        expect(
-          row['category_id'],
-          groceriesId,
-          reason:
-              'user-set category_id must survive a Plaid modify — the '
-              'whole point of separating user state from Plaid state.',
-        );
-        expect(row['notes'], 'user-added note');
-      },
-      skip: reason,
-    );
-
-    test('removed deletes by external_id; ignores ids not in the list', () async {
+    test('modified updates Plaid-owned columns AND preserves user state '
+        '(category_id, notes)', () async {
+      // Add a row, then have the user categorise + annotate it.
       await invokeRpc(
         added: [
           {
-            'plaid_transaction_id': 'plaid-tx-keep',
-            'amount_cents': -100,
-            'description': 'keep me',
-            'date': '2026-05-10',
-          },
-          {
-            'plaid_transaction_id': 'plaid-tx-rm',
-            'amount_cents': -200,
-            'description': 'remove me',
-            'date': '2026-05-10',
+            'plaid_transaction_id': 'plaid-tx-mod-1',
+            'amount_cents': -1000,
+            'description': 'OLD DESCRIPTION',
+            'merchant': 'Old Merchant',
+            'date': '2026-05-15',
+            'pending': true,
           },
         ],
       );
 
-      final result = await invokeRpc(removed: ['plaid-tx-rm']);
-      expect(result['removed'], 1);
+      final groceriesId = await harness.systemCategoryIdByName('Groceries');
+      await harness.client
+          .from('transactions')
+          .update({'category_id': groceriesId, 'notes': 'user-added note'})
+          .eq('account_id', harness.accountId)
+          .eq('external_id', 'plaid-tx-mod-1');
 
-      final survivors =
-          await harness.client
-                  .from('transactions')
-                  .select('external_id')
-                  .eq('account_id', harness.accountId)
-              as List;
-      expect(survivors.length, 1);
-      expect(survivors[0]['external_id'], 'plaid-tx-keep');
+      // Plaid sends the modified row with new amount + posted state.
+      final result = await invokeRpc(
+        modified: [
+          {
+            'plaid_transaction_id': 'plaid-tx-mod-1',
+            'amount_cents': -1234,
+            'description': 'NEW DESCRIPTION FROM PLAID',
+            'merchant': 'New Merchant',
+            'date': '2026-05-15',
+            'pending': false,
+          },
+        ],
+      );
+      expect(result['modified'], 1);
+
+      final row = await harness.client
+          .from('transactions')
+          .select('amount, description, merchant, pending, category_id, notes')
+          .eq('account_id', harness.accountId)
+          .eq('external_id', 'plaid-tx-mod-1')
+          .single();
+      // Plaid-owned fields refreshed.
+      expect(row['amount'], -1234);
+      expect(row['description'], 'NEW DESCRIPTION FROM PLAID');
+      expect(row['merchant'], 'New Merchant');
+      expect(row['pending'], false);
+      // User-owned fields preserved.
+      expect(
+        row['category_id'],
+        groceriesId,
+        reason:
+            'user-set category_id must survive a Plaid modify — the '
+            'whole point of separating user state from Plaid state.',
+      );
+      expect(row['notes'], 'user-added note');
     }, skip: reason);
+
+    test(
+      'removed deletes by external_id; ignores ids not in the list',
+      () async {
+        await invokeRpc(
+          added: [
+            {
+              'plaid_transaction_id': 'plaid-tx-keep',
+              'amount_cents': -100,
+              'description': 'keep me',
+              'date': '2026-05-10',
+            },
+            {
+              'plaid_transaction_id': 'plaid-tx-rm',
+              'amount_cents': -200,
+              'description': 'remove me',
+              'date': '2026-05-10',
+            },
+          ],
+        );
+
+        final result = await invokeRpc(removed: ['plaid-tx-rm']);
+        expect(result['removed'], 1);
+
+        final survivors =
+            await harness.client
+                    .from('transactions')
+                    .select('external_id')
+                    .eq('account_id', harness.accountId)
+                as List;
+        expect(survivors.length, 1);
+        expect(survivors[0]['external_id'], 'plaid-tx-keep');
+      },
+      skip: reason,
+    );
 
     test('empty arrays are a clean no-op (zero counts, no errors)', () async {
       final result = await invokeRpc();
@@ -265,45 +254,42 @@ void main() {
     }, skip: reason);
 
     // ── Audit 2026-05-26 C4: user-state preservation ────────
-    test(
-      'removed: rows with user notes are soft-archived (kept, '
-      'external_id cleared, source=import)',
-      () async {
-        // Plaid adds the row, user adds a note, Plaid removes it.
-        await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-noted',
-              'amount_cents': -500,
-              'description': 'lunch',
-              'date': '2026-05-10',
-            },
-          ],
-        );
-        await harness.client
-            .from('transactions')
-            .update({'notes': 'reimburse from work'})
-            .eq('external_id', 'plaid-tx-noted');
+    test('removed: rows with user notes are soft-archived (kept, '
+        'external_id cleared, source=import)', () async {
+      // Plaid adds the row, user adds a note, Plaid removes it.
+      await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-noted',
+            'amount_cents': -500,
+            'description': 'lunch',
+            'date': '2026-05-10',
+          },
+        ],
+      );
+      await harness.client
+          .from('transactions')
+          .update({'notes': 'reimburse from work'})
+          .eq('external_id', 'plaid-tx-noted');
 
-        final result = await invokeRpc(removed: ['plaid-tx-noted']);
-        // Hard-delete count is 0; archived count is 1.
-        expect(result['removed'], 0);
-        expect(result['archived'], 1);
+      final result = await invokeRpc(removed: ['plaid-tx-noted']);
+      // Hard-delete count is 0; archived count is 1.
+      expect(result['removed'], 0);
+      expect(result['archived'], 1);
 
-        // Row survives with the user's note intact and Plaid
-        // attribution stripped.
-        final rows = (await harness.client
-                .from('transactions')
-                .select('id, external_id, source, notes')
-                .eq('account_id', harness.accountId))
-            as List;
-        expect(rows.length, 1);
-        expect(rows[0]['external_id'], isNull);
-        expect(rows[0]['source'], 'import');
-        expect(rows[0]['notes'], 'reimburse from work');
-      },
-      skip: reason,
-    );
+      // Row survives with the user's note intact and Plaid
+      // attribution stripped.
+      final rows =
+          (await harness.client
+                  .from('transactions')
+                  .select('id, external_id, source, notes')
+                  .eq('account_id', harness.accountId))
+              as List;
+      expect(rows.length, 1);
+      expect(rows[0]['external_id'], isNull);
+      expect(rows[0]['source'], 'import');
+      expect(rows[0]['notes'], 'reimburse from work');
+    }, skip: reason);
 
     test(
       'removed: rows with category_assigned_by=user are soft-archived',
@@ -333,11 +319,12 @@ void main() {
         expect(result['removed'], 0);
         expect(result['archived'], 1);
 
-        final rows = (await harness.client
-                .from('transactions')
-                .select('external_id, source, category_id')
-                .eq('account_id', harness.accountId))
-            as List;
+        final rows =
+            (await harness.client
+                    .from('transactions')
+                    .select('external_id, source, category_id')
+                    .eq('account_id', harness.accountId))
+                as List;
         expect(rows.length, 1);
         expect(rows[0]['external_id'], isNull);
         expect(rows[0]['source'], 'import');
@@ -346,36 +333,33 @@ void main() {
       skip: reason,
     );
 
-    test(
-      'removed: rows with no user state are hard-deleted (matches '
-      'historical behavior)',
-      () async {
-        // Same shape as the existing "removed deletes by external_id"
-        // test — sanity-pin that the new branching didn't regress
-        // the common case.
-        await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-clean',
-              'amount_cents': -100,
-              'description': 'clean row',
-              'date': '2026-05-10',
-            },
-          ],
-        );
-        final result = await invokeRpc(removed: ['plaid-tx-clean']);
-        expect(result['removed'], 1);
-        expect(result['archived'], 0);
+    test('removed: rows with no user state are hard-deleted (matches '
+        'historical behavior)', () async {
+      // Same shape as the existing "removed deletes by external_id"
+      // test — sanity-pin that the new branching didn't regress
+      // the common case.
+      await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-clean',
+            'amount_cents': -100,
+            'description': 'clean row',
+            'date': '2026-05-10',
+          },
+        ],
+      );
+      final result = await invokeRpc(removed: ['plaid-tx-clean']);
+      expect(result['removed'], 1);
+      expect(result['archived'], 0);
 
-        final rows = (await harness.client
-                .from('transactions')
-                .select('id')
-                .eq('account_id', harness.accountId))
-            as List;
-        expect(rows.length, 0);
-      },
-      skip: reason,
-    );
+      final rows =
+          (await harness.client
+                  .from('transactions')
+                  .select('id')
+                  .eq('account_id', harness.accountId))
+              as List;
+      expect(rows.length, 0);
+    }, skip: reason);
 
     test(
       'removed: transfer leg removal clears transfer_id on the partner',
@@ -383,7 +367,8 @@ void main() {
         // Set up a transfer: insert two transactions sharing a
         // transfer_id, where one is Plaid-managed and the other
         // is the surviving manual leg.
-        final transferId = 'cccccccc-1111-1111-1111-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(12, '0').substring(0, 12)}';
+        final transferId =
+            'cccccccc-1111-1111-1111-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(12, '0').substring(0, 12)}';
         await invokeRpc(
           added: [
             {
@@ -477,70 +462,66 @@ void main() {
     // AND the existing row isn't already linked to a transfer /
     // receipt / external_id.
 
-    test(
-      'dedup: a manual entry with matching account/amount/date is '
-      'merged (claimed) by the Plaid added row',
-      () async {
-        // Seed a manual entry for $19.99 on 2026-05-10.
-        await harness.insertTransaction(
-          amountCents: -1999,
-          description: 'Coffee shop (entered by hand)',
-          transactionDate: DateTime.utc(2026, 5, 10),
-        );
+    test('dedup: a manual entry with matching account/amount/date is '
+        'merged (claimed) by the Plaid added row', () async {
+      // Seed a manual entry for $19.99 on 2026-05-10.
+      await harness.insertTransaction(
+        amountCents: -1999,
+        description: 'Coffee shop (entered by hand)',
+        transactionDate: DateTime.utc(2026, 5, 10),
+      );
 
-        // Plaid sync delivers the same charge 1 day later (posting
-        // lag), with Plaid's own external_id.
-        final result = await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-merge-1',
-              'amount_cents': -1999,
-              'description': 'COFFEE SHOP INC',
-              'merchant': 'Coffee Shop Inc',
-              'date': '2026-05-11', // +1 day, inside ±3
-              'pending': false,
-            },
-          ],
-        );
-        // The Plaid row claimed the existing manual row → 0 added.
-        expect(result['added'], 0);
-        expect(result['merged'], 1);
+      // Plaid sync delivers the same charge 1 day later (posting
+      // lag), with Plaid's own external_id.
+      final result = await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-merge-1',
+            'amount_cents': -1999,
+            'description': 'COFFEE SHOP INC',
+            'merchant': 'Coffee Shop Inc',
+            'date': '2026-05-11', // +1 day, inside ±3
+            'pending': false,
+          },
+        ],
+      );
+      // The Plaid row claimed the existing manual row → 0 added.
+      expect(result['added'], 0);
+      expect(result['merged'], 1);
 
-        final rows = await harness.client
-            .from('transactions')
-            .select('id, amount, source, external_id, description')
-            .eq('account_id', harness.accountId);
-        expect(
-          (rows as List).length,
-          1,
-          reason:
-              'after merge the ledger should hold ONE row for the '
-              'real-world charge, not two.',
-        );
-        final row = rows.single;
-        expect(row['external_id'], 'plaid-tx-merge-1');
-        expect(
-          row['source'],
-          'plaid',
-          reason:
-              'after merge the row is Plaid-tracked — future syncs '
-              'will modify it via the external_id key.',
-        );
-        // The user's original description was preserved (description
-        // is not in the merge UPDATE's column list; only external_id
-        // and source change). A subsequent Plaid modified pass would
-        // overwrite it.
-        expect(
-          row['description'],
-          'Coffee shop (entered by hand)',
-          reason:
-              'merge UPDATE only stamps external_id + source. '
-              'description / merchant / category survive until a '
-              'subsequent Plaid modified pass updates them.',
-        );
-      },
-      skip: reason,
-    );
+      final rows = await harness.client
+          .from('transactions')
+          .select('id, amount, source, external_id, description')
+          .eq('account_id', harness.accountId);
+      expect(
+        (rows as List).length,
+        1,
+        reason:
+            'after merge the ledger should hold ONE row for the '
+            'real-world charge, not two.',
+      );
+      final row = rows.single;
+      expect(row['external_id'], 'plaid-tx-merge-1');
+      expect(
+        row['source'],
+        'plaid',
+        reason:
+            'after merge the row is Plaid-tracked — future syncs '
+            'will modify it via the external_id key.',
+      );
+      // The user's original description was preserved (description
+      // is not in the merge UPDATE's column list; only external_id
+      // and source change). A subsequent Plaid modified pass would
+      // overwrite it.
+      expect(
+        row['description'],
+        'Coffee shop (entered by hand)',
+        reason:
+            'merge UPDATE only stamps external_id + source. '
+            'description / merchant / category survive until a '
+            'subsequent Plaid modified pass updates them.',
+      );
+    }, skip: reason);
 
     test(
       'dedup: a candidate outside the ±3 day window is NOT merged',
@@ -710,47 +691,43 @@ void main() {
       skip: reason,
     );
 
-    test(
-      'dedup: existing transfer-leg / receipt-paired rows are NEVER '
-      'merged even when amount+date match',
-      () async {
-        // Seed a manual entry that's transfer-leg-paired (we just
-        // stamp transfer_id directly — no need to create a real
-        // pair for the test).
-        await harness.client.from('transactions').insert({
-          'household_id': harness.householdId,
-          'account_id': harness.accountId,
-          'entered_by': harness.userId,
-          'amount': -2500,
-          'currency': 'USD',
-          'description': 'transfer leg, hands off',
-          'transaction_date': '2026-05-10',
-          'pending': false,
-          'source': 'manual',
-          'transfer_id': '00000000-0000-0000-0000-000000000099',
-        });
+    test('dedup: existing transfer-leg / receipt-paired rows are NEVER '
+        'merged even when amount+date match', () async {
+      // Seed a manual entry that's transfer-leg-paired (we just
+      // stamp transfer_id directly — no need to create a real
+      // pair for the test).
+      await harness.client.from('transactions').insert({
+        'household_id': harness.householdId,
+        'account_id': harness.accountId,
+        'entered_by': harness.userId,
+        'amount': -2500,
+        'currency': 'USD',
+        'description': 'transfer leg, hands off',
+        'transaction_date': '2026-05-10',
+        'pending': false,
+        'source': 'manual',
+        'transfer_id': '00000000-0000-0000-0000-000000000099',
+      });
 
-        final result = await invokeRpc(
-          added: [
-            {
-              'plaid_transaction_id': 'plaid-tx-no-merge-transfer',
-              'amount_cents': -2500,
-              'description': 'Plaid sees this charge too',
-              'date': '2026-05-10',
-            },
-          ],
-        );
-        expect(
-          result['merged'],
-          0,
-          reason:
-              'transfer-paired rows are excluded from the dedup '
-              'candidate set so create_transfer pairing stays intact.',
-        );
-        expect(result['added'], 1);
-      },
-      skip: reason,
-    );
+      final result = await invokeRpc(
+        added: [
+          {
+            'plaid_transaction_id': 'plaid-tx-no-merge-transfer',
+            'amount_cents': -2500,
+            'description': 'Plaid sees this charge too',
+            'date': '2026-05-10',
+          },
+        ],
+      );
+      expect(
+        result['merged'],
+        0,
+        reason:
+            'transfer-paired rows are excluded from the dedup '
+            'candidate set so create_transfer pairing stays intact.',
+      );
+      expect(result['added'], 1);
+    }, skip: reason);
 
     // ── Auth-check / cross-household rejection ─────────────────────
     test(
@@ -793,75 +770,65 @@ void main() {
   });
 
   group('plaid_items column-level grants (integration)', () {
-    test(
-      'access_token column is dropped entirely (migration 066)',
-      () async {
-        final h = await Harness.bootstrap(testTag: 'plaid-items-grant');
-        try {
-          // Audit 2026-05-26 M2: migration 066 dropped the plaintext
-          // access_token column and replaced it with
-          // access_token_encrypted BYTEA + SECURITY DEFINER
-          // accessors. The column doesn't exist for ANY role —
-          // service_role included. The plaintext only transits
-          // through get_plaid_access_token's return value.
-          //
-          // PostgREST returns 400 (or similar) when asked for a
-          // column that doesn't exist in the schema. We don't
-          // pin the exact code — the throw shape proves the
-          // column is gone.
-          await expectLater(
-            h.client.from('plaid_items').select('access_token'),
-            throwsA(anything),
-            reason:
-                'access_token column was dropped in migration 066; '
-                'PostgREST should reject the SELECT.',
-          );
-        } finally {
-          await h.dispose();
-        }
-      },
-      skip: reason,
-    );
+    test('access_token column is dropped entirely (migration 066)', () async {
+      final h = await Harness.bootstrap(testTag: 'plaid-items-grant');
+      try {
+        // Audit 2026-05-26 M2: migration 066 dropped the plaintext
+        // access_token column and replaced it with
+        // access_token_encrypted BYTEA + SECURITY DEFINER
+        // accessors. The column doesn't exist for ANY role —
+        // service_role included. The plaintext only transits
+        // through get_plaid_access_token's return value.
+        //
+        // PostgREST returns 400 (or similar) when asked for a
+        // column that doesn't exist in the schema. We don't
+        // pin the exact code — the throw shape proves the
+        // column is gone.
+        await expectLater(
+          h.client.from('plaid_items').select('access_token'),
+          throwsA(anything),
+          reason:
+              'access_token column was dropped in migration 066; '
+              'PostgREST should reject the SELECT.',
+        );
+      } finally {
+        await h.dispose();
+      }
+    }, skip: reason);
 
-    test(
-      'set_plaid_access_token / get_plaid_access_token round-trip '
-      '(M2 — pgcrypto + vault-managed key, anon caller blocked)',
-      () async {
-        final h = await Harness.bootstrap(testTag: 'plaid-token-rpc');
-        try {
-          // The accessor RPCs are GRANT'd to service_role only.
-          // An authenticated anon-key caller (what the harness
-          // provides) MUST get a permission-denied error.
-          await expectLater(
-            h.client.rpc(
-              'set_plaid_access_token',
-              params: const {
-                'p_item_id': '00000000-0000-0000-0000-000000000000',
-                'p_token': 'should-not-land',
-              },
-            ),
-            throwsA(anything),
-            reason:
-                'EXECUTE on set_plaid_access_token is REVOKED from '
-                'anon/authenticated — only service_role can call.',
-          );
-          await expectLater(
-            h.client.rpc(
-              'get_plaid_access_token',
-              params: const {
-                'p_item_id': '00000000-0000-0000-0000-000000000000',
-              },
-            ),
-            throwsA(anything),
-            reason:
-                'EXECUTE on get_plaid_access_token is REVOKED from '
-                'anon/authenticated — only service_role can call.',
-          );
-        } finally {
-          await h.dispose();
-        }
-      },
-      skip: reason,
-    );
+    test('set_plaid_access_token / get_plaid_access_token round-trip '
+        '(M2 — pgcrypto + vault-managed key, anon caller blocked)', () async {
+      final h = await Harness.bootstrap(testTag: 'plaid-token-rpc');
+      try {
+        // The accessor RPCs are GRANT'd to service_role only.
+        // An authenticated anon-key caller (what the harness
+        // provides) MUST get a permission-denied error.
+        await expectLater(
+          h.client.rpc(
+            'set_plaid_access_token',
+            params: const {
+              'p_item_id': '00000000-0000-0000-0000-000000000000',
+              'p_token': 'should-not-land',
+            },
+          ),
+          throwsA(anything),
+          reason:
+              'EXECUTE on set_plaid_access_token is REVOKED from '
+              'anon/authenticated — only service_role can call.',
+        );
+        await expectLater(
+          h.client.rpc(
+            'get_plaid_access_token',
+            params: const {'p_item_id': '00000000-0000-0000-0000-000000000000'},
+          ),
+          throwsA(anything),
+          reason:
+              'EXECUTE on get_plaid_access_token is REVOKED from '
+              'anon/authenticated — only service_role can call.',
+        );
+      } finally {
+        await h.dispose();
+      }
+    }, skip: reason);
   });
 }

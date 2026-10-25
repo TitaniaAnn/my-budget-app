@@ -216,7 +216,7 @@ class Categorizer {
 /// keyword matcher. The first read must therefore be `await` (the
 /// provider returns a Future). All call sites already do this.
 @Riverpod(keepAlive: true)
-Future<Categorizer> categorizer(CategorizerRef ref) async {
+Future<Categorizer> categorizer(Ref ref) async {
   final categories = await ref.watch(categoriesProvider.future);
   final ml = await MlCategoryClassifier.load();
   ref.onDispose(() => ml?.dispose());

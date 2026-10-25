@@ -6,25 +6,47 @@ part of 'recurring_transactions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$recurringTransactionsHash() =>
-    r'6cd5ba721e9e00f95756e9c981d093dd5fc19ea7';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [recurringTransactions].
 @ProviderFor(recurringTransactions)
-final recurringTransactionsProvider =
-    AutoDisposeFutureProvider<List<RecurringTransaction>>.internal(
-      recurringTransactions,
-      name: r'recurringTransactionsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$recurringTransactionsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final recurringTransactionsProvider = RecurringTransactionsProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RecurringTransactionsRef =
-    AutoDisposeFutureProviderRef<List<RecurringTransaction>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class RecurringTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<RecurringTransaction>>,
+          List<RecurringTransaction>,
+          FutureOr<List<RecurringTransaction>>
+        >
+    with
+        $FutureModifier<List<RecurringTransaction>>,
+        $FutureProvider<List<RecurringTransaction>> {
+  RecurringTransactionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'recurringTransactionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$recurringTransactionsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<RecurringTransaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<RecurringTransaction>> create(Ref ref) {
+    return recurringTransactions(ref);
+  }
+}
+
+String _$recurringTransactionsHash() =>
+    r'f12d985050ce6a46846acb945a17176b42bc71ed';

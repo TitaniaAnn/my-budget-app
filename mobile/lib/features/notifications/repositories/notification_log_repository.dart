@@ -21,9 +21,7 @@ import '../../../core/supabase/supabase_client.dart';
 part 'notification_log_repository.g.dart';
 
 @riverpod
-NotificationLogRepository notificationLogRepository(
-  NotificationLogRepositoryRef ref,
-) {
+NotificationLogRepository notificationLogRepository(Ref ref) {
   return NotificationLogRepository();
 }
 

@@ -21,7 +21,7 @@ part 'transactions_provider.g.dart';
 /// page by re-keying the family.
 @riverpod
 Future<List<Transaction>> transactions(
-  TransactionsRef ref, {
+  Ref ref, {
   String? accountId,
   String? categoryId,
   String? tagId,
@@ -49,7 +49,7 @@ Future<List<Transaction>> transactions(
 /// Fetches all categories (system + household).
 /// Cached independently so it doesn't re-fetch every time transactions refresh.
 @riverpod
-Future<List<Category>> categories(CategoriesRef ref) async {
+Future<List<Category>> categories(Ref ref) async {
   final repo = ref.watch(transactionsRepositoryProvider);
   return repo.fetchCategories();
 }
@@ -60,7 +60,7 @@ Future<List<Category>> categories(CategoriesRef ref) async {
 /// transactions list.
 @riverpod
 Future<List<Transaction>> transactionsForReceipt(
-  TransactionsForReceiptRef ref,
+  Ref ref,
   String receiptId,
 ) async {
   final repo = ref.watch(transactionsRepositoryProvider);
@@ -72,9 +72,7 @@ Future<List<Transaction>> transactionsForReceipt(
 /// confirms or corrects each row, which flips `category_assigned_by` to
 /// 'user' and feeds the next retrain.
 @riverpod
-Future<List<Transaction>> uncertainTransactions(
-  UncertainTransactionsRef ref,
-) async {
+Future<List<Transaction>> uncertainTransactions(Ref ref) async {
   final householdId = await ref.watch(householdIdProvider.future);
   if (householdId == null) return [];
   final repo = ref.watch(transactionsRepositoryProvider);

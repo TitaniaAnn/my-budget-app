@@ -308,61 +308,57 @@ void main() {
       }, skip: reason);
 
       // ── H7: optimistic concurrency ─────────────────────────────────
-      test(
-        'updateTransaction throws ConcurrentUpdateException when '
-        'expectedUpdatedAt is stale',
-        () async {
-          // Insert a row, then immediately mutate it from a "second
-          // device" (a direct UPDATE bypassing the repo) so its
-          // BEFORE-UPDATE trigger refreshes updated_at. The repo
-          // call below uses the original timestamp as its
-          // precondition — must fail loudly.
-          final txId = await harness.insertTransaction(
-            description: 'concurrent-edit target',
-          );
-          final original = await harness.client
-              .from('transactions')
-              .select('updated_at')
-              .eq('id', txId)
-              .single();
-          final originalUpdatedAt = DateTime.parse(
-            original['updated_at'] as String,
-          );
+      test('updateTransaction throws ConcurrentUpdateException when '
+          'expectedUpdatedAt is stale', () async {
+        // Insert a row, then immediately mutate it from a "second
+        // device" (a direct UPDATE bypassing the repo) so its
+        // BEFORE-UPDATE trigger refreshes updated_at. The repo
+        // call below uses the original timestamp as its
+        // precondition — must fail loudly.
+        final txId = await harness.insertTransaction(
+          description: 'concurrent-edit target',
+        );
+        final original = await harness.client
+            .from('transactions')
+            .select('updated_at')
+            .eq('id', txId)
+            .single();
+        final originalUpdatedAt = DateTime.parse(
+          original['updated_at'] as String,
+        );
 
-          // Trigger needs a real second of wall-clock drift so the
-          // updated_at delta is observable; sleep a beat.
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          await harness.client
-              .from('transactions')
-              .update({'description': 'edited by other device'})
-              .eq('id', txId);
+        // Trigger needs a real second of wall-clock drift so the
+        // updated_at delta is observable; sleep a beat.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await harness.client
+            .from('transactions')
+            .update({'description': 'edited by other device'})
+            .eq('id', txId);
 
-          expect(
-            () => repo.updateTransaction(
-              id: txId,
-              amount: -100,
-              description: 'edited by ME',
-              transactionDate: DateTime.now(),
-              expectedUpdatedAt: originalUpdatedAt,
-            ),
-            throwsA(isA<ConcurrentUpdateException>()),
-            reason:
-                'precondition matched zero rows; the repo must throw '
-                'so the UI can prompt the user to refresh. Silently '
-                'no-op-ing would lose their change.',
-          );
+        expect(
+          () => repo.updateTransaction(
+            id: txId,
+            amount: -100,
+            description: 'edited by ME',
+            transactionDate: DateTime.now(),
+            expectedUpdatedAt: originalUpdatedAt,
+          ),
+          throwsA(isA<ConcurrentUpdateException>()),
+          reason:
+              'precondition matched zero rows; the repo must throw '
+              'so the UI can prompt the user to refresh. Silently '
+              'no-op-ing would lose their change.',
+        );
 
-          // Verify the other-device write survives — our failed
-          // attempt mustn't have partially applied.
-          final after = await harness.client
-              .from('transactions')
-              .select('description')
-              .eq('id', txId)
-              .single();
-          expect(after['description'], 'edited by other device');
-        },
-        skip: reason,
-      );
+        // Verify the other-device write survives — our failed
+        // attempt mustn't have partially applied.
+        final after = await harness.client
+            .from('transactions')
+            .select('description')
+            .eq('id', txId)
+            .single();
+        expect(after['description'], 'edited by other device');
+      }, skip: reason);
 
       test(
         'updateTransaction succeeds when expectedUpdatedAt matches',
@@ -1874,92 +1870,81 @@ void main() {
 
     // ── D1 + D2: constraint-gap closure (migration 053) ──────────
     group('migration 053 constraint gaps', () {
-      test(
-        'deleting a category nulls out referencing transactions instead '
-        'of failing (D1 FK SET NULL)',
-        () async {
-          final newCat = await harness.client
-              .from('categories')
-              .insert({
-                'household_id': harness.householdId,
-                'name': 'D1-FK-SET-NULL-CAT',
-              })
-              .select('id')
-              .single();
-          final categoryId = newCat['id'] as String;
+      test('deleting a category nulls out referencing transactions instead '
+          'of failing (D1 FK SET NULL)', () async {
+        final newCat = await harness.client
+            .from('categories')
+            .insert({
+              'household_id': harness.householdId,
+              'name': 'D1-FK-SET-NULL-CAT',
+            })
+            .select('id')
+            .single();
+        final categoryId = newCat['id'] as String;
 
-          final txId = await harness.insertTransaction(
-            description: 'tx that points at the doomed category',
-            categoryId: categoryId,
-          );
+        final txId = await harness.insertTransaction(
+          description: 'tx that points at the doomed category',
+          categoryId: categoryId,
+        );
 
-          // Pre-053 this raised a FK violation (NO ACTION default).
-          // Post-053 the FK is SET NULL and the delete succeeds; the
-          // transaction survives with category_id = NULL.
-          await repo.deleteCategory(categoryId);
+        // Pre-053 this raised a FK violation (NO ACTION default).
+        // Post-053 the FK is SET NULL and the delete succeeds; the
+        // transaction survives with category_id = NULL.
+        await repo.deleteCategory(categoryId);
 
-          final after = await harness.client
-              .from('transactions')
-              .select('category_id')
-              .eq('id', txId)
-              .single();
-          expect(
-            after['category_id'],
-            isNull,
-            reason:
-                'transactions.category_id should null out when the '
-                'referenced category is deleted (ON DELETE SET NULL).',
-          );
-        },
-        skip: reason,
-      );
+        final after = await harness.client
+            .from('transactions')
+            .select('category_id')
+            .eq('id', txId)
+            .single();
+        expect(
+          after['category_id'],
+          isNull,
+          reason:
+              'transactions.category_id should null out when the '
+              'referenced category is deleted (ON DELETE SET NULL).',
+        );
+      }, skip: reason);
 
-      test(
-        'deleteCategory throws CategoryHasBudgetsException when a '
-        'budget still references the category',
-        () async {
-          final cat = await harness.client
-              .from('categories')
-              .insert({
-                'household_id': harness.householdId,
-                'name': 'D1-budget-guard-cat',
-              })
-              .select('id')
-              .single();
-          final categoryId = cat['id'] as String;
+      test('deleteCategory throws CategoryHasBudgetsException when a '
+          'budget still references the category', () async {
+        final cat = await harness.client
+            .from('categories')
+            .insert({
+              'household_id': harness.householdId,
+              'name': 'D1-budget-guard-cat',
+            })
+            .select('id')
+            .single();
+        final categoryId = cat['id'] as String;
 
-          // Seed a budget pointing at the category.
-          await harness.client.from('budgets').insert({
-            'household_id': harness.householdId,
-            'category_id': categoryId,
-            'amount': 5000,
-            'period': 'monthly',
-            'start_date': DateTime.now().toIso8601String().substring(0, 10),
-            'created_by': harness.userId,
-          });
+        // Seed a budget pointing at the category.
+        await harness.client.from('budgets').insert({
+          'household_id': harness.householdId,
+          'category_id': categoryId,
+          'amount': 5000,
+          'period': 'monthly',
+          'start_date': DateTime.now().toIso8601String().substring(0, 10),
+          'created_by': harness.userId,
+        });
 
-          await expectLater(
-            () => repo.deleteCategory(categoryId),
-            throwsA(isA<CategoryHasBudgetsException>()),
-            reason:
-                'budgets.category_id is NOT NULL; the repo must guard '
-                'so the user sees "remove the budget first" instead of '
-                'a raw Postgrest 23503.',
-          );
+        await expectLater(
+          () => repo.deleteCategory(categoryId),
+          throwsA(isA<CategoryHasBudgetsException>()),
+          reason:
+              'budgets.category_id is NOT NULL; the repo must guard '
+              'so the user sees "remove the budget first" instead of '
+              'a raw Postgrest 23503.',
+        );
 
-          // Clean up so the category survives the test and a re-run
-          // doesn't accumulate orphan budgets.
-          await harness.client
-              .from('budgets')
-              .delete()
-              .eq('category_id', categoryId);
-          await harness.client
-              .from('categories')
-              .delete()
-              .eq('id', categoryId);
-        },
-        skip: reason,
-      );
+        // Clean up so the category survives the test and a re-run
+        // doesn't accumulate orphan budgets.
+        await harness.client
+            .from('budgets')
+            .delete()
+            .eq('category_id', categoryId);
+        await harness.client.from('categories').delete().eq('id', categoryId);
+      }, skip: reason);
 
       test('holdings.quantity rejects negative values (D2 CHECK)', () async {
         await expectLater(
