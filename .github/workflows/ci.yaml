@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: mobile  # your Flutter app lives here
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Pinned: an unpinned `stable` picked up Flutter 3.47 (Dart 3.13) on
       # its own, and the analyzer behind build_runner at the time couldn't
