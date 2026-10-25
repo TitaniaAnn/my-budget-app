@@ -177,6 +177,32 @@ Release signing requires `mobile/android/app/key.properties` (gitignored). Then:
 flutter build appbundle --release --dart-define-from-file=.env.json
 ```
 
+### iPhone builds in the cloud (Codemagic)
+
+`codemagic.yaml` builds the iOS app on Codemagic's Macs and uploads it to App Store Connect, so you don't need a Mac.
+
+One-time setup:
+
+1. **App Store Connect:** create the app record with bundle id `com.mybudgetapp.mobile` ([My Apps → +](https://appstoreconnect.apple.com/apps)) and note its numeric **Apple ID** (App Information).
+2. **Codemagic:** at [codemagic.io/apps](https://codemagic.io/apps) add this repo, then create a variable group named `mybudgetapp` with these values, all marked secure:
+
+   | Variable | Where it comes from |
+   | --- | --- |
+   | `AUTH_KEY`, `APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY` | The App Store Connect API key `.p8` (the same one My Pottery Studio's Codemagic build uses) |
+   | `CERTIFICATE_KEY` | Your Apple Distribution certificate's private key (also shared with My Pottery Studio) |
+   | `APP_STORE_APPLE_ID` | The numeric Apple ID from step 1 |
+   | `SUPABASE_URL` | The production project URL, `https://<ref>.supabase.co` (the build refuses anything else, like `build-release.sh`) |
+   | `SUPABASE_ANON_KEY` | Its anon key, never the `service_role` key |
+
+Each release:
+
+1. Bump `version:` in `pubspec.yaml` when the visible version should change (the build number is picked automatically).
+2. Codemagic → my-budget-app → **iOS -> TestFlight** → Start new build.
+3. The build checks the variables, runs the same format, analyze and test steps as CI, signs, builds and uploads. It stops at the first failure.
+4. In [App Store Connect](https://appstoreconnect.apple.com) the build appears under TestFlight once Apple processes it (10-30 minutes). Add yourself as an internal tester and install it with the TestFlight app.
+
+The workflow builds from `mobile/` and runs `build_runner` first, like CI. iOS has one Runner scheme, so it takes no `--flavor` (Android's release needs `--flavor prod`).
+
 ---
 
 ## Development

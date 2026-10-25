@@ -1,0 +1,115 @@
+# Codemagic: build the iOS app and upload it to App Store Connect.
+#
+# Start it from codemagic.io -> my-budget-app -> "iOS -> TestFlight" -> Start new
+# build. Modelled on My-Pottery-Studio's ios-beta lane: same signing path
+# (fetch certs + profiles through the App Store Connect API, fresh keychain),
+# and the repo's own CI checks run before anything is built.
+#
+# Encrypted variables, in a Codemagic variable group named `mybudgetapp`:
+#   AUTH_KEY                                 App Store Connect API .p8 contents (fetches signing files)
+#   CERTIFICATE_KEY                          Apple Distribution certificate's private key
+#   APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY  the same .p8, for the upload step
+#   APP_STORE_APPLE_ID                       the app's numeric Apple ID (App Store Connect -> App Information)
+#   SUPABASE_URL                             production project URL, https://<ref>.supabase.co
+#   SUPABASE_ANON_KEY                        its anon key (never the service_role key)
+# The API key and certificate can be the same ones My-Pottery-Studio uses.
+#
+# iOS has a single Runner scheme, so unlike the Android release (which
+# needs --flavor prod) the iOS build takes no --flavor.
+
+workflows:
+  ios-testflight:
+    name: iOS -> TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: mobile
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - mybudgetapp
+      vars:
+        BUNDLE_ID: com.mybudgetapp.mobile
+        # Same App Store Connect API key as My-Pottery-Studio's codemagic.yaml.
+        APP_STORE_CONNECT_ISSUER_ID: 858e501a-6f84-4701-b42a-4c9ae03c0413
+        APP_STORE_CONNECT_KEY_IDENTIFIER: 7RRD84J8L2
+    scripts:
+      # Fail in seconds, not after a 10-minute build, when a variable is missing.
+      - name: Check configuration
+        script: |
+          set -e
+          missing=""
+          for v in AUTH_KEY CERTIFICATE_KEY APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY APP_STORE_APPLE_ID SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "$(printenv "$v")" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ERROR: missing Codemagic variables:$missing"
+            echo "Add them to the 'mybudgetapp' variable group (see the top of codemagic.yaml)."
+            exit 1
+          fi
+          # Same guard as scripts/build-release.sh: a localhost URL must never ship.
+          case "$SUPABASE_URL" in https://*.supabase.co|https://*.supabase.co/) ;; *) echo "ERROR: SUPABASE_URL must be the production https://<ref>.supabase.co URL, got: $SUPABASE_URL"; exit 1 ;; esac
+          echo "Configuration OK"
+
+      - name: Flutter packages
+        script: flutter pub get
+
+      # The same gate the repo's CI runs, so a build never ships untested code
+      # even while GitHub Actions isn't running.
+      - name: Analyze and test
+        script: |
+          set -e
+          dart run build_runner build --delete-conflicting-outputs
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test
+
+      # One more than every build Apple has on record (TestFlight, App Store,
+      # processing, expired), so an upload never collides with "already used".
+      - name: Pick build number
+        script: |
+          set -e
+          BUILD_NUMBER=$(($(app-store-connect get-latest-build-number "$APP_STORE_APPLE_ID") + 1))
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$CM_ENV"
+          echo "Build number $BUILD_NUMBER"
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --create \
+            --type IOS_APP_STORE \
+            --platform IOS \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key @env:AUTH_KEY \
+            --certificate-key @env:CERTIFICATE_KEY
+      - name: Keychain
+        script: |
+          keychain initialize
+          keychain add-certificates
+      - name: Use profiles
+        script: xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --build-number="$BUILD_NUMBER" \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - mobile/build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        # Uploaded for internal testers; submit to beta review or the App
+        # Store by hand in App Store Connect.
+        submit_to_testflight: false
+        submit_to_app_store: false
