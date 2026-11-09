@@ -26,8 +26,8 @@ dependencies:
   supabase_flutter: ^2.8.4
 
   # State management
-  flutter_riverpod: ^3.0.0
-  riverpod_annotation: ^4.0.0
+  flutter_riverpod: ^3.5.0
+  riverpod_annotation: ^4.0.8
 
   # Navigation
   go_router: ^14.8.1
@@ -58,7 +58,7 @@ dependencies:
 
   # Serialization
   freezed_annotation: ^3.1.0
-  json_annotation: ^4.9.0
+  json_annotation: ^4.12.0
 
   # Utilities
   intl: ^0.20.2
@@ -90,7 +90,7 @@ dependencies:
   # Offline persistence (audit L1 Phase 1). SQLite via drift +
   # platform-bundled sqlite3 binary. path_provider locates the
   # per-app docs dir to put the database file in.
-  drift: ^2.28.0
+  drift: ^2.35.4
   sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.5
   path: ^1.9.0
@@ -103,11 +103,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  build_runner: ^2.10.0
-  riverpod_generator: ^4.0.0
-  freezed: ^3.2.0
-  json_serializable: ^6.11.0
-  drift_dev: ^2.28.0
+  build_runner: ^2.17.1
+  riverpod_generator: ^4.0.10
+  freezed: ^4.0.3
+  json_serializable: ^6.15.2
+  drift_dev: ^2.35.3
 
 flutter:
   uses-material-design: true
